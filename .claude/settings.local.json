@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcodebuild -project SaifAndAlmarifa.xcodeproj -scheme SaifAndAlmarifa -destination 'generic/platform=iOS' -quiet build)",
+      "Bash(xcodebuild -project SaifAndAlmarifa.xcodeproj -scheme SaifAndAlmarifa -destination 'generic/platform=iOS Simulator' build)",
+      "Bash(mkdir -p Colors)",
+      "Bash(bash /tmp/gen_colors.sh)",
+      "Bash(wc -l \"/Volumes/me/learn swift/SaifAndAlmarifa/SaifAndAlmarifa/Utilities/Managers/Network/Core/\"*.swift \"/Volumes/me/learn swift/SaifAndAlmarifa/SaifAndAlmarifa/Utilities/Managers/Network/Auth/\"*.swift)"
+    ]
+  }
+}

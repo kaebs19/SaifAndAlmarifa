@@ -6,56 +6,75 @@
 //
 
 import SwiftUI
-import SwiftData
 
+// MARK: - حالات الشاشة الجذرية
+enum AppScreen {
+    case splash
+    case auth
+    case main
+}
+
+// MARK: - الشاشة الجذرية
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @StateObject private var authManager = AuthManager.shared
+    @State private var currentScreen: AppScreen = .splash
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+        ZStack {
+            switch currentScreen {
+            case .splash:
+                SplashView { destination in
+                    withAnimation(.easeInOut(duration: 0.4)) {
+                        currentScreen = destination == .main ? .main : .auth
                     }
                 }
-                .onDelete(perform: deleteItems)
+                .transition(.opacity)
+
+            case .auth:
+                AuthFlow()
+                    .transition(.opacity)
+
+            case .main:
+                // TODO: استبدال لاحقاً بـ MainTabView
+                mainPlaceholder
+                    .transition(.opacity)
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
+        }
+        .animation(.easeInOut(duration: 0.4), value: currentScreen)
+        // عند تسجيل الخروج → العودة للـ auth
+        .onChange(of: authManager.isAuthenticated) { _, isAuth in
+            withAnimation {
+                currentScreen = isAuth ? .main : .auth
             }
-        } detail: {
-            Text("Select an item")
         }
     }
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
+    // MARK: شاشة مؤقتة بعد تسجيل الدخول
+    private var mainPlaceholder: some View {
+        VStack(spacing: AppSizes.Spacing.lg) {
+            Image("icon_swords_crossed")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 80, height: 80)
 
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+            Text("مرحباً \(authManager.currentUser?.username ?? "محارب")")
+                .font(.cairo(.bold, size: AppSizes.Font.title1))
+                .foregroundStyle(AppColors.Default.goldPrimary)
+
+            Button {
+                AuthService.shared.logout()
+            } label: {
+                Text("تسجيل الخروج")
+                    .font(.cairo(.semiBold, size: AppSizes.Font.body))
+                    .foregroundStyle(.red)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(GradientBackground.main)
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .environment(\.layoutDirection, .rightToLeft)
 }

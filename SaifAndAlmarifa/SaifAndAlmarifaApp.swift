@@ -10,7 +10,12 @@ import SwiftData
 
 @main
 struct SaifAndAlmarifaApp: App {
-    var sharedModelContainer: ModelContainer = {
+
+    // MARK: - Theme
+    @StateObject private var themeManager = ThemeManager.shared
+
+    // MARK: - SwiftData Container
+    let sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
         ])
@@ -23,9 +28,24 @@ struct SaifAndAlmarifaApp: App {
         }
     }()
 
+    // MARK: - Init
+    init() {
+        // تسجيل الخطوط المخصصة (Cairo + Poppins) عند إقلاع التطبيق
+        FontRegistrar.registerAll()
+    }
+
+    // MARK: - Scene
     var body: some Scene {
         WindowGroup {
             ContentView()
+                // فرض اتجاه RTL للعربية
+                .environment(\.layoutDirection, .rightToLeft)
+                // تطبيق ثيم المستخدم (System/Light/Dark)
+                .applyTheme()
+                // معالجة callback تسجيل الدخول عبر Google
+                .onOpenURL { url in
+                    GoogleSignInManager.handle(url: url)
+                }
         }
         .modelContainer(sharedModelContainer)
     }
