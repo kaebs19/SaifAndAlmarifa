@@ -72,6 +72,12 @@ enum APIError: LocalizedError, Equatable {
 
     // MARK: - Mapping from HTTP Status
     static func from(statusCode: Int, apiMessage: String?, errors: [String]?) -> APIError {
+        // إذا الـ API أرسل رسالة → نستخدمها مباشرة (أولوية)
+        if let apiMessage, !apiMessage.isEmpty {
+            return .apiError(message: apiMessage, errors: errors)
+        }
+
+        // fallback حسب الكود
         switch statusCode {
         case 401:
             return .unauthorized
@@ -80,7 +86,7 @@ enum APIError: LocalizedError, Equatable {
         case 404:
             return .notFound
         case 429:
-            return .rateLimited(message: apiMessage ?? "محاولات كثيرة، انتظر قليلاً")
+            return .rateLimited(message: "محاولات كثيرة، انتظر قليلاً")
         case 500...599:
             return .serverError(statusCode: statusCode)
         default:
