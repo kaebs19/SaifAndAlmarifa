@@ -35,7 +35,7 @@ struct ContentView: View {
                     .transition(.opacity)
 
             case .main:
-                HomeView()
+                MainView()
                     .transition(.opacity)
             }
         }

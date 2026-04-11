@@ -114,6 +114,40 @@ enum AppStrings {
         static let variousQuestions = "أسئلة متنوعة"
     }
 
+    // MARK: - Main Screen
+    enum Main {
+        static let home = "الرئيسية"
+        static let leaderboard = "المتصدرين"
+        static let shop = "المتجر"
+        static let profile = "الملف"
+
+        static let random1v1 = "عشوائية"
+        static let random1v1Sub = "واحد ضد واحد"
+        static let random4 = "ضد ٤"
+        static let random4Sub = "معركة جماعية"
+        static let private1v1 = "ضد شخص"
+        static let private1v1Sub = "غرفة خاصة"
+        static let challengeFriend = "ضد صديق"
+        static let challengeFriendSub = "تحدّي مباشر"
+        static let friends4 = "ضد أصحابي ٤"
+        static let friends4Sub = "اجمع أصحابك"
+
+        static let dailyReward = "المكافأة اليومية"
+        static let spinWheel = "عجلة الحظ"
+        static let gems = "جواهر"
+        static let level = "المستوى"
+        static let findingMatch = "جاري البحث عن خصم..."
+        static let roomCode = "كود الغرفة"
+        static let copyCode = "نسخ الكود"
+        static let shareRoom = "مشاركة الرابط"
+        static let joinRoom = "الانضمام بكود"
+        static let enterCode = "أدخل كود الغرفة"
+        static let join = "انضم"
+        static let selectFriend = "اختر صديق"
+        static let invite = "دعوة"
+        static let noFriends = "لا يوجد أصدقاء بعد"
+    }
+
     // MARK: - Settings
     enum Settings {
         static let title = "الإعدادات"

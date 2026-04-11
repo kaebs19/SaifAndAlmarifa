@@ -48,6 +48,14 @@ final class AppSocketManager: ObservableObject {
     let onMatchItemEffect = PassthroughSubject<[String: Any], Never>()
     let onMatchEnded = PassthroughSubject<[String: Any], Never>()
 
+    // Room Publishers
+    let onRoomCreated = PassthroughSubject<[String: Any], Never>()
+    let onRoomPlayerJoined = PassthroughSubject<[String: Any], Never>()
+    let onRoomPlayerLeft = PassthroughSubject<[String: Any], Never>()
+    let onRoomDisbanded = PassthroughSubject<[String: Any], Never>()
+    let onRoomError = PassthroughSubject<[String: Any], Never>()
+    let onRoomInvited = PassthroughSubject<[String: Any], Never>()
+
     // MARK: - Dependencies
     private let keychain = KeychainManager.shared
 
@@ -109,13 +117,35 @@ final class AppSocketManager: ObservableObject {
     // MARK: - ═══════════════ Queue ═══════════════
 
     /// الدخول لطابور البحث عن مباراة
-    func joinQueue() {
-        emit("queue:join")
+    func joinQueue(mode: String = "1v1") {
+        emit("queue:join", data: ["mode": mode])
     }
 
     /// الخروج من الطابور
     func leaveQueue() {
         emit("queue:leave")
+    }
+
+    // MARK: - ═══════════════ Room ═══════════════
+
+    /// إنشاء غرفة خاصة
+    func createRoom(mode: String) {
+        emit("room:create", data: ["mode": mode])
+    }
+
+    /// الانضمام لغرفة بكود
+    func joinRoom(code: String) {
+        emit("room:join", data: ["code": code])
+    }
+
+    /// دعوة صديق لغرفة
+    func inviteFriend(code: String, friendId: String) {
+        emit("room:invite", data: ["code": code, "friendId": friendId])
+    }
+
+    /// مغادرة الغرفة
+    func leaveRoom() {
+        emit("room:leave")
     }
 
     // MARK: - ═══════════════ Match ═══════════════
@@ -208,6 +238,43 @@ final class AppSocketManager: ObservableObject {
             Task { @MainActor in
                 let msg = (data.first as? [String: Any])?["message"] as? String ?? "خطأ"
                 self?.onQueueError.send(msg)
+            }
+        }
+
+        // ── Room ──
+        socket.on("room:created") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onRoomCreated.send(d) }
+            }
+        }
+
+        socket.on("room:player-joined") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onRoomPlayerJoined.send(d) }
+            }
+        }
+
+        socket.on("room:player-left") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onRoomPlayerLeft.send(d) }
+            }
+        }
+
+        socket.on("room:disbanded") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onRoomDisbanded.send(d) }
+            }
+        }
+
+        socket.on("room:error") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onRoomError.send(d) }
+            }
+        }
+
+        socket.on("room:invited") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onRoomInvited.send(d) }
             }
         }
 
