@@ -70,14 +70,14 @@ struct SplashView: View {
                         endRadius: glowPulse ? 70 : 50
                     )
                 )
-                .frame(width: 140, height: 140)
+                .frame(width: 220, height: 220)
                 .blur(radius: 15)
                 .opacity(logoOpacity)
 
             // Lottie Castle animation
             LottieView(name: "Castle", loopMode: .loop, speed: 0.7)
-                .frame(width: 120, height: 120)
-                .clipShape(Circle())
+                .frame(width: 200, height: 200)
+                .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.xl))
                 .scaleEffect(logoScale)
                 .opacity(logoOpacity)
         }

@@ -91,7 +91,7 @@ struct CountryPickerButton: View {
     }
 }
 
-// MARK: - Sheet اختيار الدولة
+// MARK: - Sheet اختيار الدولة (ثيم داكن)
 struct CountryPickerSheet: View {
     @Binding var selected: Country
     @State private var search = ""
@@ -104,36 +104,63 @@ struct CountryPickerSheet: View {
 
     var body: some View {
         NavigationStack {
-            List(filtered) { country in
-                Button {
-                    selected = country
-                    HapticManager.selection()
-                    dismiss()
-                } label: {
-                    HStack(spacing: AppSizes.Spacing.sm) {
-                        Text(country.flag)
-                            .font(.system(size: 28))
-                        Text(country.nameAr)
-                            .font(.cairo(.medium, size: AppSizes.Font.bodyLarge))
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        if country.id == selected.id {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(AppColors.Default.goldPrimary)
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(filtered) { country in
+                        Button {
+                            selected = country
+                            HapticManager.selection()
+                            dismiss()
+                        } label: {
+                            HStack(spacing: AppSizes.Spacing.md) {
+                                Text(country.flag)
+                                    .font(.system(size: 30))
+
+                                Text(country.nameAr)
+                                    .font(.cairo(.medium, size: AppSizes.Font.bodyLarge))
+                                    .foregroundStyle(.white)
+
+                                Spacer()
+
+                                if country.id == selected.id {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 20))
+                                        .foregroundStyle(AppColors.Default.goldPrimary)
+                                }
+                            }
+                            .padding(.horizontal, AppSizes.Spacing.lg)
+                            .padding(.vertical, AppSizes.Spacing.md)
+                        }
+
+                        if country.id != filtered.last?.id {
+                            Divider()
+                                .overlay(.white.opacity(0.08))
+                                .padding(.leading, 70)
                         }
                     }
-                    .padding(.vertical, 4)
                 }
+                .padding(.top, AppSizes.Spacing.sm)
             }
+            .background(Color(hex: "0E1236"))
             .searchable(text: $search, prompt: "ابحث عن دولة")
             .navigationTitle("اختر الدولة")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color(hex: "0E1236"), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("إغلاق") { dismiss() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("إغلاق")
+                            .font(.cairo(.semiBold, size: AppSizes.Font.body))
+                            .foregroundStyle(AppColors.Default.goldPrimary)
+                    }
                 }
             }
         }
+        .preferredColorScheme(.dark)
     }
 }
 
