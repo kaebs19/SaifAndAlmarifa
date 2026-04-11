@@ -15,6 +15,9 @@ struct HomeView: View {
     @StateObject private var authManager = AuthManager.shared
     @StateObject private var socketManager = AppSocketManager.shared
     @State private var showLogoutAlert = false
+    @State private var showAvatarPicker = false
+    @State private var localAvatar: UIImage?
+    @State private var defaultAvatarName: String?
     @State private var activeContentPage: ContentPageKey?
     @State private var showContactUs = false
 
@@ -60,6 +63,9 @@ struct HomeView: View {
     private var profileCard: some View {
         VStack(spacing: AppSizes.Spacing.md) {
             sectionTitle("الملف الشخصي")
+
+            // الأفاتار
+            avatarSection
 
             if let user = authManager.currentUser {
                 VStack(spacing: 0) {
@@ -262,6 +268,62 @@ struct HomeView: View {
             }
         case .contactUs:
             ContactUsView { activeContentPage = nil }
+        }
+    }
+
+    // MARK: الأفاتار
+    private var avatarSection: some View {
+        Button { showAvatarPicker = true } label: {
+            ZStack(alignment: .bottomTrailing) {
+                // الصورة
+                Group {
+                    if let localAvatar {
+                        Image(uiImage: localAvatar)
+                            .resizable()
+                            .scaledToFill()
+                    } else if let name = defaultAvatarName {
+                        Image(name)
+                            .resizable()
+                            .scaledToFit()
+                            .padding(12)
+                            .background(.white.opacity(0.08))
+                    } else {
+                        AvatarView(
+                            imageURL: authManager.currentUser?.avatarUrl,
+                            size: 90
+                        )
+                    }
+                }
+                .frame(width: 90, height: 90)
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(AppColors.Default.goldPrimary, lineWidth: 2)
+                )
+
+                // زر التعديل
+                Image(systemName: "pencil.circle.fill")
+                    .font(.system(size: 26))
+                    .foregroundStyle(AppColors.Default.goldPrimary)
+                    .background(Circle().fill(Color(hex: "0E1236")).padding(3))
+            }
+        }
+        .sheet(isPresented: $showAvatarPicker) {
+            AvatarPickerSheet(currentAvatarURL: authManager.currentUser?.avatarUrl) { result in
+                switch result {
+                case .defaultAvatar(let name):
+                    defaultAvatarName = name
+                    localAvatar = nil
+                    HapticManager.success()
+                    ToastManager.shared.success("تم تغيير الصورة")
+                case .customImage(let image):
+                    localAvatar = image
+                    defaultAvatarName = nil
+                    HapticManager.success()
+                    ToastManager.shared.success("تم تغيير الصورة")
+                    // TODO: رفع الصورة عبر API عند جاهزية الباك اند
+                }
+            }
         }
     }
 
