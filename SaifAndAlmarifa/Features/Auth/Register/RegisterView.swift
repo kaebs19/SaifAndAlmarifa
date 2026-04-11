@@ -119,20 +119,16 @@ struct RegisterView: View {
         }
     }
 
-    // MARK: زر التسجيل (يظهر فقط عند صحة البيانات)
-    @ViewBuilder
+    // MARK: زر التسجيل (ظاهر دائماً — معطّل إذا البيانات خاطئة)
     private var submitButton: some View {
-        if viewModel.isFormValid || viewModel.isLoading {
-            GradientButton(
-                title: AppStrings.Auth.createAccountButton,
-                icon: "icon_swords_crossed",
-                colors: [AppColors.Default.goldLight, AppColors.Default.goldPrimary],
-                isLoading: viewModel.isLoading
-            ) {
-                Task { await viewModel.register() }
-            }
-            .transition(.move(edge: .bottom).combined(with: .opacity))
-            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.isFormValid)
+        GradientButton(
+            title: AppStrings.Auth.createAccountButton,
+            icon: "icon_swords_crossed",
+            colors: [AppColors.Default.goldLight, AppColors.Default.goldPrimary],
+            isLoading: viewModel.isLoading,
+            isEnabled: viewModel.isFormValid
+        ) {
+            Task { await viewModel.register() }
         }
     }
 

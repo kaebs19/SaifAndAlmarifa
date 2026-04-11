@@ -103,20 +103,16 @@ struct LoginView: View {
         }
     }
 
-    // MARK: زر تسجيل الدخول (يظهر فقط عند صحة البيانات)
-    @ViewBuilder
+    // MARK: زر تسجيل الدخول (ظاهر دائماً — معطّل إذا البيانات خاطئة)
     private var submitButton: some View {
-        if viewModel.isFormValid || viewModel.isLoading {
-            GradientButton(
-                title: AppStrings.Auth.login,
-                icon: "icon_swords_crossed",
-                colors: [AppColors.Default.goldLight, AppColors.Default.goldPrimary],
-                isLoading: viewModel.isLoading
-            ) {
-                Task { await viewModel.login() }
-            }
-            .transition(.move(edge: .bottom).combined(with: .opacity))
-            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.isFormValid)
+        GradientButton(
+            title: AppStrings.Auth.login,
+            icon: "icon_swords_crossed",
+            colors: [AppColors.Default.goldLight, AppColors.Default.goldPrimary],
+            isLoading: viewModel.isLoading,
+            isEnabled: viewModel.isFormValid
+        ) {
+            Task { await viewModel.login() }
         }
     }
 
