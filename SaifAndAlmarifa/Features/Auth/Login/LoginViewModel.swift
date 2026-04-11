@@ -23,23 +23,49 @@ final class LoginViewModel: ObservableObject {
     @Published var emailError: String?
     @Published var passwordError: String?
 
+    // MARK: - هل النموذج صالح
+    @Published private(set) var isFormValid: Bool = false
+
     // MARK: - Dependencies
     private let authService: AuthService
     private let toast = ToastManager.shared
+    private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Init
     init(authService: AuthService = .shared) {
         self.authService = authService
+        setupLiveValidation()
     }
 
-    // MARK: - هل يمكن الإرسال
-    var canSubmit: Bool {
-        !email.isEmpty && !password.isEmpty && !isLoading
+    // MARK: - ═══════════════ التحقق اللحظي ═══════════════
+
+    private func setupLiveValidation() {
+        Publishers.CombineLatest($email, $password)
+            .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
+            .sink { [weak self] mail, pass in
+                guard let self else { return }
+                emailError = mail.isEmpty ? nil : FormValidator.validate(mail, rules: FormValidator.emailRules).error
+                passwordError = pass.isEmpty ? nil : (pass.isEmpty ? nil : nil)
+
+                isFormValid = !mail.isEmpty && !pass.isEmpty && emailError == nil
+            }
+            .store(in: &cancellables)
     }
 
-    // MARK: - تنفيذ تسجيل الدخول
+    // MARK: - ═══════════════ تسجيل الدخول ═══════════════
+
     func login() async {
-        guard validate() else { return }
+        let emailResult = FormValidator.validate(email, rules: FormValidator.emailRules)
+        if !emailResult.isValid {
+            emailError = emailResult.error
+            toast.warning(emailResult.error ?? "تحقق من البريد")
+            return
+        }
+        if password.isEmpty {
+            passwordError = AppStrings.Errors.passwordRequired
+            toast.warning(AppStrings.Errors.passwordRequired)
+            return
+        }
 
         isLoading = true
         errorMessage = nil
@@ -57,7 +83,8 @@ final class LoginViewModel: ObservableObject {
         }
     }
 
-    // MARK: - تسجيل الدخول عبر Google
+    // MARK: - ═══════════════ Google ═══════════════
+
     func loginWithGoogle() async {
         isLoading = true
         errorMessage = nil
@@ -67,16 +94,15 @@ final class LoginViewModel: ObservableObject {
             let user = try await authService.loginWithGoogle(idToken: idToken)
             toast.success("مرحباً \(user.username)")
         } catch let error as APIError {
-            errorMessage = error.errorDescription
             toast.error(error.errorDescription ?? "فشل تسجيل الدخول")
         } catch {
             if error.localizedDescription.contains("canceled") { return }
-            errorMessage = error.localizedDescription
             toast.error(error.localizedDescription)
         }
     }
 
-    // MARK: - تسجيل الدخول عبر Apple
+    // MARK: - ═══════════════ Apple ═══════════════
+
     func loginWithApple() async {
         isLoading = true
         errorMessage = nil
@@ -89,38 +115,10 @@ final class LoginViewModel: ObservableObject {
             )
             toast.success("مرحباً \(user.username)")
         } catch let error as APIError {
-            errorMessage = error.errorDescription
             toast.error(error.errorDescription ?? "فشل تسجيل الدخول")
         } catch {
             if error.localizedDescription.contains("canceled") { return }
-            errorMessage = error.localizedDescription
             toast.error(error.localizedDescription)
         }
-    }
-
-    // MARK: - التحقق من المدخلات
-    private func validate() -> Bool {
-        emailError = nil
-        passwordError = nil
-        var isValid = true
-
-        if email.isEmpty {
-            emailError = AppStrings.Errors.emailRequired
-            isValid = false
-        } else if !AuthValidator.isValidEmail(email) {
-            emailError = AppStrings.Errors.emailInvalid
-            isValid = false
-        }
-
-        if password.isEmpty {
-            passwordError = AppStrings.Errors.passwordRequired
-            isValid = false
-        }
-
-        if !isValid {
-            toast.warning(emailError ?? passwordError ?? "تحقق من المدخلات")
-        }
-
-        return isValid
     }
 }

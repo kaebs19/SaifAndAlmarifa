@@ -85,6 +85,12 @@ struct AppTextField: View {
         return AppColors.Default.error
     }
     
+    /// نص الـ placeholder بلون مناسب للخلفية
+    private var promptText: Text {
+        Text(placeholder)
+            .foregroundColor(secondaryColor)
+    }
+
     /// الستايل المحسوب (auto → light أو glass حسب النظام)
     private var resolvedStyle: FieldTheme {
         if style != .auto { return style }
@@ -104,14 +110,14 @@ struct AppTextField: View {
                 
                 // حقل الإدخال
                 if isSecure && !isPasswordVisible {
-                    SecureField(placeholder, text: $text)
+                    SecureField("", text: $text, prompt: promptText)
                         .font(.cairo(.regular, size: AppSizes.Font.body))
                         .foregroundStyle(textColor)
                         .textContentType(contentType)
                         .submitLabel(submitLabel)
                         .onSubmit { onSubmit?() }
                 } else {
-                    TextField(placeholder, text: $text)
+                    TextField("", text: $text, prompt: promptText)
                         .font(.cairo(.regular, size: AppSizes.Font.body))
                         .foregroundStyle(textColor)
                         .keyboardType(keyboardType)
