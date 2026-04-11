@@ -18,6 +18,7 @@ final class RegisterViewModel: ObservableObject {
     @Published var email: String = ""
     @Published var password: String = ""
     @Published var confirmPassword: String = ""
+    @Published var selectedCountry: Country = CountryList.detect()
     @Published var agreedToTerms: Bool = false
 
     // MARK: - State
@@ -103,7 +104,7 @@ final class RegisterViewModel: ObservableObject {
                 username: username,
                 email: email,
                 password: password,
-                country: "SA"
+                country: selectedCountry.id
             )
             toast.success("مرحباً \(user.username)", subtitle: "تم إنشاء الحساب بنجاح")
         } catch let error as APIError {

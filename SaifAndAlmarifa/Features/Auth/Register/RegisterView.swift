@@ -71,6 +71,10 @@ struct RegisterView: View {
                 )
             }
 
+            AuthLabeledField(label: "الدولة") {
+                CountryPickerButton(selectedCountry: $viewModel.selectedCountry)
+            }
+
             AuthLabeledField(label: AppStrings.Auth.emailLabel) {
                 AppTextField(
                     placeholder: AppStrings.Auth.emailPlaceholder,
