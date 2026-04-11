@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5C91D1662F89DCC800566622 /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = 5C91D1652F89DCC800566622 /* SocketIO */; };
+		5C91D1692F89DD0E00566622 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 5C91D1682F89DD0E00566622 /* Alamofire */; };
 		5CB0A6B62F876BE900B324A0 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 5CB0A6B52F876BE900B324A0 /* FirebaseAnalytics */; };
 		5CB0A6B82F876BE900B324A0 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5CB0A6B72F876BE900B324A0 /* FirebaseCore */; };
 		5CB0A6BA2F876BE900B324A0 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 5CB0A6B92F876BE900B324A0 /* FirebaseMessaging */; };
@@ -33,7 +35,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				5CB0A6C02F876D4500B324A0 /* GoogleSignIn in Frameworks */,
+				5C91D1692F89DD0E00566622 /* Alamofire in Frameworks */,
 				5CB0A6BD2F876CD100B324A0 /* GoogleMobileAds in Frameworks */,
+				5C91D1662F89DCC800566622 /* SocketIO in Frameworks */,
 				5CB0A6BA2F876BE900B324A0 /* FirebaseMessaging in Frameworks */,
 				5CB0A6C22F876D4500B324A0 /* GoogleSignInSwift in Frameworks */,
 				5CB0A6B82F876BE900B324A0 /* FirebaseCore in Frameworks */,
@@ -86,6 +90,8 @@
 				5CB0A6BC2F876CD100B324A0 /* GoogleMobileAds */,
 				5CB0A6BF2F876D4500B324A0 /* GoogleSignIn */,
 				5CB0A6C12F876D4500B324A0 /* GoogleSignInSwift */,
+				5C91D1652F89DCC800566622 /* SocketIO */,
+				5C91D1682F89DD0E00566622 /* Alamofire */,
 			);
 			productName = SaifAndAlmarifa;
 			productReference = 5C01BCF82F7F39E90024A015 /* SaifAndAlmarifa.app */;
@@ -119,6 +125,8 @@
 				5CB0A6B42F876BE900B324A0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				5CB0A6BB2F876CD000B324A0 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
 				5CB0A6BE2F876D4500B324A0 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				5C91D1642F89DCC800566622 /* XCRemoteSwiftPackageReference "socket" */,
+				5C91D1672F89DD0E00566622 /* XCRemoteSwiftPackageReference "Alamofire" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 5C01BCF92F7F39E90024A015 /* Products */;
@@ -354,6 +362,22 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		5C91D1642F89DCC800566622 /* XCRemoteSwiftPackageReference "socket" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/socketio/socket.io-client-swift";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
+		5C91D1672F89DD0E00566622 /* XCRemoteSwiftPackageReference "Alamofire" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Alamofire/Alamofire.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.11.2;
+			};
+		};
 		5CB0A6B42F876BE900B324A0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
@@ -381,6 +405,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		5C91D1652F89DCC800566622 /* SocketIO */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5C91D1642F89DCC800566622 /* XCRemoteSwiftPackageReference "socket" */;
+			productName = SocketIO;
+		};
+		5C91D1682F89DD0E00566622 /* Alamofire */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5C91D1672F89DD0E00566622 /* XCRemoteSwiftPackageReference "Alamofire" */;
+			productName = Alamofire;
+		};
 		5CB0A6B52F876BE900B324A0 /* FirebaseAnalytics */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 5CB0A6B42F876BE900B324A0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

@@ -46,6 +46,8 @@ final class AuthManager: ObservableObject {
         keychain.save(user.id, for: .userID)
         currentUser = user
         isAuthenticated = true
+        // ربط Socket تلقائياً
+        AppSocketManager.shared.connect()
     }
 
     /// تحديث بيانات المستخدم الحالي (مثلاً بعد getMe)
@@ -55,6 +57,7 @@ final class AuthManager: ObservableObject {
 
     /// تسجيل الخروج - مسح كل بيانات الجلسة
     func logout() {
+        AppSocketManager.shared.disconnect()
         keychain.clearAll()
         currentUser = nil
         isAuthenticated = false

@@ -60,20 +60,12 @@ struct User: Decodable, Identifiable, Equatable {
     let id: String
     let username: String
     let email: String
-    let country: String?
     let role: String?
-    let avatarURL: String?
+    let avatarUrl: String?
+    let country: String?
+    let level: Int?
+    let gems: Int?
     let createdAt: String?
-
-    enum CodingKeys: String, CodingKey {
-        case id = "_id"
-        case username
-        case email
-        case country
-        case role
-        case avatarURL = "avatar"
-        case createdAt
-    }
 }
 
 // MARK: - Auth Response

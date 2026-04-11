@@ -5,7 +5,7 @@
 //  Created by Mohammed Saleh on 08/04/2026.
 //
 //  Path: SaifAndAlmarifa/Utilities/Managers/Network/Core/APIConfig.swift
-//  إعدادات API - Base URL, Timeouts, Headers
+//  إعدادات API + Socket.io
 
 import Foundation
 
@@ -15,30 +15,33 @@ enum APIConfig {
     // MARK: - Environment
     enum Environment {
         case development
-        case staging
         case production
 
         var baseURL: String {
             switch self {
-            case .development:
-                return "http://localhost:5001/api/v1"
-            case .staging:
-                return "https://staging.saifiq.com/api/v1"
-            case .production:
-                return "https://api.saifiq.com/api/v1"
+            case .development: return "http://localhost:5001/api/v1"
+            case .production:  return "https://saifiq.halmanhaj.com/api/v1"
+            }
+        }
+
+        var socketURL: String {
+            switch self {
+            case .development: return "http://localhost:5001"
+            case .production:  return "https://saifiq.halmanhaj.com"
             }
         }
     }
 
-    // MARK: - Current Environment
+    // MARK: - Current
     #if DEBUG
-    static let environment: Environment = .development
+    static let environment: Environment = .production
     #else
     static let environment: Environment = .production
     #endif
 
-    // MARK: - Base URL
+    // MARK: - URLs
     static var baseURL: String { environment.baseURL }
+    static var socketURL: String { environment.socketURL }
 
     // MARK: - Timeouts
     static let requestTimeout: TimeInterval = 30
