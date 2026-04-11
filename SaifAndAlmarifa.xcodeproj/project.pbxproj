@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5C2507F02F89EFB400ABCDC7 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 5C2507EF2F89EFB400ABCDC7 /* Lottie */; };
 		5C91D1662F89DCC800566622 /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = 5C91D1652F89DCC800566622 /* SocketIO */; };
 		5C91D1692F89DD0E00566622 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 5C91D1682F89DD0E00566622 /* Alamofire */; };
 		5CB0A6B62F876BE900B324A0 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 5CB0A6B52F876BE900B324A0 /* FirebaseAnalytics */; };
@@ -36,6 +37,7 @@
 			files = (
 				5CB0A6C02F876D4500B324A0 /* GoogleSignIn in Frameworks */,
 				5C91D1692F89DD0E00566622 /* Alamofire in Frameworks */,
+				5C2507F02F89EFB400ABCDC7 /* Lottie in Frameworks */,
 				5CB0A6BD2F876CD100B324A0 /* GoogleMobileAds in Frameworks */,
 				5C91D1662F89DCC800566622 /* SocketIO in Frameworks */,
 				5CB0A6BA2F876BE900B324A0 /* FirebaseMessaging in Frameworks */,
@@ -92,6 +94,7 @@
 				5CB0A6C12F876D4500B324A0 /* GoogleSignInSwift */,
 				5C91D1652F89DCC800566622 /* SocketIO */,
 				5C91D1682F89DD0E00566622 /* Alamofire */,
+				5C2507EF2F89EFB400ABCDC7 /* Lottie */,
 			);
 			productName = SaifAndAlmarifa;
 			productReference = 5C01BCF82F7F39E90024A015 /* SaifAndAlmarifa.app */;
@@ -127,6 +130,7 @@
 				5CB0A6BE2F876D4500B324A0 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				5C91D1642F89DCC800566622 /* XCRemoteSwiftPackageReference "socket" */,
 				5C91D1672F89DD0E00566622 /* XCRemoteSwiftPackageReference "Alamofire" */,
+				5C2507EE2F89EFB400ABCDC7 /* XCRemoteSwiftPackageReference "lottie-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 5C01BCF92F7F39E90024A015 /* Products */;
@@ -362,6 +366,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		5C2507EE2F89EFB400ABCDC7 /* XCRemoteSwiftPackageReference "lottie-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/airbnb/lottie-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.6.0;
+			};
+		};
 		5C91D1642F89DCC800566622 /* XCRemoteSwiftPackageReference "socket" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/socketio/socket.io-client-swift";
@@ -405,6 +417,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		5C2507EF2F89EFB400ABCDC7 /* Lottie */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5C2507EE2F89EFB400ABCDC7 /* XCRemoteSwiftPackageReference "lottie-ios" */;
+			productName = Lottie;
+		};
 		5C91D1652F89DCC800566622 /* SocketIO */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 5C91D1642F89DCC800566622 /* XCRemoteSwiftPackageReference "socket" */;

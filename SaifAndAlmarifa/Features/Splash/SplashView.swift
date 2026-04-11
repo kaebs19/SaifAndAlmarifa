@@ -7,6 +7,7 @@
 //  Path: SaifAndAlmarifa/Features/Splash/SplashView.swift
 
 import SwiftUI
+import Lottie
 
 // MARK: - شاشة Splash
 struct SplashView: View {
@@ -59,7 +60,7 @@ struct SplashView: View {
         }
     }
 
-    // MARK: الشعار
+    // MARK: الشعار + Lottie
     private var logo: some View {
         ZStack {
             // هالة متنفّسة
@@ -76,14 +77,12 @@ struct SplashView: View {
                 .blur(radius: 20)
                 .opacity(logoOpacity)
 
-            Image("icon_swords_crossed")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 130, height: 130)
+            // Lottie Castle animation
+            LottieView(name: "Castle", loopMode: .loop, speed: 0.8)
+                .frame(width: 180, height: 180)
                 .scaleEffect(logoScale)
-                .rotationEffect(.degrees(logoRotation))
                 .opacity(logoOpacity)
-                .shadow(color: AppColors.Default.goldPrimary.opacity(0.8), radius: glowRadius)
+                .shadow(color: AppColors.Default.goldPrimary.opacity(0.6), radius: glowRadius)
         }
     }
 
