@@ -125,10 +125,10 @@ struct LoginView: View {
     // MARK: أزرار Apple + Google
     private var socialButtons: some View {
         HStack(spacing: AppSizes.Spacing.md) {
-            SocialLoginButton(type: .google, style: .light) {
+            SocialLoginButton(type: .google, style: .light, isLoading: viewModel.isLoading) {
                 Task { await viewModel.loginWithGoogle() }
             }
-            SocialLoginButton(type: .apple, style: .light) {
+            SocialLoginButton(type: .apple, style: .light, isLoading: viewModel.isLoading) {
                 Task { await viewModel.loginWithApple() }
             }
         }

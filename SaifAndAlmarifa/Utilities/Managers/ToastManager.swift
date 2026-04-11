@@ -52,6 +52,14 @@ final class ToastManager: ObservableObject {
 
     // MARK: - عرض رسالة
     func show(_ type: ToastType, title: String, subtitle: String? = nil, duration: Double = 3.0) {
+        // Haptic تلقائي حسب النوع
+        switch type {
+        case .success: HapticManager.success()
+        case .error:   HapticManager.error()
+        case .warning: HapticManager.warning()
+        case .info:    HapticManager.light()
+        }
+
         currentToast = ToastMessage(type: type, title: title, subtitle: subtitle, duration: duration)
 
         Task {

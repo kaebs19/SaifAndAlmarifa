@@ -31,10 +31,19 @@ final class LoginViewModel: ObservableObject {
     private let toast = ToastManager.shared
     private var cancellables = Set<AnyCancellable>()
 
+    // MARK: - Remember Email
+    private let lastEmailKey = "last_login_email"
+
     // MARK: - Init
     init(authService: AuthService = .shared) {
         self.authService = authService
+        self.email = UserDefaults.standard.string(forKey: lastEmailKey) ?? ""
         setupLiveValidation()
+    }
+
+    /// حفظ الإيميل بعد نجاح الدخول
+    private func rememberEmail() {
+        UserDefaults.standard.set(email, forKey: lastEmailKey)
     }
 
     // MARK: - ═══════════════ التحقق اللحظي ═══════════════
@@ -73,6 +82,7 @@ final class LoginViewModel: ObservableObject {
 
         do {
             let user = try await authService.login(email: email, password: password)
+            rememberEmail()
             toast.success("مرحباً \(user.username)")
         } catch let error as APIError {
             errorMessage = error.errorDescription

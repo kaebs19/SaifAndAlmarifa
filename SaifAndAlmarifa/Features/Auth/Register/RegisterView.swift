@@ -95,6 +95,7 @@ struct RegisterView: View {
                     errorMessage: viewModel.passwordError,
                     style: .glass
                 )
+                PasswordStrengthBar(password: viewModel.password)
             }
 
             AuthLabeledField(label: "تأكيد كلمة المرور") {
@@ -107,6 +108,10 @@ struct RegisterView: View {
                     submitLabel: .done,
                     errorMessage: viewModel.confirmPasswordError,
                     style: .glass
+                )
+                PasswordMatchIndicator(
+                    password: viewModel.password,
+                    confirmPassword: viewModel.confirmPassword
                 )
             }
 

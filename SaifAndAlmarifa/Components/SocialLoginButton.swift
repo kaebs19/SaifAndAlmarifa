@@ -50,6 +50,7 @@ struct SocialLoginButton: View {
     let type: SocialLoginType
     var style: SocialButtonStyle = .auto
     var showTitle: Bool = true
+    var isLoading: Bool = false
     let action: () -> Void
     
     @Environment(\.colorScheme) private var colorScheme
@@ -93,17 +94,27 @@ struct SocialLoginButton: View {
     
     // MARK: - Body
     var body: some View {
-        Button(action: action) {
+        Button(action: {
+            guard !isLoading else { return }
+            HapticManager.light()
+            action()
+        }) {
             HStack(spacing: AppSizes.Spacing.sm) {
-                Image(type.icon)
-                    .renderingMode(type.isTemplate ? .template : .original)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 22, height: 22)
+                if isLoading {
+                    ProgressView()
+                        .tint(foregroundColor)
+                        .scaleEffect(0.8)
+                } else {
+                    Image(type.icon)
+                        .renderingMode(type.isTemplate ? .template : .original)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 22, height: 22)
 
-                if showTitle {
-                    Text(type.title)
-                        .font(.cairo(.semiBold, size: AppSizes.Font.body))
+                    if showTitle {
+                        Text(type.title)
+                            .font(.cairo(.semiBold, size: AppSizes.Font.body))
+                    }
                 }
             }
             .foregroundStyle(foregroundColor)
@@ -116,7 +127,10 @@ struct SocialLoginButton: View {
                     .stroke(borderColor, lineWidth: 1)
             )
             .shadow(color: shadowColor, radius: 5, x: 0, y: 2)
+            .opacity(isLoading ? 0.7 : 1)
         }
+        .disabled(isLoading)
+        .animation(.easeInOut(duration: 0.2), value: isLoading)
     }
 }
 
