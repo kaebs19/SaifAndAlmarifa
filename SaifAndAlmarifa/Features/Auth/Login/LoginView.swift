@@ -57,7 +57,7 @@ struct LoginView: View {
     // MARK: بطاقة النموذج
     private var formCard: some View {
         VStack(spacing: AppSizes.Spacing.md) {
-            labeledField(AppStrings.Auth.emailLabel) {
+            AuthLabeledField(label: AppStrings.Auth.emailLabel) {
                 AppTextField(
                     placeholder: AppStrings.Auth.emailPlaceholder,
                     text: $viewModel.email,
@@ -68,7 +68,7 @@ struct LoginView: View {
                 )
             }
 
-            labeledField(AppStrings.Auth.passwordLabel) {
+            AuthLabeledField(label: AppStrings.Auth.passwordLabel) {
                 AppTextField(
                     placeholder: "••••••••",
                     text: $viewModel.password,
@@ -80,20 +80,6 @@ struct LoginView: View {
             }
 
             forgotPasswordLink
-        }
-    }
-
-    // MARK: حقل مع Label فوقه
-    @ViewBuilder
-    private func labeledField<Content: View>(
-        _ label: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: AppSizes.Spacing.xs) {
-            Text(label)
-                .font(.cairo(.semiBold, size: AppSizes.Font.body))
-                .foregroundStyle(.white)
-            content()
         }
     }
 

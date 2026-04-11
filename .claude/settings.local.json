@@ -5,7 +5,13 @@
       "Bash(xcodebuild -project SaifAndAlmarifa.xcodeproj -scheme SaifAndAlmarifa -destination 'generic/platform=iOS Simulator' build)",
       "Bash(mkdir -p Colors)",
       "Bash(bash /tmp/gen_colors.sh)",
-      "Bash(wc -l \"/Volumes/me/learn swift/SaifAndAlmarifa/SaifAndAlmarifa/Utilities/Managers/Network/Core/\"*.swift \"/Volumes/me/learn swift/SaifAndAlmarifa/SaifAndAlmarifa/Utilities/Managers/Network/Auth/\"*.swift)"
+      "Bash(wc -l \"/Volumes/me/learn swift/SaifAndAlmarifa/SaifAndAlmarifa/Utilities/Managers/Network/Core/\"*.swift \"/Volumes/me/learn swift/SaifAndAlmarifa/SaifAndAlmarifa/Utilities/Managers/Network/Auth/\"*.swift)",
+      "Bash(find \"/Volumes/me/learn swift/SaifAndAlmarifa/.git\" -name \"*.lock\" -exec rm -f {} \\\\;)",
+      "Bash(curl -s -X POST http://localhost:5001/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"player1@test.com\",\"password\":\"Test@123\"}')",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s -X POST http://localhost:5001/api/v1/auth/register -H 'Content-Type: application/json' -d '{\"username\":\"test_player\",\"email\":\"testclaude@test.com\",\"password\":\"Test@1234\",\"country\":\"SA\"}')",
+      "Bash(curl -s -X POST http://localhost:5001/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"testclaude@test.com\",\"password\":\"Test@1234\"}')",
+      "Bash(curl -s http://localhost:5001/api/v1/auth/me -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjBhODE4ZmZkLWFlNTgtNGRjOS05N2I4LWE2NTgzMWIzYmVlNSIsImVtYWlsIjoidGVzdGNsYXVkZUB0ZXN0LmNvbSIsInJvbGUiOiJwbGF5ZXIiLCJpYXQiOjE3NzU3NTYzNTUsImV4cCI6MTc3NjM2MTE1NX0.vC02ZPVGRNAUrrKngUJi5vWTPBWLgJsDRhvtw6PcgpI')"
     ]
   }
 }

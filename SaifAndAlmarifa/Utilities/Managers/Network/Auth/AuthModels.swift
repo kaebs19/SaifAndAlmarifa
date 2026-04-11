@@ -56,7 +56,7 @@ struct AppleLoginRequest: Encodable {
 // MARK: - ═══════════════ Responses ═══════════════
 
 // MARK: - User
-struct User: Decodable, Identifiable, Equatable {
+struct User: Codable, Identifiable, Equatable {
     let id: String
     let username: String
     let email: String

@@ -49,40 +49,48 @@ struct RegisterView: View {
     // MARK: بطاقة النموذج
     private var formCard: some View {
         VStack(spacing: AppSizes.Spacing.md) {
-            AppTextField(
-                placeholder: AppStrings.Auth.usernamePlaceholder,
-                text: $viewModel.username,
-                icon: "person.fill",
-                errorMessage: viewModel.usernameError,
-                style: .glass
-            )
+            AuthLabeledField(label: "اسم المستخدم") {
+                AppTextField(
+                    placeholder: AppStrings.Auth.usernamePlaceholder,
+                    text: $viewModel.username,
+                    icon: "person.fill",
+                    errorMessage: viewModel.usernameError,
+                    style: .glass
+                )
+            }
 
-            AppTextField(
-                placeholder: AppStrings.Auth.emailPlaceholder,
-                text: $viewModel.email,
-                icon: "envelope.fill",
-                keyboardType: .emailAddress,
-                errorMessage: viewModel.emailError,
-                style: .glass
-            )
+            AuthLabeledField(label: AppStrings.Auth.emailLabel) {
+                AppTextField(
+                    placeholder: AppStrings.Auth.emailPlaceholder,
+                    text: $viewModel.email,
+                    icon: "envelope.fill",
+                    keyboardType: .emailAddress,
+                    errorMessage: viewModel.emailError,
+                    style: .glass
+                )
+            }
 
-            AppTextField(
-                placeholder: AppStrings.Auth.passwordHint,
-                text: $viewModel.password,
-                icon: "lock.fill",
-                isSecure: true,
-                errorMessage: viewModel.passwordError,
-                style: .glass
-            )
+            AuthLabeledField(label: AppStrings.Auth.passwordLabel) {
+                AppTextField(
+                    placeholder: AppStrings.Auth.passwordHint,
+                    text: $viewModel.password,
+                    icon: "lock.fill",
+                    isSecure: true,
+                    errorMessage: viewModel.passwordError,
+                    style: .glass
+                )
+            }
 
-            AppTextField(
-                placeholder: AppStrings.Auth.confirmPasswordPlaceholder,
-                text: $viewModel.confirmPassword,
-                icon: "lock.fill",
-                isSecure: true,
-                errorMessage: viewModel.confirmPasswordError,
-                style: .glass
-            )
+            AuthLabeledField(label: "تأكيد كلمة المرور") {
+                AppTextField(
+                    placeholder: AppStrings.Auth.confirmPasswordPlaceholder,
+                    text: $viewModel.confirmPassword,
+                    icon: "lock.fill",
+                    isSecure: true,
+                    errorMessage: viewModel.confirmPasswordError,
+                    style: .glass
+                )
+            }
 
             AuthTermsCheckbox(isChecked: $viewModel.agreedToTerms)
                 .padding(.top, AppSizes.Spacing.xs)

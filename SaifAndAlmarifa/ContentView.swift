@@ -35,8 +35,7 @@ struct ContentView: View {
                     .transition(.opacity)
 
             case .main:
-                // TODO: استبدال لاحقاً بـ MainTabView
-                mainPlaceholder
+                HomeView()
                     .transition(.opacity)
             }
         }
@@ -49,29 +48,6 @@ struct ContentView: View {
         }
     }
 
-    // MARK: شاشة مؤقتة بعد تسجيل الدخول
-    private var mainPlaceholder: some View {
-        VStack(spacing: AppSizes.Spacing.lg) {
-            Image("icon_swords_crossed")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 80, height: 80)
-
-            Text("مرحباً \(authManager.currentUser?.username ?? "محارب")")
-                .font(.cairo(.bold, size: AppSizes.Font.title1))
-                .foregroundStyle(AppColors.Default.goldPrimary)
-
-            Button {
-                AuthService.shared.logout()
-            } label: {
-                Text("تسجيل الخروج")
-                    .font(.cairo(.semiBold, size: AppSizes.Font.body))
-                    .foregroundStyle(.red)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(GradientBackground.main)
-    }
 }
 
 #Preview {
