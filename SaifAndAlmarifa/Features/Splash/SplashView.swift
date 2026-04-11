@@ -35,9 +35,6 @@ struct SplashView: View {
         ZStack {
             GradientBackground.main
 
-            // جزيئات ذهبية
-            particles
-
             VStack(spacing: AppSizes.Spacing.lg) {
                 Spacer()
                 logo
@@ -67,36 +64,30 @@ struct SplashView: View {
             Circle()
                 .fill(
                     RadialGradient(
-                        colors: [AppColors.Default.goldPrimary.opacity(0.3), .clear],
+                        colors: [AppColors.Default.goldPrimary.opacity(0.2), .clear],
                         center: .center,
-                        startRadius: 20,
-                        endRadius: glowPulse ? 100 : 70
+                        startRadius: 10,
+                        endRadius: glowPulse ? 70 : 50
                     )
                 )
-                .frame(width: 200, height: 200)
-                .blur(radius: 20)
+                .frame(width: 140, height: 140)
+                .blur(radius: 15)
                 .opacity(logoOpacity)
 
             // Lottie Castle animation
-            LottieView(name: "Castle", loopMode: .loop, speed: 0.8)
-                .frame(width: 180, height: 180)
+            LottieView(name: "Castle", loopMode: .loop, speed: 0.7)
+                .frame(width: 120, height: 120)
+                .clipShape(Circle())
                 .scaleEffect(logoScale)
                 .opacity(logoOpacity)
-                .shadow(color: AppColors.Default.goldPrimary.opacity(0.6), radius: glowRadius)
         }
     }
 
     // MARK: العنوان
     private var title: some View {
         Text(AppStrings.Auth.appTitle)
-            .font(.cairo(.black, size: 38))
-            .foregroundStyle(
-                LinearGradient(
-                    colors: [AppColors.Default.goldLight, AppColors.Default.goldPrimary],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+            .font(.cairo(.black, size: 34))
+            .foregroundStyle(AppColors.Default.goldPrimary)
             .opacity(titleOpacity)
             .offset(y: titleOffset)
     }
@@ -104,7 +95,7 @@ struct SplashView: View {
     // MARK: الوصف
     private var tagline: some View {
         Text(AppStrings.Auth.appTagline)
-            .font(.cairo(.regular, size: AppSizes.Font.bodyLarge))
+            .font(.cairo(.regular, size: AppSizes.Font.body))
             .foregroundStyle(.white.opacity(0.6))
             .opacity(taglineOpacity)
             .multilineTextAlignment(.center)
