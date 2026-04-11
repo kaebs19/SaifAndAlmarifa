@@ -64,6 +64,8 @@ struct LoginView: View {
                     text: $viewModel.email,
                     icon: "envelope.fill",
                     keyboardType: .emailAddress,
+                    contentType: .emailAddress,
+                    submitLabel: .next,
                     errorMessage: viewModel.emailError,
                     style: .glass
                 )
@@ -75,9 +77,13 @@ struct LoginView: View {
                     text: $viewModel.password,
                     icon: "lock.fill",
                     isSecure: true,
+                    contentType: .password,
+                    submitLabel: .go,
                     errorMessage: viewModel.passwordError,
                     style: .glass
-                )
+                ) {
+                    Task { await viewModel.login() }
+                }
             }
 
             forgotPasswordLink

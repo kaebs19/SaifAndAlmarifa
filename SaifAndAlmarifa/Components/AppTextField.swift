@@ -23,8 +23,11 @@ struct AppTextField: View {
     var icon: String? = nil
     var isSecure: Bool = false
     var keyboardType: UIKeyboardType = .default
+    var contentType: UITextContentType? = nil
+    var submitLabel: SubmitLabel = .done
     var errorMessage: String? = nil
     var style: FieldTheme = .auto
+    var onSubmit: (() -> Void)? = nil
     @State private var isPasswordVisible = false
     @Environment(\.colorScheme) private var colorScheme
     
@@ -104,13 +107,19 @@ struct AppTextField: View {
                     SecureField(placeholder, text: $text)
                         .font(.cairo(.regular, size: AppSizes.Font.body))
                         .foregroundStyle(textColor)
+                        .textContentType(contentType)
+                        .submitLabel(submitLabel)
+                        .onSubmit { onSubmit?() }
                 } else {
                     TextField(placeholder, text: $text)
                         .font(.cairo(.regular, size: AppSizes.Font.body))
                         .foregroundStyle(textColor)
                         .keyboardType(keyboardType)
+                        .textContentType(contentType)
                         .textInputAutocapitalization(keyboardType == .emailAddress ? .never : .sentences)
-                        .autocorrectionDisabled(keyboardType == .emailAddress)
+                        .autocorrectionDisabled(keyboardType == .emailAddress || isSecure)
+                        .submitLabel(submitLabel)
+                        .onSubmit { onSubmit?() }
                 }
                 
                 // زر إظهار/إخفاء كلمة المرور

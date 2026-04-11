@@ -64,6 +64,8 @@ struct RegisterView: View {
                     placeholder: AppStrings.Auth.usernamePlaceholder,
                     text: $viewModel.username,
                     icon: "person.fill",
+                    contentType: .username,
+                    submitLabel: .next,
                     errorMessage: viewModel.usernameError,
                     style: .glass
                 )
@@ -75,6 +77,8 @@ struct RegisterView: View {
                     text: $viewModel.email,
                     icon: "envelope.fill",
                     keyboardType: .emailAddress,
+                    contentType: .emailAddress,
+                    submitLabel: .next,
                     errorMessage: viewModel.emailError,
                     style: .glass
                 )
@@ -86,6 +90,8 @@ struct RegisterView: View {
                     text: $viewModel.password,
                     icon: "lock.fill",
                     isSecure: true,
+                    contentType: .newPassword,
+                    submitLabel: .next,
                     errorMessage: viewModel.passwordError,
                     style: .glass
                 )
@@ -97,6 +103,8 @@ struct RegisterView: View {
                     text: $viewModel.confirmPassword,
                     icon: "lock.fill",
                     isSecure: true,
+                    contentType: .newPassword,
+                    submitLabel: .done,
                     errorMessage: viewModel.confirmPasswordError,
                     style: .glass
                 )

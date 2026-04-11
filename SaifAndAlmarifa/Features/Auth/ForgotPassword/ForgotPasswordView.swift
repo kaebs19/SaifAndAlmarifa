@@ -110,9 +110,11 @@ struct ForgotPasswordView: View {
             text: $viewModel.email,
             icon: "envelope.fill",
             keyboardType: .emailAddress,
+            contentType: .emailAddress,
+            submitLabel: .send,
             errorMessage: viewModel.emailError,
             style: .glass
-        )
+        ) { handleSubmit() }
     }
 
     // MARK: الخطوة 2 - الرمز
@@ -123,9 +125,11 @@ struct ForgotPasswordView: View {
                 text: $viewModel.code,
                 icon: "number",
                 keyboardType: .numberPad,
+                contentType: .oneTimeCode,
+                submitLabel: .continue,
                 errorMessage: viewModel.codeError,
                 style: .glass
-            )
+            ) { handleSubmit() }
 
             resendCodeRow
         }
@@ -156,6 +160,8 @@ struct ForgotPasswordView: View {
                 text: $viewModel.newPassword,
                 icon: "lock.fill",
                 isSecure: true,
+                contentType: .newPassword,
+                submitLabel: .next,
                 errorMessage: viewModel.passwordError,
                 style: .glass
             )
@@ -165,9 +171,11 @@ struct ForgotPasswordView: View {
                 text: $viewModel.confirmPassword,
                 icon: "lock.fill",
                 isSecure: true,
+                contentType: .newPassword,
+                submitLabel: .done,
                 errorMessage: viewModel.confirmPasswordError,
                 style: .glass
-            )
+            ) { handleSubmit() }
         }
     }
 
