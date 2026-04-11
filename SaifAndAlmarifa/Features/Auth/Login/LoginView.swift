@@ -38,6 +38,7 @@ struct LoginView: View {
             .padding(.horizontal, AppSizes.Spacing.lg)
             .padding(.bottom, AppSizes.Spacing.xl)
         }
+        .dismissKeyboardOnTap()
         .background(GradientBackground.main)
     }
 

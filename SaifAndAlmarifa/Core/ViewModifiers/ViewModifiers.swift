@@ -79,6 +79,13 @@ extension View {
     func cardStyle() -> some View {
         self.modifier(CardStyle())
     }
+
+    /// إخفاء لوحة المفاتيح عند الضغط خارجها
+    func dismissKeyboardOnTap() -> some View {
+        self.onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+    }
 }
 
 // MARK: - Usage Examples

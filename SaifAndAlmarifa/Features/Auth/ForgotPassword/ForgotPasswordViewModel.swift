@@ -42,6 +42,7 @@ final class ForgotPasswordViewModel: ObservableObject {
 
     // MARK: - Dependencies
     private let authService: AuthService
+    private let toast = ToastManager.shared
 
     // MARK: - Init
     init(authService: AuthService = .shared) {
@@ -68,6 +69,7 @@ final class ForgotPasswordViewModel: ObservableObject {
         await run {
             try await authService.forgotPassword(email: email)
             currentStep = .code
+            toast.info("تم الإرسال", subtitle: "تحقق من بريدك \(email)")
         }
     }
 
@@ -78,17 +80,18 @@ final class ForgotPasswordViewModel: ObservableObject {
             let token = try await authService.verifyResetCode(email: email, code: code)
             resetToken = token
             currentStep = .password
+            toast.success("تم التحقق")
         }
     }
 
     // MARK: - الخطوة 3: تعيين كلمة مرور جديدة
-    /// يُرجع `true` عند النجاح حتى تعود الشاشة لتسجيل الدخول
     func resetPassword() async -> Bool {
         guard validatePassword(), let token = resetToken else { return false }
         var didSucceed = false
         await run {
             try await authService.resetPassword(resetToken: token, newPassword: newPassword)
             didSucceed = true
+            toast.success(AppStrings.Auth.passwordResetSuccess)
         }
         return didSucceed
     }
@@ -113,8 +116,10 @@ final class ForgotPasswordViewModel: ObservableObject {
             try await operation()
         } catch let error as APIError {
             errorMessage = error.errorDescription
+            toast.error(error.errorDescription ?? "حدث خطأ")
         } catch {
             errorMessage = error.localizedDescription
+            toast.error(error.localizedDescription)
         }
     }
 

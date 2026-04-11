@@ -32,6 +32,7 @@ struct ForgotPasswordView: View {
             .padding(.bottom, AppSizes.Spacing.xl)
             .animation(.easeInOut(duration: 0.25), value: viewModel.currentStep)
         }
+        .dismissKeyboardOnTap()
         .background(GradientBackground.main)
     }
 

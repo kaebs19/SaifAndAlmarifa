@@ -17,6 +17,7 @@ struct RegisterView: View {
     // MARK: - Navigation
     var onBack: () -> Void = {}
     var onGoToLogin: () -> Void = {}
+    @State private var activeContentPage: ContentPageKey?
 
     // MARK: - Body
     var body: some View {
@@ -35,7 +36,16 @@ struct RegisterView: View {
             .padding(.horizontal, AppSizes.Spacing.lg)
             .padding(.bottom, AppSizes.Spacing.xl)
         }
+        .dismissKeyboardOnTap()
         .background(GradientBackground.main)
+        .fullScreenCover(item: $activeContentPage) { key in
+            ContentPageView(
+                pageKey: key,
+                title: key == .termsOfUse
+                    ? AppStrings.Auth.termsOfService
+                    : AppStrings.Auth.privacyPolicy
+            ) { activeContentPage = nil }
+        }
     }
 
     // MARK: الهيدر (زر رجوع)
@@ -92,8 +102,12 @@ struct RegisterView: View {
                 )
             }
 
-            AuthTermsCheckbox(isChecked: $viewModel.agreedToTerms)
-                .padding(.top, AppSizes.Spacing.xs)
+            AuthTermsCheckbox(
+                isChecked: $viewModel.agreedToTerms,
+                onTapTerms: { activeContentPage = .termsOfUse },
+                onTapPrivacy: { activeContentPage = .privacyPolicy }
+            )
+            .padding(.top, AppSizes.Spacing.xs)
         }
     }
 

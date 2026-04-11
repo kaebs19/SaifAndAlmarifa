@@ -25,6 +25,7 @@ final class LoginViewModel: ObservableObject {
 
     // MARK: - Dependencies
     private let authService: AuthService
+    private let toast = ToastManager.shared
 
     // MARK: - Init
     init(authService: AuthService = .shared) {
@@ -45,11 +46,14 @@ final class LoginViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            _ = try await authService.login(email: email, password: password)
+            let user = try await authService.login(email: email, password: password)
+            toast.success("مرحباً \(user.username)")
         } catch let error as APIError {
             errorMessage = error.errorDescription
+            toast.error(error.errorDescription ?? "فشل تسجيل الدخول")
         } catch {
             errorMessage = error.localizedDescription
+            toast.error(error.localizedDescription)
         }
     }
 
@@ -60,11 +64,15 @@ final class LoginViewModel: ObservableObject {
         defer { isLoading = false }
         do {
             let idToken = try await GoogleSignInManager.shared.signIn()
-            _ = try await authService.loginWithGoogle(idToken: idToken)
+            let user = try await authService.loginWithGoogle(idToken: idToken)
+            toast.success("مرحباً \(user.username)")
         } catch let error as APIError {
             errorMessage = error.errorDescription
+            toast.error(error.errorDescription ?? "فشل تسجيل الدخول")
         } catch {
+            if error.localizedDescription.contains("canceled") { return }
             errorMessage = error.localizedDescription
+            toast.error(error.localizedDescription)
         }
     }
 
@@ -75,14 +83,18 @@ final class LoginViewModel: ObservableObject {
         defer { isLoading = false }
         do {
             let result = try await AppleSignInManager.shared.signIn()
-            _ = try await authService.loginWithApple(
+            let user = try await authService.loginWithApple(
                 identityToken: result.identityToken,
                 fullName: result.fullName
             )
+            toast.success("مرحباً \(user.username)")
         } catch let error as APIError {
             errorMessage = error.errorDescription
+            toast.error(error.errorDescription ?? "فشل تسجيل الدخول")
         } catch {
+            if error.localizedDescription.contains("canceled") { return }
             errorMessage = error.localizedDescription
+            toast.error(error.localizedDescription)
         }
     }
 
@@ -103,6 +115,10 @@ final class LoginViewModel: ObservableObject {
         if password.isEmpty {
             passwordError = AppStrings.Errors.passwordRequired
             isValid = false
+        }
+
+        if !isValid {
+            toast.warning(emailError ?? passwordError ?? "تحقق من المدخلات")
         }
 
         return isValid

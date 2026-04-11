@@ -40,19 +40,28 @@ struct AuthTermsCheckbox: View {
         }
     }
 
-    // MARK: نص الشروط
+    // MARK: نص الشروط (مع روابط قابلة للنقر)
     private var termsText: some View {
-        (Text(AppStrings.Auth.agreeTo + " ")
-            .foregroundColor(.white.opacity(0.75))
-         + Text(AppStrings.Auth.termsOfService)
-            .foregroundColor(AppColors.Default.goldPrimary)
-            .underline()
-         + Text(" " + AppStrings.Auth.and + " ")
-            .foregroundColor(.white.opacity(0.75))
-         + Text(AppStrings.Auth.privacyPolicy)
-            .foregroundColor(AppColors.Default.goldPrimary)
-            .underline())
-            .font(.cairo(.regular, size: AppSizes.Font.caption))
+        HStack(spacing: 3) {
+            Text(AppStrings.Auth.agreeTo)
+                .foregroundStyle(.white.opacity(0.75))
+
+            Button(action: onTapTerms) {
+                Text(AppStrings.Auth.termsOfService)
+                    .foregroundStyle(AppColors.Default.goldPrimary)
+                    .underline()
+            }
+
+            Text(AppStrings.Auth.and)
+                .foregroundStyle(.white.opacity(0.75))
+
+            Button(action: onTapPrivacy) {
+                Text(AppStrings.Auth.privacyPolicy)
+                    .foregroundStyle(AppColors.Default.goldPrimary)
+                    .underline()
+            }
+        }
+        .font(.cairo(.regular, size: AppSizes.Font.caption))
     }
 }
 

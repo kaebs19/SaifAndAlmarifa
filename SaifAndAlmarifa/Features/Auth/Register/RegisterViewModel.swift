@@ -48,6 +48,9 @@ final class RegisterViewModel: ObservableObject {
         !isLoading
     }
 
+    // MARK: - Dependencies (Toast)
+    private let toast = ToastManager.shared
+
     // MARK: - تنفيذ التسجيل
     func register() async {
         guard validate() else { return }
@@ -57,17 +60,19 @@ final class RegisterViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            _ = try await authService.register(
+            let user = try await authService.register(
                 username: username,
                 email: email,
                 password: password,
                 country: "SA"
             )
-            // النجاح: AuthManager سيُحدّث isAuthenticated تلقائياً
+            toast.success("مرحباً \(user.username)", subtitle: "تم إنشاء الحساب بنجاح")
         } catch let error as APIError {
             errorMessage = error.errorDescription
+            toast.error(error.errorDescription ?? "حدث خطأ", subtitle: error.details?.first)
         } catch {
             errorMessage = error.localizedDescription
+            toast.error(error.localizedDescription)
         }
     }
 
@@ -112,6 +117,11 @@ final class RegisterViewModel: ObservableObject {
         if !agreedToTerms {
             errorMessage = AppStrings.Errors.mustAgreeTerms
             isValid = false
+        }
+
+        if !isValid {
+            let firstError = usernameError ?? emailError ?? passwordError ?? confirmPasswordError ?? errorMessage
+            toast.warning(firstError ?? "تحقق من المدخلات")
         }
 
         return isValid
