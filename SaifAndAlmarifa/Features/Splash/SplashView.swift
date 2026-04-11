@@ -70,14 +70,26 @@ struct SplashView: View {
                         endRadius: glowPulse ? 70 : 50
                     )
                 )
-                .frame(width: 220, height: 220)
+                .frame(width: 280, height: 280)
                 .blur(radius: 15)
                 .opacity(logoOpacity)
 
             // Lottie Castle animation
             LottieView(name: "Castle", loopMode: .loop, speed: 0.7)
-                .frame(width: 200, height: 200)
-                .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.xl))
+                .frame(width: 250, height: 250)
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(
+                            LinearGradient(
+                                colors: [AppColors.Default.goldPrimary, AppColors.Default.goldDark],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 3
+                        )
+                )
+                .shadow(color: AppColors.Default.goldPrimary.opacity(0.4), radius: 20)
                 .scaleEffect(logoScale)
                 .opacity(logoOpacity)
         }
