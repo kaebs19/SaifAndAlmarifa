@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-// MARK: - الشاشة الرئيسية (Landscape — نمط لودو ستار)
+// MARK: - الشاشة الرئيسية (Portrait)
 struct MainView: View {
 
     @StateObject private var viewModel = MainViewModel()
@@ -17,27 +17,16 @@ struct MainView: View {
         ZStack {
             background
 
-            GeometryReader { geo in
-                let isCompact = geo.size.height < 380
-
-                HStack(spacing: 0) {
-                    // ═══════ العمود الأيمن: عناصر جانبية ═══════
-                    sideColumn(leading: false, isCompact: isCompact)
-                        .frame(width: 70)
-
-                    // ═══════ المحتوى الرئيسي ═══════
-                    VStack(spacing: isCompact ? 8 : AppSizes.Spacing.md) {
-                        topBar(isCompact: isCompact)
-                        mainCards(geo: geo, isCompact: isCompact)
-                        bottomModes(isCompact: isCompact)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, AppSizes.Spacing.sm)
-
-                    // ═══════ العمود الأيسر: عناصر جانبية ═══════
-                    sideColumn(leading: true, isCompact: isCompact)
-                        .frame(width: 70)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: AppSizes.Spacing.lg) {
+                    topBar
+                    mainCards
+                    secondaryModes
+                    quickActions
                 }
+                .padding(.horizontal, AppSizes.Spacing.lg)
+                .padding(.top, AppSizes.Spacing.md)
+                .padding(.bottom, AppSizes.Spacing.xxl)
             }
 
             // طبقة البحث
@@ -48,9 +37,7 @@ struct MainView: View {
                 .transition(.opacity)
             }
         }
-        .ignoresSafeArea()
         .animation(.easeInOut(duration: 0.25), value: viewModel.isSearching)
-        .forceLandscape()
         .sheet(isPresented: $viewModel.showRoomCode) {
             RoomCodeSheet(code: viewModel.roomCode ?? "")
         }
@@ -76,12 +63,11 @@ struct MainView: View {
             )
             .ignoresSafeArea()
 
-            // نجوم
             Canvas { context, size in
-                for _ in 0..<50 {
+                for _ in 0..<60 {
                     let x = CGFloat.random(in: 0...size.width)
                     let y = CGFloat.random(in: 0...size.height)
-                    let s = CGFloat.random(in: 1...2)
+                    let s = CGFloat.random(in: 1...2.5)
                     context.fill(
                         Path(ellipseIn: CGRect(x: x, y: y, width: s, height: s)),
                         with: .color(.white.opacity(Double.random(in: 0.08...0.3)))
@@ -94,78 +80,43 @@ struct MainView: View {
 
     // MARK: - ═══════ الشريط العلوي ═══════
 
-    private func topBar(isCompact: Bool) -> some View {
-        HStack(spacing: AppSizes.Spacing.md) {
+    private var topBar: some View {
+        HStack(spacing: AppSizes.Spacing.sm) {
             // الملف الشخصي
-            HStack(spacing: AppSizes.Spacing.sm) {
-                AvatarView(imageURL: authManager.currentUser?.avatarUrl, size: isCompact ? 36 : 44)
-                    .overlay(Circle().stroke(AppColors.Default.goldPrimary, lineWidth: 2))
+            AvatarView(imageURL: authManager.currentUser?.avatarUrl, size: 48)
+                .overlay(Circle().stroke(AppColors.Default.goldPrimary, lineWidth: 2))
 
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(authManager.currentUser?.username ?? "محارب")
-                        .font(.cairo(.bold, size: isCompact ? 13 : AppSizes.Font.body))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                    Text("\(AppStrings.Main.level) \(authManager.currentUser?.level ?? 1)")
-                        .font(.cairo(.medium, size: 10))
-                        .foregroundStyle(AppColors.Default.goldPrimary)
-                }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(authManager.currentUser?.username ?? "محارب")
+                    .font(.cairo(.bold, size: AppSizes.Font.bodyLarge))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                Text("\(AppStrings.Main.level) \(authManager.currentUser?.level ?? 1)")
+                    .font(.cairo(.medium, size: AppSizes.Font.caption))
+                    .foregroundStyle(AppColors.Default.goldPrimary)
             }
 
             Spacer()
 
-            // عنوان التطبيق
-            Text(AppStrings.Auth.appTitle)
-                .font(.cairo(.bold, size: isCompact ? 16 : AppSizes.Font.title3))
-                .foregroundStyle(AppColors.Default.goldPrimary)
-
-            Spacer()
-
-            // الجواهر + إشعارات + إعدادات
-            HStack(spacing: AppSizes.Spacing.sm) {
-                gemsBadge(isCompact: isCompact)
-
-                notificationButton
-
-                Button {} label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 15))
-                        .foregroundStyle(.white.opacity(0.5))
-                        .frame(width: 32, height: 32)
-                        .background(.white.opacity(0.06))
-                        .clipShape(Circle())
-                }
+            // الجواهر
+            HStack(spacing: 5) {
+                Image("icon_gem").resizable().scaledToFit().frame(width: 18, height: 18)
+                Text("\(authManager.currentUser?.gems ?? 0)")
+                    .font(.poppins(.bold, size: AppSizes.Font.body))
+                    .foregroundStyle(AppColors.Default.goldPrimary)
             }
-        }
-        .padding(.horizontal, AppSizes.Spacing.md)
-    }
+            .padding(.horizontal, AppSizes.Spacing.sm)
+            .padding(.vertical, 6)
+            .background(.white.opacity(0.08))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(AppColors.Default.goldPrimary.opacity(0.25), lineWidth: 1))
 
-    // MARK: الجواهر
-    private func gemsBadge(isCompact: Bool) -> some View {
-        HStack(spacing: 4) {
-            Image("icon_gem")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 16, height: 16)
-            Text("\(authManager.currentUser?.gems ?? 0)")
-                .font(.poppins(.bold, size: isCompact ? 12 : AppSizes.Font.body))
-                .foregroundStyle(AppColors.Default.goldPrimary)
-        }
-        .padding(.horizontal, AppSizes.Spacing.sm)
-        .padding(.vertical, 5)
-        .background(.white.opacity(0.08))
-        .clipShape(Capsule())
-        .overlay(Capsule().stroke(AppColors.Default.goldPrimary.opacity(0.25), lineWidth: 1))
-    }
-
-    // MARK: الإشعارات
-    private var notificationButton: some View {
-        Button {} label: {
+            // الإشعارات
             ZStack(alignment: .topLeading) {
                 Image(systemName: "bell.fill")
-                    .font(.system(size: 15))
+                    .font(.system(size: 18))
                     .foregroundStyle(.white.opacity(0.5))
-                    .frame(width: 32, height: 32)
+                    .frame(width: 36, height: 36)
                     .background(.white.opacity(0.06))
                     .clipShape(Circle())
 
@@ -173,193 +124,182 @@ struct MainView: View {
                     Text("\(min(viewModel.unreadCount, 9))")
                         .font(.system(size: 8, weight: .bold))
                         .foregroundStyle(.white)
-                        .frame(width: 14, height: 14)
+                        .frame(width: 15, height: 15)
                         .background(AppColors.Default.error)
                         .clipShape(Circle())
-                        .offset(x: -2, y: -2)
+                        .offset(x: -3, y: -3)
                 }
             }
+
+            // إعدادات
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: 18))
+                .foregroundStyle(.white.opacity(0.5))
+                .frame(width: 36, height: 36)
+                .background(.white.opacity(0.06))
+                .clipShape(Circle())
         }
     }
 
     // MARK: - ═══════ البطاقتين الرئيسيتين ═══════
 
-    private func mainCards(geo: GeometryProxy, isCompact: Bool) -> some View {
-        let cardH: CGFloat = isCompact ? geo.size.height * 0.38 : geo.size.height * 0.42
-
-        return HStack(spacing: AppSizes.Spacing.lg) {
-            // 1v1 عشوائي
+    private var mainCards: some View {
+        HStack(spacing: AppSizes.Spacing.md) {
             mainCard(
                 mode: .random1v1,
-                colors: [Color(hex: "FFD700"), Color(hex: "F59E0B")],
-                height: cardH
+                gradient: [Color(hex: "B8860B"), Color(hex: "FFD700"), Color(hex: "DAA520")],
+                shadowColor: Color(hex: "FFD700")
             )
 
-            // 4 لاعبين
             mainCard(
                 mode: .random4,
-                colors: [Color(hex: "EF4444"), Color(hex: "DC2626")],
-                height: cardH
+                gradient: [Color(hex: "7F1D1D"), Color(hex: "DC2626"), Color(hex: "991B1B")],
+                shadowColor: Color(hex: "EF4444")
             )
         }
-        .padding(.horizontal, AppSizes.Spacing.lg)
     }
 
-    // MARK: بطاقة رئيسية كبيرة
-    private func mainCard(mode: GameMode, colors: [Color], height: CGFloat) -> some View {
+    private func mainCard(mode: GameMode, gradient: [Color], shadowColor: Color) -> some View {
         Button {
             HapticManager.medium()
             viewModel.selectMode(mode)
         } label: {
-            VStack(spacing: AppSizes.Spacing.sm) {
-                // الأيقونة
+            VStack(spacing: AppSizes.Spacing.md) {
+                // الأيقونة مع توهج
                 Image(mode.icon)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 50, height: 50)
-                    .shadow(color: colors[0].opacity(0.5), radius: 10)
+                    .frame(width: 56, height: 56)
+                    .shadow(color: shadowColor.opacity(0.6), radius: 12)
 
                 Text(mode.title)
-                    .font(.cairo(.black, size: AppSizes.Font.title2))
+                    .font(.cairo(.black, size: AppSizes.Font.title1))
                     .foregroundStyle(.white)
 
                 Text(mode.subtitle)
-                    .font(.cairo(.regular, size: AppSizes.Font.caption))
+                    .font(.cairo(.regular, size: AppSizes.Font.body))
                     .foregroundStyle(.white.opacity(0.7))
             }
             .frame(maxWidth: .infinity)
-            .frame(height: height)
+            .frame(height: 200)
             .background(
-                LinearGradient(
-                    colors: [colors[0].opacity(0.2), colors[1].opacity(0.08)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+                LinearGradient(colors: gradient.map { $0.opacity(0.3) },
+                               startPoint: .topLeading, endPoint: .bottomTrailing)
             )
             .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.xl))
             .overlay(
                 RoundedRectangle(cornerRadius: AppSizes.Radius.xl)
                     .stroke(
-                        LinearGradient(
-                            colors: [colors[0].opacity(0.5), colors[1].opacity(0.15)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        ),
+                        LinearGradient(colors: [gradient[1].opacity(0.6), gradient[0].opacity(0.2)],
+                                       startPoint: .top, endPoint: .bottom),
                         lineWidth: 2
                     )
             )
-            .shadow(color: colors[0].opacity(0.15), radius: 12, y: 4)
+            .shadow(color: shadowColor.opacity(0.2), radius: 15, y: 5)
         }
         .buttonStyle(ScaleButtonStyle())
     }
 
-    // MARK: - ═══════ أوضاع أسفل (خاص / صديق / أصحابي) ═══════
+    // MARK: - ═══════ الأوضاع الثانوية ═══════
 
-    private func bottomModes(isCompact: Bool) -> some View {
+    private var secondaryModes: some View {
         HStack(spacing: AppSizes.Spacing.md) {
-            smallModeCard(.private1v1, isCompact: isCompact)
-            smallModeCard(.challengeFriend, isCompact: isCompact)
-            smallModeCard(.friends4, isCompact: isCompact)
-
-            Spacer()
-
-            // الانضمام بكود
-            Button { viewModel.showJoinRoom = true } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "keyboard")
-                        .font(.system(size: 11))
-                    Text("كود")
-                        .font(.cairo(.medium, size: 11))
-                }
-                .foregroundStyle(AppColors.Default.goldPrimary)
-                .padding(.horizontal, AppSizes.Spacing.sm)
-                .padding(.vertical, 6)
-                .background(.white.opacity(0.06))
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(AppColors.Default.goldPrimary.opacity(0.3), lineWidth: 1))
-            }
+            secondaryCard(.private1v1)
+            secondaryCard(.challengeFriend)
+            secondaryCard(.friends4)
         }
-        .padding(.horizontal, AppSizes.Spacing.lg)
     }
 
-    // MARK: بطاقة وضع صغيرة
-    private func smallModeCard(_ mode: GameMode, isCompact: Bool) -> some View {
+    private func secondaryCard(_ mode: GameMode) -> some View {
         Button {
             HapticManager.medium()
             viewModel.selectMode(mode)
         } label: {
-            HStack(spacing: AppSizes.Spacing.xs) {
-                Image(mode.icon)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 20, height: 20)
-
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(mode.title)
-                        .font(.cairo(.bold, size: isCompact ? 11 : 12))
-                        .foregroundStyle(.white)
-                    Text(mode.subtitle)
-                        .font(.cairo(.regular, size: 9))
-                        .foregroundStyle(.white.opacity(0.5))
+            VStack(spacing: AppSizes.Spacing.sm) {
+                ZStack {
+                    Circle()
+                        .fill(mode.accentColor.opacity(0.15))
+                        .frame(width: 48, height: 48)
+                    Image(mode.icon)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 26, height: 26)
                 }
+
+                Text(mode.title)
+                    .font(.cairo(.bold, size: AppSizes.Font.body))
+                    .foregroundStyle(.white)
+
+                Text(mode.subtitle)
+                    .font(.cairo(.regular, size: 10))
+                    .foregroundStyle(.white.opacity(0.5))
             }
-            .padding(.horizontal, AppSizes.Spacing.sm)
-            .padding(.vertical, 6)
-            .background(.white.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.small))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, AppSizes.Spacing.md)
+            .background(.white.opacity(0.04))
+            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.large))
             .overlay(
-                RoundedRectangle(cornerRadius: AppSizes.Radius.small)
-                    .stroke(mode.accentColor.opacity(0.25), lineWidth: 1)
+                RoundedRectangle(cornerRadius: AppSizes.Radius.large)
+                    .stroke(mode.accentColor.opacity(0.2), lineWidth: 1.5)
             )
         }
         .buttonStyle(ScaleButtonStyle())
     }
 
-    // MARK: - ═══════ الأعمدة الجانبية ═══════
+    // MARK: - ═══════ الإجراءات السريعة ═══════
 
-    private func sideColumn(leading: Bool, isCompact: Bool) -> some View {
-        VStack(spacing: AppSizes.Spacing.lg) {
-            Spacer()
+    private var quickActions: some View {
+        HStack(spacing: AppSizes.Spacing.md) {
+            // مكافأة يومية
+            actionCard(icon: "gift.fill", title: AppStrings.Main.dailyReward,
+                       color: AppColors.Default.warning, badge: viewModel.canClaimDaily) {}
 
-            if leading {
-                // يسار: عجلة + مكافأة
-                sideButton(icon: "gift.fill", label: "مكافأة", color: AppColors.Default.warning, badge: viewModel.canClaimDaily) {}
-                sideButton(icon: "arrow.trianglehead.2.counterclockwise.rotate.90", label: "حظ", color: AppColors.Default.info, badge: viewModel.canSpin) {}
-            } else {
-                // يمين (فاضي حالياً — يمكن إضافة عناصر لاحقاً)
-                EmptyView()
+            // عجلة الحظ
+            actionCard(icon: "arrow.trianglehead.2.counterclockwise.rotate.90",
+                       title: AppStrings.Main.spinWheel,
+                       color: AppColors.Default.info, badge: viewModel.canSpin) {}
+
+            // الانضمام بكود
+            actionCard(icon: "keyboard", title: AppStrings.Main.joinRoom,
+                       color: AppColors.Default.goldPrimary, badge: false) {
+                viewModel.showJoinRoom = true
             }
-
-            Spacer()
         }
-        .padding(.vertical, AppSizes.Spacing.md)
     }
 
-    // MARK: زر جانبي
-    private func sideButton(icon: String, label: String, color: Color, badge: Bool, action: @escaping () -> Void) -> some View {
+    private func actionCard(icon: String, title: String, color: Color, badge: Bool, action: @escaping () -> Void) -> some View {
         Button(action: {
             HapticManager.light()
             action()
         }) {
-            VStack(spacing: 4) {
+            VStack(spacing: AppSizes.Spacing.sm) {
                 ZStack(alignment: .topLeading) {
                     Image(systemName: icon)
-                        .font(.system(size: 20))
+                        .font(.system(size: 22))
                         .foregroundStyle(color)
-                        .frame(width: 44, height: 44)
-                        .background(color.opacity(0.12))
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(color.opacity(0.3), lineWidth: 1))
 
                     if badge {
-                        Circle().fill(AppColors.Default.error).frame(width: 8, height: 8).offset(x: 2, y: 2)
+                        Circle().fill(AppColors.Default.error)
+                            .frame(width: 8, height: 8).offset(x: -4, y: -4)
                     }
                 }
-                Text(label)
-                    .font(.cairo(.medium, size: 9))
-                    .foregroundStyle(.white.opacity(0.6))
+
+                Text(title)
+                    .font(.cairo(.medium, size: 11))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
             }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, AppSizes.Spacing.md)
+            .background(color.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
+                    .stroke(color.opacity(0.2), lineWidth: 1)
+            )
         }
+        .buttonStyle(ScaleButtonStyle())
     }
 }
 
@@ -367,7 +307,7 @@ struct MainView: View {
 struct ScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.94 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
             .animation(.easeInOut(duration: 0.12), value: configuration.isPressed)
     }
 }
