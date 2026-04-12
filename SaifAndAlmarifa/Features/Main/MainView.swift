@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Lottie
 
 // MARK: - الشاشة الرئيسية (Landscape)
 struct MainView: View {
@@ -16,22 +15,38 @@ struct MainView: View {
 
     var body: some View {
         ZStack {
-            GradientBackground.main
+            // الخلفية
+            LinearGradient(
+                colors: [Color(hex: "0A0E27"), Color(hex: "1A1147"), Color(hex: "0D0B2E")],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            // نجوم خافتة
+            starsBackground
 
             GeometryReader { geo in
-                HStack(spacing: 0) {
-                    // ═══════ الجانب الأيمن: الملف + القلعة ═══════
-                    rightPanel(geo: geo)
-                        .frame(width: geo.size.width * 0.38)
+                VStack(spacing: 0) {
+                    // ═══════ الشريط العلوي ═══════
+                    topSection(geo: geo)
+                        .padding(.horizontal, AppSizes.Spacing.lg)
+                        .padding(.top, AppSizes.Spacing.sm)
 
-                    // ═══════ الجانب الأيسر: التحديات (scroll أفقي) ═══════
-                    leftPanel
-                        .frame(width: geo.size.width * 0.62)
+                    Spacer(minLength: AppSizes.Spacing.md)
+
+                    // ═══════ البطاقات ═══════
+                    challengesSection
+                        .padding(.horizontal, AppSizes.Spacing.lg)
+
+                    Spacer(minLength: AppSizes.Spacing.sm)
+
+                    // ═══════ الشريط السفلي ═══════
+                    bottomBar
+                        .padding(.horizontal, AppSizes.Spacing.lg)
+                        .padding(.bottom, AppSizes.Spacing.sm)
                 }
             }
-
-            // أزرار سريعة عائمة
-            floatingButtons
 
             // طبقة البحث
             if viewModel.isSearching {
@@ -58,237 +73,233 @@ struct MainView: View {
         .task { await viewModel.onAppear() }
     }
 
-    // MARK: - ═══════ الجانب الأيمن ═══════
+    // MARK: - ═══════ الشريط العلوي ═══════
 
-    private func rightPanel(geo: GeometryProxy) -> some View {
-        VStack(spacing: AppSizes.Spacing.md) {
-            // الملف الشخصي
-            profileHeader
-
-            Spacer()
-
-            // القلعة
-            LottieView(name: "Castle", loopMode: .loop, speed: 0.7)
-                .frame(maxWidth: .infinity)
-                .frame(height: geo.size.height * 0.5)
-                .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.xl))
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppSizes.Radius.xl)
-                        .stroke(AppColors.Default.goldPrimary.opacity(0.2), lineWidth: 1)
-                )
-                .shadow(color: AppColors.Default.goldPrimary.opacity(0.2), radius: 15)
-
-            Spacer()
-        }
-        .padding(AppSizes.Spacing.lg)
-    }
-
-    // MARK: الملف الشخصي
-    private var profileHeader: some View {
-        HStack(spacing: AppSizes.Spacing.sm) {
-            // الأفاتار
-            AvatarView(imageURL: authManager.currentUser?.avatarUrl, size: 52)
-                .overlay(Circle().stroke(AppColors.Default.goldPrimary, lineWidth: 2))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(authManager.currentUser?.username ?? "محارب")
-                    .font(.cairo(.bold, size: AppSizes.Font.bodyLarge))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-
-                Text("\(AppStrings.Main.level) \(authManager.currentUser?.level ?? 1)")
-                    .font(.cairo(.medium, size: AppSizes.Font.caption))
-                    .foregroundStyle(AppColors.Default.goldPrimary)
-            }
+    private func topSection(geo: GeometryProxy) -> some View {
+        HStack {
+            // إعدادات
+            iconButton("gearshape.fill") {}
 
             Spacer()
 
             // الجواهر
-            gemsView
-        }
-    }
-
-    // MARK: الجواهر
-    private var gemsView: some View {
-        HStack(spacing: 4) {
-            Image("icon_gem")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 16, height: 16)
-            Text("\(authManager.currentUser?.gems ?? 0)")
-                .font(.poppins(.bold, size: AppSizes.Font.caption))
-                .foregroundStyle(AppColors.Default.goldPrimary)
-        }
-        .padding(.horizontal, AppSizes.Spacing.sm)
-        .padding(.vertical, AppSizes.Spacing.xs)
-        .background(.white.opacity(0.1))
-        .clipShape(Capsule())
-    }
-
-    // MARK: - ═══════ الجانب الأيسر: التحديات ═══════
-
-    private var leftPanel: some View {
-        VStack(alignment: .leading, spacing: AppSizes.Spacing.md) {
-            // عنوان + كود
-            HStack {
-                Text("التحديات")
-                    .font(.cairo(.bold, size: AppSizes.Font.title2))
-                    .foregroundStyle(.white)
-
-                Spacer()
-
-                Button {
-                    viewModel.showJoinRoom = true
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "keyboard")
-                            .font(.system(size: 12))
-                        Text(AppStrings.Main.joinRoom)
-                            .font(.cairo(.medium, size: AppSizes.Font.caption))
-                    }
+            HStack(spacing: 6) {
+                Image("icon_gem")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 20, height: 20)
+                Text("\(authManager.currentUser?.gems ?? 0)")
+                    .font(.poppins(.bold, size: AppSizes.Font.bodyLarge))
                     .foregroundStyle(AppColors.Default.goldPrimary)
+            }
+            .padding(.horizontal, AppSizes.Spacing.md)
+            .padding(.vertical, AppSizes.Spacing.xs)
+            .background(.white.opacity(0.08))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(AppColors.Default.goldPrimary.opacity(0.2), lineWidth: 1))
+
+            Spacer()
+
+            // الإشعارات
+            ZStack(alignment: .topLeading) {
+                iconButton("bell.fill") {}
+                if viewModel.unreadCount > 0 {
+                    Text("\(min(viewModel.unreadCount, 9))")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 16, height: 16)
+                        .background(AppColors.Default.error)
+                        .clipShape(Circle())
+                        .offset(x: -2, y: -2)
                 }
             }
-            .padding(.top, AppSizes.Spacing.xl)
 
-            // الـ Scroll الأفقي
+            Spacer()
+
+            // الملف الشخصي
+            HStack(spacing: AppSizes.Spacing.sm) {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(authManager.currentUser?.username ?? "محارب")
+                        .font(.cairo(.bold, size: AppSizes.Font.body))
+                        .foregroundStyle(.white)
+                    Text("\(AppStrings.Main.level) \(authManager.currentUser?.level ?? 1)")
+                        .font(.cairo(.medium, size: 11))
+                        .foregroundStyle(AppColors.Default.goldPrimary)
+                }
+
+                AvatarView(imageURL: authManager.currentUser?.avatarUrl, size: 44)
+                    .overlay(Circle().stroke(AppColors.Default.goldPrimary, lineWidth: 2))
+            }
+        }
+    }
+
+    // MARK: - ═══════ التحديات ═══════
+
+    private var challengesSection: some View {
+        VStack(alignment: .leading, spacing: AppSizes.Spacing.sm) {
+            // العنوان
+            Text("التحديات")
+                .font(.cairo(.bold, size: AppSizes.Font.title3))
+                .foregroundStyle(.white)
+
+            // Scroll أفقي
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: AppSizes.Spacing.md) {
                     ForEach(GameMode.allCases) { mode in
-                        landscapeGameCard(mode)
+                        gameModeCard(mode)
                     }
                 }
-                .padding(.trailing, AppSizes.Spacing.lg)
+                .padding(.vertical, AppSizes.Spacing.xs)
             }
         }
-        .padding(.horizontal, AppSizes.Spacing.lg)
     }
 
-    // MARK: بطاقة وضع لعب (عرضية)
-    private func landscapeGameCard(_ mode: GameMode) -> some View {
+    // MARK: بطاقة وضع لعب
+    private func gameModeCard(_ mode: GameMode) -> some View {
         Button {
             HapticManager.medium()
             viewModel.selectMode(mode)
         } label: {
             VStack(spacing: AppSizes.Spacing.sm) {
-                // الأيقونة في دائرة
+                // الأيقونة
                 ZStack {
                     Circle()
-                        .fill(mode.accentColor.opacity(0.15))
-                        .frame(width: 64, height: 64)
+                        .fill(
+                            LinearGradient(
+                                colors: [mode.accentColor.opacity(0.3), mode.accentColor.opacity(0.1)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 56, height: 56)
 
                     Image(mode.icon)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 36, height: 36)
+                        .frame(width: 30, height: 30)
                 }
 
                 Text(mode.title)
                     .font(.cairo(.bold, size: AppSizes.Font.body))
                     .foregroundStyle(.white)
-                    .lineLimit(1)
 
                 Text(mode.subtitle)
-                    .font(.cairo(.regular, size: 11))
+                    .font(.cairo(.regular, size: 10))
                     .foregroundStyle(.white.opacity(0.5))
-                    .lineLimit(1)
             }
-            .frame(width: 120)
-            .padding(.vertical, AppSizes.Spacing.lg)
-            .background(.white.opacity(0.06))
-            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.large))
-            .overlay(
+            .frame(width: 110, height: 140)
+            .background(
                 RoundedRectangle(cornerRadius: AppSizes.Radius.large)
-                    .stroke(mode.accentColor.opacity(0.25), lineWidth: 1.5)
+                    .fill(.white.opacity(0.04))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: AppSizes.Radius.large)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [mode.accentColor.opacity(0.4), mode.accentColor.opacity(0.1)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                ),
+                                lineWidth: 1.5
+                            )
+                    )
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ScaleButtonStyle())
     }
 
-    // MARK: - ═══════ أزرار عائمة ═══════
+    // MARK: - ═══════ الشريط السفلي ═══════
 
-    private var floatingButtons: some View {
-        VStack {
-            HStack {
-                // الإشعارات (أعلى يسار)
-                Button {} label: {
-                    ZStack(alignment: .topLeading) {
-                        Image(systemName: "bell.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(.white.opacity(0.6))
+    private var bottomBar: some View {
+        HStack {
+            // المكافأة اليومية
+            miniButton(icon: "gift.fill", label: "مكافأة", badge: viewModel.canClaimDaily) {}
 
-                        if viewModel.unreadCount > 0 {
-                            Text("\(min(viewModel.unreadCount, 9))")
-                                .font(.system(size: 8, weight: .bold))
-                                .foregroundStyle(.white)
-                                .frame(width: 14, height: 14)
-                                .background(AppColors.Default.error)
-                                .clipShape(Circle())
-                                .offset(x: -4, y: -3)
-                        }
-                    }
-                    .frame(width: 40, height: 40)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Circle())
-                }
-
-                Spacer()
-
-                // الإعدادات (أعلى يمين)
-                Button {} label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 18))
-                        .foregroundStyle(.white.opacity(0.6))
-                        .frame(width: 40, height: 40)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Circle())
-                }
-            }
-            .padding(.horizontal, AppSizes.Spacing.lg)
-            .padding(.top, AppSizes.Spacing.md)
+            miniButton(icon: "arrow.trianglehead.2.counterclockwise.rotate.90", label: "حظ", badge: viewModel.canSpin) {}
 
             Spacer()
 
-            // أسفل: مكافأة + عجلة
-            HStack(spacing: AppSizes.Spacing.md) {
-                Spacer()
-
-                miniActionButton(icon: "gift.fill", badge: viewModel.canClaimDaily) {
-                    // TODO: شاشة المكافأة اليومية
+            // الانضمام بكود
+            Button {
+                viewModel.showJoinRoom = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "keyboard")
+                        .font(.system(size: 13))
+                    Text(AppStrings.Main.joinRoom)
+                        .font(.cairo(.medium, size: AppSizes.Font.caption))
                 }
-
-                miniActionButton(icon: "arrow.trianglehead.2.counterclockwise.rotate.90", badge: viewModel.canSpin) {
-                    // TODO: شاشة عجلة الحظ
-                }
+                .foregroundStyle(AppColors.Default.goldPrimary)
+                .padding(.horizontal, AppSizes.Spacing.md)
+                .padding(.vertical, AppSizes.Spacing.xs)
+                .background(.white.opacity(0.06))
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(AppColors.Default.goldPrimary.opacity(0.3), lineWidth: 1))
             }
-            .padding(.horizontal, AppSizes.Spacing.lg)
-            .padding(.bottom, AppSizes.Spacing.md)
         }
     }
 
-    // MARK: زر صغير عائم
-    private func miniActionButton(icon: String, badge: Bool, action: @escaping () -> Void) -> some View {
+    // MARK: - ═══════ Helpers ═══════
+
+    private func iconButton(_ name: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: name)
+                .font(.system(size: 16))
+                .foregroundStyle(.white.opacity(0.6))
+                .frame(width: 36, height: 36)
+                .background(.white.opacity(0.06))
+                .clipShape(Circle())
+        }
+    }
+
+    private func miniButton(icon: String, label: String, badge: Bool, action: @escaping () -> Void) -> some View {
         Button(action: {
             HapticManager.light()
             action()
         }) {
-            ZStack(alignment: .topLeading) {
-                Image(systemName: icon)
-                    .font(.system(size: 20))
-                    .foregroundStyle(AppColors.Default.goldPrimary)
-                    .frame(width: 48, height: 48)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(AppColors.Default.goldPrimary.opacity(0.3), lineWidth: 1))
-
-                if badge {
-                    Circle()
-                        .fill(AppColors.Default.error)
-                        .frame(width: 10, height: 10)
-                        .offset(x: 2, y: 2)
+            HStack(spacing: 6) {
+                ZStack(alignment: .topLeading) {
+                    Image(systemName: icon)
+                        .font(.system(size: 16))
+                        .foregroundStyle(AppColors.Default.goldPrimary)
+                    if badge {
+                        Circle().fill(AppColors.Default.error).frame(width: 7, height: 7).offset(x: -2, y: -2)
+                    }
                 }
+                Text(label)
+                    .font(.cairo(.medium, size: 11))
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .padding(.horizontal, AppSizes.Spacing.sm)
+            .padding(.vertical, AppSizes.Spacing.xs)
+            .background(.white.opacity(0.06))
+            .clipShape(Capsule())
+        }
+    }
+
+    // MARK: نجوم خلفية
+    private var starsBackground: some View {
+        Canvas { context, size in
+            for i in 0..<40 {
+                let x = CGFloat.random(in: 0...size.width)
+                let y = CGFloat.random(in: 0...size.height)
+                let s = CGFloat.random(in: 1...2.5)
+                let opacity = Double.random(in: 0.1...0.35)
+                context.fill(
+                    Path(ellipseIn: CGRect(x: x, y: y, width: s, height: s)),
+                    with: .color(.white.opacity(opacity))
+                )
             }
         }
+        .ignoresSafeArea()
+    }
+}
+
+// MARK: - Scale Button Style
+struct ScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.93 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 
