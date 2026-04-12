@@ -7,9 +7,19 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
+
+// MARK: - AppDelegate لدعم تدوير الشاشة
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        OrientationManager.shared.locked
+    }
+}
 
 @main
 struct SaifAndAlmarifaApp: App {
+
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
     // MARK: - Theme
     @StateObject private var themeManager = ThemeManager.shared
