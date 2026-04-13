@@ -122,13 +122,16 @@ struct ProfileView: View {
                 // الرتبة + كود الصداقة
                 HStack {
                     // كود الصداقة
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("كود الصداقة")
-                            .font(.cairo(.regular, size: 10))
-                            .foregroundStyle(.white.opacity(0.4))
-                        Text(authManager.currentUser?.friendCode ?? "------")
-                            .font(.poppins(.bold, size: AppSizes.Font.bodyLarge))
-                            .foregroundStyle(AppColors.Default.goldPrimary)
+                    if let code = authManager.currentUser?.friendCode, !code.isEmpty {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("كود الصداقة")
+                                .font(.cairo(.regular, size: 10))
+                                .foregroundStyle(.white.opacity(0.4))
+                            Text(code)
+                                .font(.poppins(.bold, size: AppSizes.Font.bodyLarge))
+                                .foregroundStyle(AppColors.Default.goldPrimary)
+                                .kerning(3)
+                        }
                     }
 
                     Spacer()
@@ -274,39 +277,42 @@ struct ProfileView: View {
 
     // MARK: - ═══════ كود الصداقة ═══════
 
+    @ViewBuilder
     private var friendCodeSection: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("شارك كود الصداقة")
-                    .font(.cairo(.medium, size: AppSizes.Font.caption))
-                    .foregroundStyle(.white.opacity(0.5))
-                Text(authManager.currentUser?.friendCode ?? "------")
-                    .font(.poppins(.bold, size: AppSizes.Font.title2))
-                    .foregroundStyle(AppColors.Default.goldPrimary)
-                    .kerning(4)
+        if let code = authManager.currentUser?.friendCode, !code.isEmpty {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("شارك كود الصداقة")
+                        .font(.cairo(.medium, size: AppSizes.Font.caption))
+                        .foregroundStyle(.white.opacity(0.5))
+                    Text(code)
+                        .font(.poppins(.bold, size: AppSizes.Font.title1))
+                        .foregroundStyle(AppColors.Default.goldPrimary)
+                        .kerning(6)
+                }
+                Spacer()
+                Button(action: viewModel.copyFriendCode) {
+                    Image(systemName: "doc.on.doc.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(AppColors.Default.goldPrimary)
+                        .frame(width: 44, height: 44)
+                        .background(AppColors.Default.goldPrimary.opacity(0.1))
+                        .clipShape(Circle())
+                }
+                ShareLink(item: "أضفني في سيف المعرفة!\nكود الصداقة: \(code)") {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 18))
+                        .foregroundStyle(AppColors.Default.goldPrimary)
+                        .frame(width: 44, height: 44)
+                        .background(AppColors.Default.goldPrimary.opacity(0.1))
+                        .clipShape(Circle())
+                }
             }
-            Spacer()
-            Button(action: viewModel.copyFriendCode) {
-                Image(systemName: "doc.on.doc.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(AppColors.Default.goldPrimary)
-                    .frame(width: 44, height: 44)
-                    .background(AppColors.Default.goldPrimary.opacity(0.1))
-                    .clipShape(Circle())
-            }
-            ShareLink(item: "أضفني في سيف المعرفة!\nكود الصداقة: \(authManager.currentUser?.friendCode ?? "")") {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 18))
-                    .foregroundStyle(AppColors.Default.goldPrimary)
-                    .frame(width: 44, height: 44)
-                    .background(AppColors.Default.goldPrimary.opacity(0.1))
-                    .clipShape(Circle())
-            }
+            .padding(AppSizes.Spacing.md)
+            .background(Color(hex: "12103B"))
+            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+            .overlay(RoundedRectangle(cornerRadius: AppSizes.Radius.medium).stroke(AppColors.Default.goldPrimary.opacity(0.15), lineWidth: 1))
         }
-        .padding(AppSizes.Spacing.md)
-        .background(Color(hex: "12103B"))
-        .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
-        .overlay(RoundedRectangle(cornerRadius: AppSizes.Radius.medium).stroke(AppColors.Default.goldPrimary.opacity(0.15), lineWidth: 1))
     }
 
     // MARK: - ═══════ نموذج التعديل ═══════
