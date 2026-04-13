@@ -122,8 +122,8 @@ struct MainView: View {
 
     private var topBar: some View {
         HStack(spacing: AppSizes.Spacing.sm) {
-            // الأفاتار → بطاقة اللاعب
-            Button { showPlayerCard = true } label: {
+            // الأفاتار → الملف الشخصي
+            Button { showProfile = true } label: {
                 ZStack(alignment: .bottomTrailing) {
                     AvatarView(imageURL: authManager.currentUser?.fullAvatarUrl, size: 46)
                         .overlay(Circle().stroke(tierColor, lineWidth: 2))

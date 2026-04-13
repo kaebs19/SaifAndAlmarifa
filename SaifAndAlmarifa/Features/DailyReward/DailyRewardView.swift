@@ -90,19 +90,23 @@ struct DailyRewardView: View {
 
     // MARK: شبكة المكافآت (7 أيام)
     private var rewardsGrid: some View {
-        VStack(spacing: AppSizes.Spacing.sm) {
-            // الصف الأول: 4 أيام
+        let rewards = viewModel.status?.rewards ?? []
+
+        return VStack(spacing: AppSizes.Spacing.sm) {
+            // الصف الأول: أول 4 أيام
             LazyVGrid(columns: columns, spacing: AppSizes.Spacing.sm) {
-                ForEach(0..<min(4, viewModel.status?.rewards?.count ?? 0), id: \.self) { i in
-                    dayCard(day: i + 1, reward: viewModel.status?.rewards?[i])
+                ForEach(Array(rewards.prefix(4).enumerated()), id: \.offset) { i, reward in
+                    dayCard(day: i + 1, reward: reward)
                 }
             }
 
-            // الصف الثاني: 3 أيام
-            let threeColumns = Array(repeating: GridItem(.flexible(), spacing: AppSizes.Spacing.sm), count: 3)
-            LazyVGrid(columns: threeColumns, spacing: AppSizes.Spacing.sm) {
-                ForEach(4..<min(7, viewModel.status?.rewards?.count ?? 0), id: \.self) { i in
-                    dayCard(day: i + 1, reward: viewModel.status?.rewards?[i])
+            // الصف الثاني: الأيام 5-7
+            if rewards.count > 4 {
+                let threeColumns = Array(repeating: GridItem(.flexible(), spacing: AppSizes.Spacing.sm), count: 3)
+                LazyVGrid(columns: threeColumns, spacing: AppSizes.Spacing.sm) {
+                    ForEach(Array(rewards.dropFirst(4).enumerated()), id: \.offset) { i, reward in
+                        dayCard(day: i + 5, reward: reward)
+                    }
                 }
             }
         }
