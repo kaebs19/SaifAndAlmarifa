@@ -21,6 +21,7 @@ struct ProfileView: View {
                 header
                 avatarSection
                 statsRow
+                gameStatsSection
                 friendCodeSection
 
                 if viewModel.isEditing {
@@ -45,24 +46,36 @@ struct ProfileView: View {
         .task { await viewModel.onAppear() }
     }
 
-    // MARK: - الهيدر
+    // MARK: - الهيدر مع زر عودة
     private var header: some View {
-        HStack {
+        ZStack {
             Text("الملف الشخصي")
                 .font(.cairo(.bold, size: AppSizes.Font.title2))
                 .foregroundStyle(.white)
-            Spacer()
 
-            if !viewModel.isEditing {
-                Button {
-                    viewModel.startEditing()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "pencil")
-                        Text("تعديل")
+            HStack {
+                // زر التعديل
+                if !viewModel.isEditing {
+                    Button { viewModel.startEditing() } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "pencil")
+                            Text("تعديل")
+                        }
+                        .font(.cairo(.medium, size: AppSizes.Font.caption))
+                        .foregroundStyle(AppColors.Default.goldPrimary)
                     }
-                    .font(.cairo(.medium, size: AppSizes.Font.caption))
-                    .foregroundStyle(AppColors.Default.goldPrimary)
+                }
+
+                Spacer()
+
+                // زر العودة
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.5))
+                        .frame(width: 32, height: 32)
+                        .background(.white.opacity(0.06))
+                        .clipShape(Circle())
                 }
             }
         }
@@ -71,7 +84,6 @@ struct ProfileView: View {
     // MARK: - الأفاتار + الاسم
     private var avatarSection: some View {
         VStack(spacing: AppSizes.Spacing.md) {
-            // الصورة
             Button { viewModel.showAvatarPicker = true } label: {
                 ZStack(alignment: .bottomTrailing) {
                     AvatarView(imageURL: authManager.currentUser?.fullAvatarUrl, size: 90)
@@ -86,15 +98,9 @@ struct ProfileView: View {
                 }
             }
             .sheet(isPresented: $viewModel.showAvatarPicker) {
-                AvatarPickerSheet { result in
-                    if case .customImage = result {
-                        // TODO: رفع عبر API عند جاهزية multipart
-                        ToastManager.shared.info("رفع الصور قريباً")
-                    }
-                }
+                AvatarPickerSheet { _ in }
             }
 
-            // الاسم + الرتبة
             Text(authManager.currentUser?.username ?? "محارب")
                 .font(.cairo(.bold, size: AppSizes.Font.title2))
                 .foregroundStyle(.white)
@@ -102,10 +108,31 @@ struct ProfileView: View {
             Text(tierName)
                 .font(.cairo(.semiBold, size: AppSizes.Font.body))
                 .foregroundStyle(tierColor)
+
+            // شريط XP
+            xpBar
         }
     }
 
-    // MARK: - الإحصائيات
+    // MARK: شريط XP
+    private var xpBar: some View {
+        VStack(spacing: 4) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(.white.opacity(0.1)).frame(height: 6)
+                    Capsule().fill(tierColor).frame(width: geo.size.width * 0.35, height: 6)
+                }
+            }
+            .frame(height: 6)
+            .frame(maxWidth: 200)
+
+            Text("\(AppStrings.Main.level) \(authManager.currentUser?.level ?? 1)")
+                .font(.cairo(.medium, size: 10))
+                .foregroundStyle(tierColor)
+        }
+    }
+
+    // MARK: - الإحصائيات الأساسية
     private var statsRow: some View {
         HStack(spacing: AppSizes.Spacing.md) {
             statCard(icon: "star.fill", value: "\(authManager.currentUser?.level ?? 1)", label: "المستوى", color: tierColor)
@@ -114,26 +141,39 @@ struct ProfileView: View {
         }
     }
 
-    private func statCard(icon: String, value: String, label: String, color: Color) -> some View {
+    // MARK: - إحصائيات اللعب
+    private var gameStatsSection: some View {
+        VStack(alignment: .leading, spacing: AppSizes.Spacing.sm) {
+            Text("إحصائيات المعارك")
+                .font(.cairo(.bold, size: AppSizes.Font.bodyLarge))
+                .foregroundStyle(.white)
+
+            HStack(spacing: AppSizes.Spacing.sm) {
+                gameStatCard(value: "\(viewModel.totalMatches)", label: "مباريات", icon: "gamecontroller.fill", color: AppColors.Default.info)
+                gameStatCard(value: "\(viewModel.totalWins)", label: "فوز", icon: "trophy.fill", color: AppColors.Default.goldPrimary)
+                gameStatCard(value: "\(viewModel.totalLosses)", label: "خسارة", icon: "xmark.shield.fill", color: AppColors.Default.error)
+                gameStatCard(value: viewModel.winRate, label: "نسبة الفوز", icon: "chart.line.uptrend.xyaxis", color: AppColors.Default.success)
+            }
+        }
+    }
+
+    private func gameStatCard(value: String, label: String, icon: String, color: Color) -> some View {
         VStack(spacing: AppSizes.Spacing.xs) {
             Image(systemName: icon)
-                .font(.system(size: 18))
+                .font(.system(size: 16))
                 .foregroundStyle(color)
             Text(value)
-                .font(.cairo(.bold, size: AppSizes.Font.title3))
+                .font(.poppins(.bold, size: AppSizes.Font.bodyLarge))
                 .foregroundStyle(.white)
             Text(label)
-                .font(.cairo(.regular, size: 10))
+                .font(.cairo(.regular, size: 9))
                 .foregroundStyle(.white.opacity(0.5))
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, AppSizes.Spacing.md)
-        .background(.white.opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
-                .stroke(color.opacity(0.15), lineWidth: 1)
-        )
+        .padding(.vertical, AppSizes.Spacing.sm)
+        .background(color.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.small))
+        .overlay(RoundedRectangle(cornerRadius: AppSizes.Radius.small).stroke(color.opacity(0.12), lineWidth: 1))
     }
 
     // MARK: - كود الصداقة
@@ -148,9 +188,7 @@ struct ProfileView: View {
                     .foregroundStyle(AppColors.Default.goldPrimary)
                     .kerning(4)
             }
-
             Spacer()
-
             Button(action: viewModel.copyFriendCode) {
                 Image(systemName: "doc.on.doc.fill")
                     .font(.system(size: 18))
@@ -159,7 +197,6 @@ struct ProfileView: View {
                     .background(AppColors.Default.goldPrimary.opacity(0.1))
                     .clipShape(Circle())
             }
-
             ShareLink(item: "أضفني في سيف المعرفة!\nكود الصداقة: \(authManager.currentUser?.friendCode ?? "")") {
                 Image(systemName: "square.and.arrow.up")
                     .font(.system(size: 18))
@@ -172,46 +209,24 @@ struct ProfileView: View {
         .padding(AppSizes.Spacing.md)
         .background(.white.opacity(0.04))
         .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
-                .stroke(AppColors.Default.goldPrimary.opacity(0.15), lineWidth: 1)
-        )
+        .overlay(RoundedRectangle(cornerRadius: AppSizes.Radius.medium).stroke(AppColors.Default.goldPrimary.opacity(0.15), lineWidth: 1))
     }
 
     // MARK: - نموذج التعديل
     private var editForm: some View {
         VStack(spacing: AppSizes.Spacing.md) {
             AuthLabeledField(label: "اسم المستخدم") {
-                AppTextField(
-                    placeholder: "اسم جديد",
-                    text: $viewModel.editUsername,
-                    icon: "person.fill",
-                    contentType: .username,
-                    style: .glass
-                )
+                AppTextField(placeholder: "اسم جديد", text: $viewModel.editUsername, icon: "person.fill", contentType: .username, style: .glass)
             }
-
             AuthLabeledField(label: "الدولة") {
                 CountryPickerButton(selectedCountry: $viewModel.editCountry)
             }
-
             HStack(spacing: AppSizes.Spacing.md) {
-                GradientButton(
-                    title: "حفظ",
-                    colors: [AppColors.Default.goldLight, AppColors.Default.goldPrimary],
-                    isLoading: viewModel.isLoading
-                ) {
+                GradientButton(title: "حفظ", colors: [AppColors.Default.goldLight, AppColors.Default.goldPrimary], isLoading: viewModel.isLoading) {
                     Task { await viewModel.saveProfile() }
                 }
-
-                Button {
-                    viewModel.isEditing = false
-                } label: {
-                    Text("إلغاء")
-                        .font(.cairo(.medium, size: AppSizes.Font.body))
-                        .foregroundStyle(.white.opacity(0.6))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: AppSizes.Button.large)
+                Button { viewModel.isEditing = false } label: {
+                    Text("إلغاء").font(.cairo(.medium, size: AppSizes.Font.body)).foregroundStyle(.white.opacity(0.6)).frame(maxWidth: .infinity).frame(height: AppSizes.Button.large)
                 }
             }
         }
@@ -226,14 +241,9 @@ struct ProfileView: View {
                 .font(.cairo(.bold, size: AppSizes.Font.bodyLarge))
                 .foregroundStyle(.white)
 
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: AppSizes.Spacing.md), count: 5),
-                spacing: AppSizes.Spacing.md
-            ) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: AppSizes.Spacing.md), count: 5), spacing: AppSizes.Spacing.md) {
                 ForEach(viewModel.avatars) { avatar in
-                    Button {
-                        Task { await viewModel.selectAvatar(avatar) }
-                    } label: {
+                    Button { Task { await viewModel.selectAvatar(avatar) } } label: {
                         AsyncImage(url: URL(string: avatarFullUrl(avatar.imageUrl))) { img in
                             img.resizable().scaledToFill()
                         } placeholder: {
@@ -243,9 +253,7 @@ struct ProfileView: View {
                         .clipShape(Circle())
                         .overlay(
                             Circle().stroke(
-                                authManager.currentUser?.avatarUrl == avatar.imageUrl
-                                    ? AppColors.Default.goldPrimary
-                                    : .white.opacity(0.1),
+                                authManager.currentUser?.avatarUrl == avatar.imageUrl ? AppColors.Default.goldPrimary : .white.opacity(0.1),
                                 lineWidth: 2
                             )
                         )
@@ -253,15 +261,10 @@ struct ProfileView: View {
                             if let cost = avatar.gemCost, cost > 0 {
                                 HStack(spacing: 2) {
                                     Image("icon_gem").resizable().frame(width: 10, height: 10)
-                                    Text("\(cost)")
-                                        .font(.system(size: 8, weight: .bold))
-                                        .foregroundStyle(AppColors.Default.goldPrimary)
+                                    Text("\(cost)").font(.system(size: 8, weight: .bold)).foregroundStyle(AppColors.Default.goldPrimary)
                                 }
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(Color(hex: "0E1236"))
-                                .clipShape(Capsule())
-                                .offset(x: 2, y: 2)
+                                .padding(.horizontal, 4).padding(.vertical, 1)
+                                .background(Color(hex: "0E1236")).clipShape(Capsule()).offset(x: 2, y: 2)
                             }
                         }
                     }
@@ -279,10 +282,7 @@ struct ProfileView: View {
         }
         .background(.white.opacity(0.04))
         .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
-                .stroke(.white.opacity(0.08), lineWidth: 1)
-        )
+        .overlay(RoundedRectangle(cornerRadius: AppSizes.Radius.medium).stroke(.white.opacity(0.08), lineWidth: 1))
     }
 
     private func actionRow(icon: String, title: String, color: Color, action: @escaping () -> Void) -> some View {
@@ -297,6 +297,20 @@ struct ProfileView: View {
     }
 
     // MARK: - Helpers
+
+    private func statCard(icon: String, value: String, label: String, color: Color) -> some View {
+        VStack(spacing: AppSizes.Spacing.xs) {
+            Image(systemName: icon).font(.system(size: 18)).foregroundStyle(color)
+            Text(value).font(.cairo(.bold, size: AppSizes.Font.title3)).foregroundStyle(.white)
+            Text(label).font(.cairo(.regular, size: 10)).foregroundStyle(.white.opacity(0.5))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, AppSizes.Spacing.md)
+        .background(.white.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+        .overlay(RoundedRectangle(cornerRadius: AppSizes.Radius.medium).stroke(color.opacity(0.15), lineWidth: 1))
+    }
+
     private var tierColor: Color {
         let level = authManager.currentUser?.level ?? 1
         switch level {
@@ -324,12 +338,6 @@ struct ProfileView: View {
     }
 
     private func avatarFullUrl(_ path: String) -> String {
-        if path.hasPrefix("http") { return path }
-        return APIConfig.environment.baseURL.replacingOccurrences(of: "/api/v1", with: "") + path
+        path.hasPrefix("http") ? path : APIConfig.environment.baseURL.replacingOccurrences(of: "/api/v1", with: "") + path
     }
-}
-
-#Preview {
-    ProfileView()
-        .environment(\.layoutDirection, .rightToLeft)
 }

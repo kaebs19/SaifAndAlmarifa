@@ -11,6 +11,7 @@ import SwiftUI
 struct SpinWheelView: View {
 
     @StateObject private var viewModel = SpinWheelViewModel()
+    @StateObject private var adManager = AdManager.shared
     @State private var rotation: Double = 0
     @Environment(\.dismiss) private var dismiss
 
@@ -181,28 +182,58 @@ struct SpinWheelView: View {
         }
     }
 
-    // MARK: معلومات الدوران المدفوع
+    // MARK: خيارات الدوران الإضافي
     private var extraSpinInfo: some View {
-        Group {
-            if !viewModel.canSpin && viewModel.extraSpinsUsed < viewModel.maxExtraSpins {
+        VStack(spacing: AppSizes.Spacing.sm) {
+            if !viewModel.canSpin {
+                // مشاهدة إعلان = دوران مجاني
                 Button {
-                    spin(useExtra: true)
+                    watchAdForSpin()
                 } label: {
-                    HStack(spacing: 4) {
-                        Image("icon_gem").resizable().frame(width: 14, height: 14)
-                        Text("\(viewModel.extraSpinCost)")
-                            .font(.poppins(.bold, size: AppSizes.Font.caption))
-                            .foregroundStyle(AppColors.Default.goldPrimary)
-                        Text("دوران إضافي (\(viewModel.extraSpinsUsed)/\(viewModel.maxExtraSpins))")
-                            .font(.cairo(.medium, size: AppSizes.Font.caption))
-                            .foregroundStyle(.white.opacity(0.6))
+                    HStack(spacing: 6) {
+                        Image(systemName: "play.rectangle.fill")
+                            .font(.system(size: 16))
+                        Text("شاهد إعلان = دوران مجاني")
+                            .font(.cairo(.semiBold, size: AppSizes.Font.body))
                     }
-                    .padding(.horizontal, AppSizes.Spacing.md)
-                    .padding(.vertical, AppSizes.Spacing.xs)
-                    .background(.white.opacity(0.06))
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(AppColors.Default.goldPrimary.opacity(0.2), lineWidth: 1))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: AppSizes.Button.medium)
+                    .background(AppColors.Default.success.opacity(0.8))
+                    .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
                 }
+                .disabled(!adManager.isRewardedAdReady)
+                .opacity(adManager.isRewardedAdReady ? 1 : 0.5)
+
+                // أو شراء بالجواهر
+                if viewModel.extraSpinsUsed < viewModel.maxExtraSpins {
+                    Button { spin(useExtra: true) } label: {
+                        HStack(spacing: 4) {
+                            Image("icon_gem").resizable().frame(width: 14, height: 14)
+                            Text("\(viewModel.extraSpinCost)")
+                                .font(.poppins(.bold, size: AppSizes.Font.caption))
+                                .foregroundStyle(AppColors.Default.goldPrimary)
+                            Text("دوران بالجواهر (\(viewModel.extraSpinsUsed)/\(viewModel.maxExtraSpins))")
+                                .font(.cairo(.medium, size: AppSizes.Font.caption))
+                                .foregroundStyle(.white.opacity(0.6))
+                        }
+                        .padding(.horizontal, AppSizes.Spacing.md)
+                        .padding(.vertical, AppSizes.Spacing.xs)
+                        .background(.white.opacity(0.06))
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(AppColors.Default.goldPrimary.opacity(0.2), lineWidth: 1))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - مشاهدة إعلان مكافأة
+    private func watchAdForSpin() {
+        adManager.showRewardedAd { rewarded in
+            if rewarded {
+                HapticManager.success()
+                spin(useExtra: false)
             }
         }
     }

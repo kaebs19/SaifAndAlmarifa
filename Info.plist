@@ -55,5 +55,14 @@
 	</array>
 	<key>GIDClientID</key>
 	<string>720728750667-oo4ou6sibftqj8rp1u737b0thks1fqul.apps.googleusercontent.com</string>
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-XXXXXXXXXXXX~YYYYYYYYYY</string>
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+	</array>
 </dict>
 </plist>

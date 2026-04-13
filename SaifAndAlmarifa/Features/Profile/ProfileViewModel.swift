@@ -21,6 +21,17 @@ final class ProfileViewModel: ObservableObject {
     @Published var avatars: [DefaultAvatarItem] = []
     @Published var showAvatarPicker = false
 
+    // MARK: - إحصائيات اللعب (TODO: من API لاحقاً)
+    @Published var totalMatches: Int = 0
+    @Published var totalWins: Int = 0
+    @Published var totalLosses: Int = 0
+
+    var winRate: String {
+        guard totalMatches > 0 else { return "0%" }
+        let rate = (Double(totalWins) / Double(totalMatches)) * 100
+        return String(format: "%.0f%%", rate)
+    }
+
     // MARK: - Dependencies
     private let authService = AuthService.shared
     private let mainService = MainService.shared

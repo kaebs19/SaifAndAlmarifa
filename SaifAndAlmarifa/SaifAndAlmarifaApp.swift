@@ -40,8 +40,8 @@ struct SaifAndAlmarifaApp: App {
 
     // MARK: - Init
     init() {
-        // تسجيل الخطوط المخصصة (Cairo + Poppins) عند إقلاع التطبيق
         FontRegistrar.registerAll()
+        AdManager.configure()
     }
 
     // MARK: - Scene
