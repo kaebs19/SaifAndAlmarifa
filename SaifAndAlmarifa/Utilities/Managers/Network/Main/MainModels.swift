@@ -66,6 +66,19 @@ struct Friend: Decodable, Identifiable {
     let isOnline: Bool?
 }
 
+// MARK: - إحصائيات اللاعب
+struct UserStats: Decodable {
+    let totalMatches: Int
+    let wins: Int
+    let losses: Int
+    let winRate: Int
+    let currentStreak: Int
+    let wins1v1: Int
+    let wins4player: Int
+    let totalKills: Int
+    let totalCorrectAnswers: Int
+}
+
 // MARK: - الأفاتارات الافتراضية
 struct DefaultAvatarItem: Decodable, Identifiable {
     let id: String

@@ -21,16 +21,8 @@ final class ProfileViewModel: ObservableObject {
     @Published var avatars: [DefaultAvatarItem] = []
     @Published var showAvatarPicker = false
 
-    // MARK: - إحصائيات اللعب (TODO: من API لاحقاً)
-    @Published var totalMatches: Int = 0
-    @Published var totalWins: Int = 0
-    @Published var totalLosses: Int = 0
-
-    var winRate: String {
-        guard totalMatches > 0 else { return "0%" }
-        let rate = (Double(totalWins) / Double(totalMatches)) * 100
-        return String(format: "%.0f%%", rate)
-    }
+    // MARK: - إحصائيات اللعب
+    @Published var stats: UserStats?
 
     // MARK: - Dependencies
     private let authService = AuthService.shared
@@ -42,11 +34,14 @@ final class ProfileViewModel: ObservableObject {
 
     // MARK: - تحميل البيانات
     func onAppear() async {
-        // جلب أحدث بيانات المستخدم
-        _ = try? await authService.getMe()
+        // جلب بالتوازي
+        async let userFetch: Void = { _ = try? await authService.getMe() }()
+        async let avatarsFetch = mainService.getAvatars()
+        async let statsFetch = mainService.getUserStats()
 
-        // جلب الأفاتارات
-        avatars = (try? await mainService.getAvatars()) ?? []
+        _ = await userFetch
+        avatars = (try? await avatarsFetch) ?? []
+        stats = try? await statsFetch
 
         if let user {
             editUsername = user.username

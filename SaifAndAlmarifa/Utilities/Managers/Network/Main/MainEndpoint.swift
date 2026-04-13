@@ -58,6 +58,14 @@ enum MainEndpoint {
         var requiresAuth: Bool { true }
     }
 
+    // MARK: إحصائيات اللاعب
+    struct GetUserStats: Endpoint {
+        typealias Response = UserStats
+        var path: String { "/user/stats" }
+        var method: HTTPMethod { .get }
+        var requiresAuth: Bool { true }
+    }
+
     // MARK: الأفاتارات
     struct AvatarsList: Endpoint {
         typealias Response = [DefaultAvatarItem]

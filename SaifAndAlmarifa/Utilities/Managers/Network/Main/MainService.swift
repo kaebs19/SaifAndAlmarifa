@@ -38,6 +38,11 @@ final class MainService: APIService {
         try await network.request(MainEndpoint.Spin(useExtra: useExtra))
     }
 
+    // MARK: إحصائيات اللاعب
+    func getUserStats() async throws -> UserStats {
+        try await network.request(MainEndpoint.GetUserStats())
+    }
+
     // MARK: الأصدقاء
     func getFriends() async throws -> [Friend] {
         try await network.request(MainEndpoint.FriendsList())

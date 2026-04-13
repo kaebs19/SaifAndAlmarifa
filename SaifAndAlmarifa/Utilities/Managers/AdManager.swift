@@ -15,8 +15,8 @@ import GoogleMobileAds
 // MARK: - Ad Config
 enum AdConfig {
     #if DEBUG
-    static let rewardedAdUnitID = "ca-app-pub-3940256099942544/1712485313"
-    static let interstitialAdUnitID = "ca-app-pub-3940256099942544/4411468910"
+    static let rewardedAdUnitID = "ca-app-pub-8219247197168750/8065050240"
+    static let interstitialAdUnitID = "ca-app-pub-8219247197168750/1468064330"
     #else
     static let rewardedAdUnitID = "ca-app-pub-XXXX/YYYY"
     static let interstitialAdUnitID = "ca-app-pub-XXXX/ZZZZ"

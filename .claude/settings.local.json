@@ -11,7 +11,12 @@
       "Bash(python3 -m json.tool)",
       "Bash(curl -s -X POST http://localhost:5001/api/v1/auth/register -H 'Content-Type: application/json' -d '{\"username\":\"test_player\",\"email\":\"testclaude@test.com\",\"password\":\"Test@1234\",\"country\":\"SA\"}')",
       "Bash(curl -s -X POST http://localhost:5001/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"testclaude@test.com\",\"password\":\"Test@1234\"}')",
-      "Bash(curl -s http://localhost:5001/api/v1/auth/me -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjBhODE4ZmZkLWFlNTgtNGRjOS05N2I4LWE2NTgzMWIzYmVlNSIsImVtYWlsIjoidGVzdGNsYXVkZUB0ZXN0LmNvbSIsInJvbGUiOiJwbGF5ZXIiLCJpYXQiOjE3NzU3NTYzNTUsImV4cCI6MTc3NjM2MTE1NX0.vC02ZPVGRNAUrrKngUJi5vWTPBWLgJsDRhvtw6PcgpI')"
+      "Bash(curl -s http://localhost:5001/api/v1/auth/me -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjBhODE4ZmZkLWFlNTgtNGRjOS05N2I4LWE2NTgzMWIzYmVlNSIsImVtYWlsIjoidGVzdGNsYXVkZUB0ZXN0LmNvbSIsInJvbGUiOiJwbGF5ZXIiLCJpYXQiOjE3NzU3NTYzNTUsImV4cCI6MTc3NjM2MTE1NX0.vC02ZPVGRNAUrrKngUJi5vWTPBWLgJsDRhvtw6PcgpI')",
+      "Bash(curl -s -X POST https://saifiq.halmanhaj.com/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"testclaude@test.com\",\"password\":\"Test@1234\"}')",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('data',{}\\).get\\('token','NO_TOKEN'\\)[:50]\\)\")",
+      "Bash(curl -s -X POST https://saifiq.halmanhaj.com/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"j@s.com\",\"password\":\"Aa123123\"}')",
+      "Bash(curl -sv https://saifiq.halmanhaj.com/api/v1/user/stats -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFjYjZlYzBiLTExNDItNDQwMy05MmUzLTJhOTI1N2E5Mjc4ZSIsImVtYWlsIjoiakBzLmNvbSIsInJvbGUiOiJwbGF5ZXIiLCJpYXQiOjE3NzYxMTcwMTcsImV4cCI6MTc3NjcyMTgxN30.R5a8MI0ewU1k3g5mraNz9gHKqIYNScsWRduFq-gz0v0')",
+      "Bash(curl -s https://saifiq.halmanhaj.com/api/v1/user/stats -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFjYjZlYzBiLTExNDItNDQwMy05MmUzLTJhOTI1N2E5Mjc4ZSIsImVtYWlsIjoiakBzLmNvbSIsInJvbGUiOiJwbGF5ZXIiLCJpYXQiOjE3NzYxMTcwMTcsImV4cCI6MTc3NjcyMTgxN30.R5a8MI0ewU1k3g5mraNz9gHKqIYNScsWRduFq-gz0v0' -H 'Accept: application/json')"
     ]
   }
 }
