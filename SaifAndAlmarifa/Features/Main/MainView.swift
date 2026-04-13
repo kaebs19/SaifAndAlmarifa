@@ -97,30 +97,33 @@ struct MainView: View {
 
     private var topBar: some View {
         HStack(spacing: AppSizes.Spacing.sm) {
-            // الأفاتار مع حلقة المستوى
-            ZStack(alignment: .bottomTrailing) {
-                AvatarView(imageURL: authManager.currentUser?.avatarUrl, size: 50)
-                    .overlay(Circle().stroke(tierColor, lineWidth: 2.5))
-                    .shadow(color: tierColor.opacity(0.4), radius: 6)
+            // الأفاتار + الاسم → يفتح الملف الشخصي
+            Button { showProfile = true } label: {
+                HStack(spacing: AppSizes.Spacing.sm) {
+                    ZStack(alignment: .bottomTrailing) {
+                        AvatarView(imageURL: authManager.currentUser?.fullAvatarUrl, size: 50)
+                            .overlay(Circle().stroke(tierColor, lineWidth: 2.5))
+                            .shadow(color: tierColor.opacity(0.4), radius: 6)
 
-                // رتبة اللاعب
-                Text(tierEmoji)
-                    .font(.system(size: 12))
-                    .frame(width: 18, height: 18)
-                    .background(Color(hex: "0E1236"))
-                    .clipShape(Circle())
-                    .offset(x: 3, y: 3)
+                        Text(tierEmoji)
+                            .font(.system(size: 12))
+                            .frame(width: 18, height: 18)
+                            .background(Color(hex: "0E1236"))
+                            .clipShape(Circle())
+                            .offset(x: 3, y: 3)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(authManager.currentUser?.username ?? "محارب")
+                            .font(.cairo(.bold, size: AppSizes.Font.bodyLarge))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+
+                        xpBar
+                    }
+                }
             }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(authManager.currentUser?.username ?? "محارب")
-                    .font(.cairo(.bold, size: AppSizes.Font.bodyLarge))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-
-                // شريط XP
-                xpBar
-            }
+            .buttonStyle(.plain)
 
             Spacer()
 
