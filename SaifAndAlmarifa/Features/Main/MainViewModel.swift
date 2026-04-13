@@ -15,6 +15,7 @@ final class MainViewModel: ObservableObject {
     // MARK: - State
     @Published var selectedTab: MainTab = .home
     @Published var unreadCount: Int = 0
+    @Published var userStats: UserStats?
     @Published var isSearching: Bool = false
     @Published var searchMode: GameMode?
     @Published var canClaimDaily: Bool = false
@@ -44,10 +45,11 @@ final class MainViewModel: ObservableObject {
 
     // MARK: - تحميل البيانات
     func onAppear() async {
-        // جلب عدد الإشعارات
-        if let count = try? await service.getUnreadCount() {
-            unreadCount = count
-        }
+        // جلب عدد الإشعارات + الإحصائيات
+        async let countFetch = service.getUnreadCount()
+        async let statsFetch = service.getUserStats()
+        unreadCount = (try? await countFetch) ?? 0
+        userStats = try? await statsFetch
         // حالة المكافأة اليومية
         if let status = try? await service.getDailyRewardStatus() {
             canClaimDaily = !status.claimed

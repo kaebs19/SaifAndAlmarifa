@@ -14,6 +14,7 @@ struct MainView: View {
     @StateObject private var authManager = AuthManager.shared
     @State private var showProfile = false
     @State private var showSpinWheel = false
+    @State private var showPlayerCard = false
 
     var body: some View {
         ZStack {
@@ -50,6 +51,12 @@ struct MainView: View {
         }
         .fullScreenCover(isPresented: $showProfile) { ProfileView() }
         .fullScreenCover(isPresented: $showSpinWheel) { SpinWheelView() }
+        .playerCard(
+            isPresented: $showPlayerCard,
+            data: authManager.currentUser.map {
+                PlayerCardData.from(user: $0, stats: viewModel.userStats)
+            }
+        )
         .task { await viewModel.onAppear() }
     }
 
@@ -97,8 +104,8 @@ struct MainView: View {
 
     private var topBar: some View {
         HStack(spacing: AppSizes.Spacing.sm) {
-            // الأفاتار + الاسم → يفتح الملف الشخصي
-            Button { showProfile = true } label: {
+            // الأفاتار + الاسم → يعرض بطاقة اللاعب
+            Button { showPlayerCard = true } label: {
                 HStack(spacing: AppSizes.Spacing.sm) {
                     ZStack(alignment: .bottomTrailing) {
                         AvatarView(imageURL: authManager.currentUser?.fullAvatarUrl, size: 50)
