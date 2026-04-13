@@ -91,6 +91,25 @@ enum AuthEndpoint {
         var body: Encodable? { request }
     }
 
+    // MARK: - Update Profile
+    struct UpdateProfile: Endpoint {
+        typealias Response = User
+        let request: UpdateProfileRequest
+        var path: String   { "/auth/me" }
+        var method: HTTPMethod { .patch }
+        var body: Encodable? { request }
+        var requiresAuth: Bool { true }
+    }
+
+    // MARK: - Select Avatar
+    struct SelectAvatar: Endpoint {
+        typealias Response = AvatarSelectResponse
+        let avatarId: String
+        var path: String   { "/avatars/\(avatarId)/select" }
+        var method: HTTPMethod { .post }
+        var requiresAuth: Bool { true }
+    }
+
     // MARK: - Apple Login
     struct AppleLogin: Endpoint {
         typealias Response = AuthData

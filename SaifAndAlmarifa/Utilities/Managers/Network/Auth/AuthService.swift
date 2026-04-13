@@ -138,6 +138,35 @@ final class AuthService: APIService {
         return data.user
     }
 
+    // MARK: - ═══════════════ Update Profile ═══════════════
+    @discardableResult
+    func updateProfile(username: String? = nil, country: String? = nil) async throws -> User {
+        let endpoint = AuthEndpoint.UpdateProfile(
+            request: UpdateProfileRequest(username: username, country: country)
+        )
+        let user = try await network.request(endpoint)
+        authManager.updateCurrentUser(user)
+        return user
+    }
+
+    // MARK: - ═══════════════ Select Avatar ═══════════════
+    @discardableResult
+    func selectAvatar(id: String) async throws -> String {
+        let endpoint = AuthEndpoint.SelectAvatar(avatarId: id)
+        let result = try await network.request(endpoint)
+        // تحديث avatarUrl في المستخدم الحالي
+        if var user = authManager.currentUser {
+            let updated = User(
+                id: user.id, username: user.username, email: user.email,
+                role: user.role, avatarUrl: result.avatarUrl, country: user.country,
+                level: user.level, gems: user.gems, friendCode: user.friendCode,
+                createdAt: user.createdAt
+            )
+            authManager.updateCurrentUser(updated)
+        }
+        return result.avatarUrl
+    }
+
     // MARK: - ═══════════════ Logout ═══════════════
     func logout() {
         authManager.logout()

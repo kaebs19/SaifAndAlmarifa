@@ -65,7 +65,21 @@ struct User: Codable, Identifiable, Equatable {
     let country: String?
     let level: Int?
     let gems: Int?
+    let friendCode: String?
     let createdAt: String?
+
+    /// رابط الصورة الكامل
+    var fullAvatarUrl: String? {
+        guard let url = avatarUrl, !url.isEmpty else { return nil }
+        if url.hasPrefix("http") { return url }
+        return APIConfig.environment.baseURL.replacingOccurrences(of: "/api/v1", with: "") + url
+    }
+}
+
+// MARK: - طلب تحديث الملف الشخصي
+struct UpdateProfileRequest: Encodable {
+    var username: String?
+    var country: String?
 }
 
 // MARK: - Auth Response
@@ -73,6 +87,12 @@ struct User: Codable, Identifiable, Equatable {
 struct AuthData: Decodable {
     let token: String
     let user: User
+}
+
+// MARK: - Avatar Select Response
+struct AvatarSelectResponse: Decodable {
+    let avatarUrl: String
+    let gemsDeducted: Int?
 }
 
 // MARK: - Verify Code Response
