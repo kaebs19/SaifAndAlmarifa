@@ -122,34 +122,42 @@ struct MainView: View {
 
     private var topBar: some View {
         HStack(spacing: AppSizes.Spacing.sm) {
-            // الأفاتار → الملف الشخصي
+            // الأفاتار + الاسم → الملف الشخصي
             Button { showProfile = true } label: {
-                ZStack(alignment: .bottomTrailing) {
-                    AvatarView(imageURL: authManager.currentUser?.fullAvatarUrl, size: 46)
+                HStack(spacing: AppSizes.Spacing.sm) {
+                    ZStack(alignment: .bottomTrailing) {
+                        AsyncImage(url: URL(string: authManager.currentUser?.fullAvatarUrl ?? "")) { img in
+                            img.resizable().scaledToFill()
+                        } placeholder: {
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 20))
+                                .foregroundStyle(.gray)
+                        }
+                        .frame(width: 46, height: 46)
+                        .clipShape(Circle())
                         .overlay(Circle().stroke(tierColor, lineWidth: 2))
 
-                    Text(tierEmoji)
-                        .font(.system(size: 10))
-                        .frame(width: 16, height: 16)
-                        .background(Color(hex: "0E1236"))
-                        .clipShape(Circle())
-                        .offset(x: 3, y: 3)
+                        Text(tierEmoji)
+                            .font(.system(size: 10))
+                            .frame(width: 16, height: 16)
+                            .background(Color(hex: "0E1236"))
+                            .clipShape(Circle())
+                            .offset(x: 3, y: 3)
+                    }
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(authManager.currentUser?.username ?? "محارب")
+                            .font(.cairo(.bold, size: AppSizes.Font.body))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+
+                        Text("\(AppStrings.Main.level) \(authManager.currentUser?.level ?? 1)")
+                            .font(.cairo(.medium, size: 10))
+                            .foregroundStyle(tierColor)
+                    }
                 }
             }
-
-            // الاسم + المستوى
-            VStack(alignment: .leading, spacing: 1) {
-                Text(authManager.currentUser?.username ?? "محارب")
-                    .font(.cairo(.bold, size: AppSizes.Font.body))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Text("\(AppStrings.Main.level) \(authManager.currentUser?.level ?? 1)")
-                    .font(.cairo(.medium, size: 10))
-                    .foregroundStyle(tierColor)
-            }
-            .frame(maxWidth: 80, alignment: .leading)
+            .buttonStyle(.plain)
 
             Spacer()
 

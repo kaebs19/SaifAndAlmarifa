@@ -192,14 +192,15 @@ struct DailyRewardView: View {
 
     // MARK: زر المطالبة
     private var claimButton: some View {
-        GradientButton(
-            title: viewModel.status?.claimed == true ? "تم الاستلام ✓" : "استلم مكافأتك!",
-            icon: viewModel.status?.claimed == true ? nil : "icon_gem",
-            colors: viewModel.status?.claimed == true
+        let isClaimed = viewModel.status?.claimed ?? true
+        return GradientButton(
+            title: isClaimed ? "تم الاستلام ✓" : "استلم مكافأتك!",
+            icon: isClaimed ? nil : "icon_gem",
+            colors: isClaimed
                 ? [.gray.opacity(0.3), .gray.opacity(0.2)]
                 : [AppColors.Default.goldLight, AppColors.Default.goldPrimary],
             isLoading: viewModel.isLoading,
-            isEnabled: viewModel.status?.claimed == false
+            isEnabled: !isClaimed && !viewModel.isLoading
         ) {
             Task { await viewModel.claim() }
         }
