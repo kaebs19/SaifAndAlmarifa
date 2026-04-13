@@ -15,6 +15,8 @@ struct MainView: View {
     @State private var showProfile = false
     @State private var showSpinWheel = false
     @State private var showPlayerCard = false
+    @State private var showDailyReward = false
+    @State private var appeared = false
 
     var body: some View {
         ZStack {
@@ -23,13 +25,24 @@ struct MainView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: AppSizes.Spacing.lg) {
                     topBar
+                        .staggeredAppear(order: 0)
+
                     mainCards
+                        .staggeredAppear(order: 1)
+
                     secondaryModes
+                        .staggeredAppear(order: 2)
+
                     quickActions
+                        .staggeredAppear(order: 3)
                 }
                 .padding(.horizontal, AppSizes.Spacing.lg)
                 .padding(.top, AppSizes.Spacing.sm)
                 .padding(.bottom, AppSizes.Spacing.xxl)
+            }
+            .refreshable {
+                await viewModel.onAppear()
+                HapticManager.light()
             }
 
             if viewModel.isSearching {
@@ -51,6 +64,7 @@ struct MainView: View {
         }
         .fullScreenCover(isPresented: $showProfile) { ProfileView() }
         .fullScreenCover(isPresented: $showSpinWheel) { SpinWheelView() }
+        .fullScreenCover(isPresented: $showDailyReward) { DailyRewardView() }
         .playerCard(
             isPresented: $showPlayerCard,
             data: authManager.currentUser.map {
@@ -156,18 +170,15 @@ struct MainView: View {
 
     // MARK: شريط XP
     private var xpBar: some View {
-        HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 3) {
             Text("\(AppStrings.Main.level) \(authManager.currentUser?.level ?? 1)")
                 .font(.cairo(.semiBold, size: 10))
                 .foregroundStyle(tierColor)
 
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(.white.opacity(0.1)).frame(height: 4)
-                    Capsule().fill(tierColor).frame(width: geo.size.width * 0.35, height: 4)
-                }
+            ZStack(alignment: .leading) {
+                Capsule().fill(.white.opacity(0.1)).frame(width: 80, height: 4)
+                Capsule().fill(tierColor).frame(width: 80 * 0.35, height: 4)
             }
-            .frame(width: 60, height: 4)
         }
     }
 
@@ -297,7 +308,7 @@ struct MainView: View {
         HStack(spacing: AppSizes.Spacing.md) {
             actionBtn(icon: "gift.fill", title: AppStrings.Main.dailyReward,
                       color: Color(hex: "FFD700"), badge: viewModel.canClaimDaily) {
-                // TODO: شاشة المكافأة اليومية
+                showDailyReward = true
             }
 
             actionBtn(icon: "arrow.trianglehead.2.counterclockwise.rotate.90",
