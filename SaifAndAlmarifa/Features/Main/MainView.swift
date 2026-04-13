@@ -16,6 +16,8 @@ struct MainView: View {
     @State private var showSpinWheel = false
     @State private var showPlayerCard = false
     @State private var showDailyReward = false
+    @State private var showFriends = false
+    @State private var showNotifications = false
     @State private var appeared = false
 
     var body: some View {
@@ -65,6 +67,8 @@ struct MainView: View {
         .fullScreenCover(isPresented: $showProfile) { ProfileView() }
         .fullScreenCover(isPresented: $showSpinWheel) { SpinWheelView() }
         .fullScreenCover(isPresented: $showDailyReward) { DailyRewardView() }
+        .fullScreenCover(isPresented: $showFriends) { FriendsView() }
+        .fullScreenCover(isPresented: $showNotifications) { NotificationsView() }
         .playerCard(
             isPresented: $showPlayerCard,
             data: authManager.currentUser.map {
@@ -118,33 +122,34 @@ struct MainView: View {
 
     private var topBar: some View {
         HStack(spacing: AppSizes.Spacing.sm) {
-            // الأفاتار + الاسم → يعرض بطاقة اللاعب
+            // الأفاتار → بطاقة اللاعب
             Button { showPlayerCard = true } label: {
-                HStack(spacing: AppSizes.Spacing.sm) {
-                    ZStack(alignment: .bottomTrailing) {
-                        AvatarView(imageURL: authManager.currentUser?.fullAvatarUrl, size: 50)
-                            .overlay(Circle().stroke(tierColor, lineWidth: 2.5))
-                            .shadow(color: tierColor.opacity(0.4), radius: 6)
+                ZStack(alignment: .bottomTrailing) {
+                    AvatarView(imageURL: authManager.currentUser?.fullAvatarUrl, size: 46)
+                        .overlay(Circle().stroke(tierColor, lineWidth: 2))
 
-                        Text(tierEmoji)
-                            .font(.system(size: 12))
-                            .frame(width: 18, height: 18)
-                            .background(Color(hex: "0E1236"))
-                            .clipShape(Circle())
-                            .offset(x: 3, y: 3)
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(authManager.currentUser?.username ?? "محارب")
-                            .font(.cairo(.bold, size: AppSizes.Font.bodyLarge))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-
-                        xpBar
-                    }
+                    Text(tierEmoji)
+                        .font(.system(size: 10))
+                        .frame(width: 16, height: 16)
+                        .background(Color(hex: "0E1236"))
+                        .clipShape(Circle())
+                        .offset(x: 3, y: 3)
                 }
             }
-            .buttonStyle(.plain)
+
+            // الاسم + المستوى
+            VStack(alignment: .leading, spacing: 1) {
+                Text(authManager.currentUser?.username ?? "محارب")
+                    .font(.cairo(.bold, size: AppSizes.Font.body))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("\(AppStrings.Main.level) \(authManager.currentUser?.level ?? 1)")
+                    .font(.cairo(.medium, size: 10))
+                    .foregroundStyle(tierColor)
+            }
+            .frame(maxWidth: 80, alignment: .leading)
 
             Spacer()
 
@@ -162,26 +167,13 @@ struct MainView: View {
             .overlay(Capsule().stroke(AppColors.Default.goldPrimary.opacity(0.3), lineWidth: 1))
 
             // الإشعارات
-            iconBadge("bell.fill", count: viewModel.unreadCount) {}
+            iconBadge("bell.fill", count: viewModel.unreadCount) { showNotifications = true }
             // الإعدادات
             iconBtn("gearshape.fill") { showProfile = true }
         }
     }
 
     // MARK: شريط XP
-    private var xpBar: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text("\(AppStrings.Main.level) \(authManager.currentUser?.level ?? 1)")
-                .font(.cairo(.semiBold, size: 10))
-                .foregroundStyle(tierColor)
-
-            ZStack(alignment: .leading) {
-                Capsule().fill(.white.opacity(0.1)).frame(width: 80, height: 4)
-                Capsule().fill(tierColor).frame(width: 80 * 0.35, height: 4)
-            }
-        }
-    }
-
     // MARK: - ═══════ البطاقتين الرئيسيتين ═══════
 
     private var mainCards: some View {

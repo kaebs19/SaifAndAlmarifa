@@ -10,6 +10,7 @@ import SwiftUI
 // MARK: - حالات الشاشة الجذرية
 enum AppScreen {
     case splash
+    case onboarding
     case auth
     case main
 }
@@ -25,8 +26,20 @@ struct ContentView: View {
             case .splash:
                 SplashView { destination in
                     withAnimation(.easeInOut(duration: 0.4)) {
-                        currentScreen = destination == .main ? .main : .auth
+                        if destination == .main {
+                            currentScreen = .main
+                        } else if !OnboardingView.isCompleted {
+                            currentScreen = .onboarding
+                        } else {
+                            currentScreen = .auth
+                        }
                     }
+                }
+                .transition(.opacity)
+
+            case .onboarding:
+                OnboardingView {
+                    withAnimation { currentScreen = .auth }
                 }
                 .transition(.opacity)
 

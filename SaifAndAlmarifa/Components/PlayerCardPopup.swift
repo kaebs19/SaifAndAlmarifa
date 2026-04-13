@@ -47,32 +47,26 @@ struct PlayerCardPopup: View {
 
             // البطاقة
             VStack(spacing: 0) {
-                closeBtn
                 cardContent
             }
             .frame(maxWidth: 340)
+            .background(Color(hex: "12103B"))
             .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.xl))
             .overlay(
                 RoundedRectangle(cornerRadius: AppSizes.Radius.xl)
                     .stroke(tierColor.opacity(0.5), lineWidth: 2)
             )
-            .shadow(color: tierColor.opacity(0.3), radius: 20)
-            .padding(.horizontal, AppSizes.Spacing.xl)
-        }
-    }
-
-    // MARK: زر الإغلاق
-    private var closeBtn: some View {
-        HStack {
-            Spacer()
-            Button(action: onClose) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.white.opacity(0.7))
+            .overlay(alignment: .topTrailing) {
+                Button(action: onClose) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+                .padding(AppSizes.Spacing.sm)
             }
-            .padding(AppSizes.Spacing.sm)
+            .shadow(color: tierColor.opacity(0.3), radius: 20)
+            .padding(.horizontal, AppSizes.Spacing.lg)
         }
-        .background(Color.clear)
     }
 
     // MARK: محتوى البطاقة

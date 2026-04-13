@@ -13,6 +13,8 @@ struct MatchSearchOverlay: View {
     var modeName: String?
     let onCancel: () -> Void
     @State private var pulse = false
+    @State private var elapsed = 0
+    @State private var timer: Timer?
 
     var body: some View {
         ZStack {
@@ -33,10 +35,17 @@ struct MatchSearchOverlay: View {
                     .font(.cairo(.bold, size: AppSizes.Font.title3))
                     .foregroundStyle(.white)
 
-                if let name = modeName {
-                    Text(name)
-                        .font(.cairo(.medium, size: AppSizes.Font.body))
-                        .foregroundStyle(AppColors.Default.goldPrimary)
+                HStack(spacing: AppSizes.Spacing.md) {
+                    if let name = modeName {
+                        Text(name)
+                            .font(.cairo(.medium, size: AppSizes.Font.body))
+                            .foregroundStyle(AppColors.Default.goldPrimary)
+                    }
+
+                    Text(timeString)
+                        .font(.poppins(.bold, size: AppSizes.Font.body))
+                        .foregroundStyle(.white.opacity(0.5))
+                        .monospacedDigit()
                 }
 
                 // نقاط متحركة
@@ -74,6 +83,14 @@ struct MatchSearchOverlay: View {
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                 pulse = true
             }
+            timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+                elapsed += 1
+            }
         }
+        .onDisappear { timer?.invalidate() }
+    }
+
+    private var timeString: String {
+        String(format: "%d:%02d", elapsed / 60, elapsed % 60)
     }
 }
