@@ -9,12 +9,14 @@ import SwiftUI
 
 struct StoreView: View {
     @StateObject private var viewModel = StoreViewModel()
+    @State private var showGemStore = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(spacing: 0) {
             header
             currencyBar
+            buyGemsButton
             tabs
             TabView(selection: $viewModel.selectedTab) {
                 shopGrid.tag(0)
@@ -52,6 +54,31 @@ struct StoreView: View {
         }
         .padding(.horizontal, AppSizes.Spacing.lg)
         .padding(.bottom, AppSizes.Spacing.md)
+    }
+
+    // MARK: زر شراء جواهر
+    private var buyGemsButton: some View {
+        Button { showGemStore = true } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 16))
+                Text("شراء جواهر")
+                    .font(.cairo(.bold, size: AppSizes.Font.body))
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: AppSizes.Button.medium)
+            .background(
+                LinearGradient(
+                    colors: [Color(hex: "3B82F6"), Color(hex: "60A5FA")],
+                    startPoint: .leading, endPoint: .trailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+        }
+        .padding(.horizontal, AppSizes.Spacing.lg)
+        .padding(.bottom, AppSizes.Spacing.sm)
+        .fullScreenCover(isPresented: $showGemStore) { GemStoreView() }
     }
 
     private func currencyBadge(icon: String, value: Int, label: String, color: Color) -> some View {
