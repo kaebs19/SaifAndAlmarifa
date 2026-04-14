@@ -122,8 +122,8 @@ struct MainView: View {
 
     private var topBar: some View {
         HStack(spacing: AppSizes.Spacing.sm) {
-            // الأفاتار + الاسم → الملف الشخصي
-            Button { showProfile = true } label: {
+            // الأفاتار + الاسم → بطاقة اللاعب (popup)
+            Button { showPlayerCard = true } label: {
                 HStack(spacing: AppSizes.Spacing.sm) {
                     ZStack(alignment: .bottomTrailing) {
                         AsyncImage(url: URL(string: authManager.currentUser?.fullAvatarUrl ?? "")) { img in
