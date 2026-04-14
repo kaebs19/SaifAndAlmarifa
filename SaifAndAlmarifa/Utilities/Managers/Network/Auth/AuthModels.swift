@@ -64,6 +64,7 @@ struct User: Codable, Identifiable, Equatable {
     let avatarUrl: String?
     let country: String?
     let level: Int?
+    let gold: Int?
     let gems: Int?
     let friendCode: String?
     let createdAt: String?

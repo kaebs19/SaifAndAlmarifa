@@ -18,6 +18,8 @@ struct MainView: View {
     @State private var showDailyReward = false
     @State private var showFriends = false
     @State private var showNotifications = false
+    @State private var showStore = false
+    @State private var showLeaderboard = false
     @State private var appeared = false
 
     var body: some View {
@@ -69,6 +71,8 @@ struct MainView: View {
         .fullScreenCover(isPresented: $showDailyReward) { DailyRewardView() }
         .fullScreenCover(isPresented: $showFriends) { FriendsView() }
         .fullScreenCover(isPresented: $showNotifications) { NotificationsView() }
+        .fullScreenCover(isPresented: $showStore) { StoreView() }
+        .fullScreenCover(isPresented: $showLeaderboard) { LeaderboardView() }
         .playerCard(
             isPresented: $showPlayerCard,
             data: authManager.currentUser.map {
@@ -161,18 +165,35 @@ struct MainView: View {
 
             Spacer()
 
-            // الجواهر
-            HStack(spacing: 5) {
-                Image("icon_gem").resizable().scaledToFit().frame(width: 18, height: 18)
-                Text("\(authManager.currentUser?.gems ?? 0)")
-                    .font(.poppins(.bold, size: AppSizes.Font.body))
-                    .foregroundStyle(AppColors.Default.goldPrimary)
+            // الذهب
+            Button { showStore = true } label: {
+                HStack(spacing: 4) {
+                    Text("🪙").font(.system(size: 14))
+                    Text("\(authManager.currentUser?.gold ?? 0)")
+                        .font(.poppins(.bold, size: 12))
+                        .foregroundStyle(Color(hex: "FFD700"))
+                }
+                .padding(.horizontal, AppSizes.Spacing.xs)
+                .padding(.vertical, 4)
+                .background(Color(hex: "FFD700").opacity(0.08))
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(Color(hex: "FFD700").opacity(0.2), lineWidth: 1))
             }
-            .padding(.horizontal, AppSizes.Spacing.sm)
-            .padding(.vertical, 6)
-            .background(AppColors.Default.goldPrimary.opacity(0.08))
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(AppColors.Default.goldPrimary.opacity(0.3), lineWidth: 1))
+
+            // الجواهر
+            Button { showStore = true } label: {
+                HStack(spacing: 4) {
+                    Image("icon_gem").resizable().scaledToFit().frame(width: 14, height: 14)
+                    Text("\(authManager.currentUser?.gems ?? 0)")
+                        .font(.poppins(.bold, size: 12))
+                        .foregroundStyle(Color(hex: "60A5FA"))
+                }
+                .padding(.horizontal, AppSizes.Spacing.xs)
+                .padding(.vertical, 4)
+                .background(Color(hex: "60A5FA").opacity(0.08))
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(Color(hex: "60A5FA").opacity(0.2), lineWidth: 1))
+            }
 
             // الإشعارات
             iconBadge("bell.fill", count: viewModel.unreadCount) { showNotifications = true }
@@ -305,21 +326,42 @@ struct MainView: View {
     // MARK: - ═══════ الإجراءات السريعة ═══════
 
     private var quickActions: some View {
-        HStack(spacing: AppSizes.Spacing.md) {
-            actionBtn(icon: "gift.fill", title: AppStrings.Main.dailyReward,
-                      color: Color(hex: "FFD700"), badge: viewModel.canClaimDaily) {
-                showDailyReward = true
+        VStack(spacing: AppSizes.Spacing.sm) {
+            // صف 1: مكافأة + عجلة + كود
+            HStack(spacing: AppSizes.Spacing.md) {
+                actionBtn(icon: "gift.fill", title: AppStrings.Main.dailyReward,
+                          color: Color(hex: "FFD700"), badge: viewModel.canClaimDaily) {
+                    showDailyReward = true
+                }
+
+                actionBtn(icon: "arrow.trianglehead.2.counterclockwise.rotate.90",
+                          title: AppStrings.Main.spinWheel,
+                          color: Color(hex: "DAA520"), badge: viewModel.canSpin) {
+                    showSpinWheel = true
+                }
+
+                actionBtn(icon: "keyboard", title: AppStrings.Main.joinRoom,
+                          color: Color(hex: "C9A227"), badge: false) {
+                    viewModel.showJoinRoom = true
+                }
             }
 
-            actionBtn(icon: "arrow.trianglehead.2.counterclockwise.rotate.90",
-                      title: AppStrings.Main.spinWheel,
-                      color: Color(hex: "DAA520"), badge: viewModel.canSpin) {
-                showSpinWheel = true
-            }
+            // صف 2: متجر + متصدرين + أصدقاء
+            HStack(spacing: AppSizes.Spacing.md) {
+                actionBtn(icon: "bag.fill", title: "المتجر",
+                          color: Color(hex: "8B5CF6"), badge: false) {
+                    showStore = true
+                }
 
-            actionBtn(icon: "keyboard", title: AppStrings.Main.joinRoom,
-                      color: Color(hex: "C9A227"), badge: false) {
-                viewModel.showJoinRoom = true
+                actionBtn(icon: "trophy.fill", title: "المتصدرين",
+                          color: Color(hex: "F59E0B"), badge: false) {
+                    showLeaderboard = true
+                }
+
+                actionBtn(icon: "person.2.fill", title: "الأصدقاء",
+                          color: Color(hex: "22C55E"), badge: false) {
+                    showFriends = true
+                }
             }
         }
     }

@@ -159,8 +159,8 @@ final class AuthService: APIService {
             let updated = User(
                 id: user.id, username: user.username, email: user.email,
                 role: user.role, avatarUrl: result.avatarUrl, country: user.country,
-                level: user.level, gems: user.gems, friendCode: user.friendCode,
-                createdAt: user.createdAt
+                level: user.level, gold: user.gold, gems: user.gems,
+                friendCode: user.friendCode, createdAt: user.createdAt
             )
             authManager.updateCurrentUser(updated)
         }
