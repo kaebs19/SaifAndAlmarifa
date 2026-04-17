@@ -56,6 +56,15 @@ final class AppSocketManager: ObservableObject {
     let onRoomError = PassthroughSubject<[String: Any], Never>()
     let onRoomInvited = PassthroughSubject<[String: Any], Never>()
 
+    // Clan Publishers
+    let onClanMessage = PassthroughSubject<[String: Any], Never>()          // رسالة جديدة
+    let onClanMessageDeleted = PassthroughSubject<String, Never>()          // messageId
+    let onClanMemberJoined = PassthroughSubject<[String: Any], Never>()
+    let onClanMemberLeft = PassthroughSubject<[String: Any], Never>()
+    let onClanMemberRoleChanged = PassthroughSubject<[String: Any], Never>()
+    let onClanTyping = PassthroughSubject<[String: Any], Never>()           // { userId, username }
+    let onClanUpdated = PassthroughSubject<[String: Any], Never>()          // clan meta changed
+
     // MARK: - Dependencies
     private let keychain = KeychainManager.shared
 
@@ -170,6 +179,23 @@ final class AppSocketManager: ObservableObject {
             "matchId": matchId,
             "itemId": itemId
         ])
+    }
+
+    // MARK: - ═══════════════ Clan ═══════════════
+
+    /// الانضمام لغرفة سوكِت الخاصة بالعشيرة (للاستماع للرسائل)
+    func joinClanRoom(_ clanId: String) {
+        emit("clan:join", data: ["clanId": clanId])
+    }
+
+    /// مغادرة غرفة السوكِت (عند الخروج من شاشة العشيرة)
+    func leaveClanRoom(_ clanId: String) {
+        emit("clan:leave", data: ["clanId": clanId])
+    }
+
+    /// إشعار "يكتب الآن"
+    func sendClanTyping(_ clanId: String) {
+        emit("clan:typing", data: ["clanId": clanId])
     }
 
     // MARK: - ═══════════════ Private ═══════════════
@@ -331,6 +357,51 @@ final class AppSocketManager: ObservableObject {
         socket.on("match:ended") { [weak self] data, _ in
             Task { @MainActor in
                 if let d = data.first as? [String: Any] { self?.onMatchEnded.send(d) }
+            }
+        }
+
+        // ── Clan ──
+        socket.on("clan:message") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onClanMessage.send(d) }
+            }
+        }
+
+        socket.on("clan:message-deleted") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any], let id = d["messageId"] as? String {
+                    self?.onClanMessageDeleted.send(id)
+                }
+            }
+        }
+
+        socket.on("clan:member-joined") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onClanMemberJoined.send(d) }
+            }
+        }
+
+        socket.on("clan:member-left") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onClanMemberLeft.send(d) }
+            }
+        }
+
+        socket.on("clan:member-role-changed") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onClanMemberRoleChanged.send(d) }
+            }
+        }
+
+        socket.on("clan:typing") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onClanTyping.send(d) }
+            }
+        }
+
+        socket.on("clan:updated") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onClanUpdated.send(d) }
             }
         }
     }

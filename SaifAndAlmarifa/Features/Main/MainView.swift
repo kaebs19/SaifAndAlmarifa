@@ -20,6 +20,7 @@ struct MainView: View {
     @State private var showNotifications = false
     @State private var showStore = false
     @State private var showLeaderboard = false
+    @State private var showClans = false
     @State private var appeared = false
 
     var body: some View {
@@ -73,6 +74,7 @@ struct MainView: View {
         .fullScreenCover(isPresented: $showNotifications) { NotificationsView() }
         .fullScreenCover(isPresented: $showStore) { StoreView() }
         .fullScreenCover(isPresented: $showLeaderboard) { LeaderboardView() }
+        .fullScreenCover(isPresented: $showClans) { ClansHubView() }
         .playerCard(
             isPresented: $showPlayerCard,
             data: authManager.currentUser.map {
@@ -362,6 +364,13 @@ struct MainView: View {
                           color: Color(hex: "22C55E"), badge: false) {
                     showFriends = true
                 }
+            }
+
+            // صف 3: العشائر (عرض كامل)
+            actionBtn(icon: "shield.lefthalf.filled",
+                      title: "العشائر",
+                      color: Color(hex: "FFD700"), badge: false) {
+                showClans = true
             }
         }
     }
