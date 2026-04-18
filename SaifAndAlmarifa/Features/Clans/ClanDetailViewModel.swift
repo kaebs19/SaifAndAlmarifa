@@ -50,10 +50,35 @@ final class ClanDetailViewModel: ObservableObject {
     var myId: String? { auth.currentUser?.id }
 
     var availableTabs: [String] {
-        var tabs = ["الشات", "الأعضاء", "الترتيب"]
+        var tabs = ["الشات", "الإحصائيات", "الترتيب", "الأعضاء"]
         if canManage { tabs.append("الطلبات") }
-        tabs.append("معلومات")
         return tabs
+    }
+
+    // MARK: - Derived stats
+    var onlineMembersCount: Int {
+        members.filter { $0.isOnline == true }.count
+    }
+
+    /// MVP للأسبوع (أعلى نقاط)
+    var mvp: ClanMember? {
+        leaderboard.max(by: { $0.weeklyPoints < $1.weeklyPoints })
+    }
+
+    /// الدور الخاص بي في القائمة (لإبراز بطاقتي)
+    var myMemberRecord: ClanMember? {
+        members.first { $0.id == myId }
+    }
+
+    var membersByRole: [(role: ClanRole, members: [ClanMember])] {
+        let owners  = members.filter { $0.role == .owner }
+        let admins  = members.filter { $0.role == .admin }.sorted { $0.weeklyPoints > $1.weeklyPoints }
+        let regular = members.filter { $0.role == .member }.sorted { $0.weeklyPoints > $1.weeklyPoints }
+        var result: [(ClanRole, [ClanMember])] = []
+        if !owners.isEmpty  { result.append((.owner, owners)) }
+        if !admins.isEmpty  { result.append((.admin, admins)) }
+        if !regular.isEmpty { result.append((.member, regular)) }
+        return result
     }
 
     init(clanId: String) {
@@ -64,11 +89,13 @@ final class ClanDetailViewModel: ObservableObject {
     // MARK: - Lifecycle
     func onAppear() async {
         socket.joinClanRoom(clanId)
+        ClanStateManager.shared.enteringClanScreen(clanId)
         await loadAll()
     }
 
     func onDisappear() {
         socket.leaveClanRoom(clanId)
+        ClanStateManager.shared.leavingClanScreen()
         typingTimers.values.forEach { $0.invalidate() }
         typingTimers.removeAll()
         typingUsernames.removeAll()
@@ -299,6 +326,7 @@ final class ClanDetailViewModel: ObservableObject {
             if res.isJoined {
                 toast.success("انضممت إلى العشيرة")
                 await loadAll()
+                if let c = clan { ClanStateManager.shared.setMyClan(c) }
                 return true
             } else {
                 toast.info("تم إرسال طلب انضمام")
@@ -319,6 +347,7 @@ final class ClanDetailViewModel: ObservableObject {
             try await service.leave(clanId)
             HapticManager.success()
             toast.info("غادرت العشيرة")
+            ClanStateManager.shared.removeMyClan()
             didLeave = true
         } catch let e as APIError {
             toast.error(e.errorDescription ?? "فشل")
@@ -330,6 +359,7 @@ final class ClanDetailViewModel: ObservableObject {
             try await service.delete(clanId)
             HapticManager.success()
             toast.info("تم حذف العشيرة")
+            ClanStateManager.shared.removeMyClan()
             didLeave = true
         } catch { toast.error("فشل الحذف") }
     }

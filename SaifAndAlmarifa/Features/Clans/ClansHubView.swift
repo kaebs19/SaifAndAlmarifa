@@ -24,9 +24,11 @@ struct ClansHubView: View {
             ClanScreenHeader(title: "العشائر", onClose: { dismiss() })
 
             if let clan = viewModel.myClan {
-                myClanCard(clan)
-                    .padding(.horizontal, AppSizes.Spacing.lg)
-                    .padding(.bottom, AppSizes.Spacing.md)
+                MyClanHeroCard(clan: clan) {
+                    navigateToClanId = clan.id
+                }
+                .padding(.horizontal, AppSizes.Spacing.lg)
+                .padding(.bottom, AppSizes.Spacing.md)
             } else if viewModel.hasLoaded {
                 createBanner
                     .padding(.horizontal, AppSizes.Spacing.lg)
@@ -60,53 +62,6 @@ struct ClansHubView: View {
                 Task { await viewModel.refresh() }
             }
         }
-    }
-
-    // MARK: - بطاقة عشيرتي
-    private func myClanCard(_ clan: Clan) -> some View {
-        Button {
-            HapticManager.medium()
-            navigateToClanId = clan.id
-        } label: {
-            HStack(spacing: AppSizes.Spacing.md) {
-                ClanBadgeView(badge: clan.badge, color: clan.displayColor, size: 56)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text(clan.name)
-                            .font(.cairo(.bold, size: AppSizes.Font.title3))
-                            .foregroundStyle(.white)
-                        if let role = clan.myRole {
-                            Image(systemName: role.icon)
-                                .font(.system(size: 11))
-                                .foregroundStyle(role.color)
-                        }
-                    }
-                    HStack(spacing: 10) {
-                        label(icon: "shield.lefthalf.filled", text: "Lv.\(clan.level)")
-                        label(icon: "person.2.fill", text: "\(clan.memberCount ?? 0)")
-                        label(icon: "chart.line.uptrend.xyaxis", text: "\(clan.weeklyPoints)")
-                    }
-                    .foregroundStyle(.white.opacity(0.6))
-                }
-                Spacer()
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.4))
-            }
-            .padding(AppSizes.Spacing.md)
-            .background(
-                LinearGradient(
-                    colors: [clan.displayColor.opacity(0.18), clan.displayColor.opacity(0.04)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.large))
-            .overlay(
-                RoundedRectangle(cornerRadius: AppSizes.Radius.large)
-                    .stroke(clan.displayColor.opacity(0.35), lineWidth: 1.5)
-            )
-        }
-        .buttonStyle(ScaleButtonStyle())
     }
 
     // MARK: - بانر الإنشاء
@@ -151,11 +106,32 @@ struct ClansHubView: View {
             } else if viewModel.topClans.isEmpty {
                 ClanEmptyState(icon: "trophy", title: "لا توجد عشائر بعد")
             } else {
+                let top3 = Array(viewModel.topClans.prefix(3))
+                let rest = Array(viewModel.topClans.dropFirst(3))
+
+                // منصّة Top 3
+                if top3.count >= 2 {
+                    ClanPodium(top3: top3) { navigateToClanId = $0.id }
+
+                    if !rest.isEmpty {
+                        HStack {
+                            Text("الترتيب العام")
+                                .font(.cairo(.bold, size: AppSizes.Font.caption))
+                                .foregroundStyle(.white.opacity(0.5))
+                            Spacer()
+                        }
+                        .padding(.horizontal, AppSizes.Spacing.lg)
+                        .padding(.top, AppSizes.Spacing.sm)
+                    }
+                }
+
                 LazyVStack(spacing: 0) {
-                    ForEach(viewModel.topClans) { entry in
+                    ForEach(top3.count >= 2 ? rest : viewModel.topClans) { entry in
+                        let isMine = entry.id == viewModel.myClan?.id
                         ClanRankRow(entry: entry) {
                             navigateToClanId = entry.id
                         }
+                        .background(isMine ? AppColors.Default.goldPrimary.opacity(0.08) : .clear)
                         Divider().overlay(.white.opacity(0.05)).padding(.leading, 70)
                     }
                 }
@@ -209,13 +185,6 @@ struct ClansHubView: View {
         .dismissKeyboardOnTap()
     }
 
-    // MARK: - Helpers
-    private func label(icon: String, text: String) -> some View {
-        HStack(spacing: 3) {
-            Image(systemName: icon).font(.system(size: 10))
-            Text(text).font(.poppins(.semiBold, size: 11))
-        }
-    }
 }
 
 // MARK: - Helper (للـ fullScreenCover(item:))

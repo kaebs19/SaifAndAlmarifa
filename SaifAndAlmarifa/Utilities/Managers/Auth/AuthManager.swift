@@ -44,6 +44,7 @@ final class AuthManager: ObservableObject {
         currentUser = user
         isAuthenticated = true
         AppSocketManager.shared.connect()
+        Task { await ClanStateManager.shared.loadMyClan() }
     }
 
     // MARK: - تحديث بيانات المستخدم (getMe)
@@ -55,6 +56,7 @@ final class AuthManager: ObservableObject {
     // MARK: - تسجيل الخروج (مسح كل شيء)
     func logout() {
         AppSocketManager.shared.disconnect()
+        ClanStateManager.shared.clear()
         keychain.clearAll()
         clearUserLocally()
         currentUser = nil
@@ -71,6 +73,8 @@ final class AuthManager: ObservableObject {
         }
         currentUser = loadUserLocally()
         isAuthenticated = true
+        AppSocketManager.shared.connect()
+        Task { await ClanStateManager.shared.loadMyClan() }
     }
 
     /// حفظ User في UserDefaults (كـ JSON)

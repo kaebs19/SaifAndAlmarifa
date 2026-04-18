@@ -36,10 +36,10 @@ struct ClanDetailView: View {
 
                 TabView(selection: $viewModel.selectedTab) {
                     chatTab.tag(0)
-                    membersTab.tag(1)
+                    statsTab.tag(1)
                     leaderboardTab.tag(2)
-                    if viewModel.canManage { requestsTab.tag(3); infoTab.tag(4) }
-                    else { infoTab.tag(3) }
+                    membersTab.tag(3)
+                    if viewModel.canManage { requestsTab.tag(4) }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
             } else if viewModel.isLoading {
@@ -302,24 +302,221 @@ struct ClanDetailView: View {
         }
     }
 
-    // MARK: - Members Tab
+    // MARK: - Members Tab (مجموعات حسب الدور)
     private var membersTab: some View {
         ScrollView {
-            LazyVStack(spacing: 0) {
-                ForEach(viewModel.members) { member in
-                    ClanMemberRow(
-                        member: member,
-                        canManage: viewModel.canManage && member.id != viewModel.myId,
-                        onAction: { action in
-                            Task { await viewModel.handleMember(member, action: action) }
-                        }
-                    )
-                    Divider().overlay(.white.opacity(0.05)).padding(.leading, 60)
+            // عدّاد متصلين
+            HStack {
+                Label("\(viewModel.members.count) عضو", systemImage: "person.2.fill")
+                    .font(.cairo(.semiBold, size: 11))
+                    .foregroundStyle(.white.opacity(0.5))
+                Spacer()
+                HStack(spacing: 4) {
+                    Circle().fill(AppColors.Default.success).frame(width: 6, height: 6)
+                    Text("\(viewModel.onlineMembersCount) متصل")
+                        .font(.cairo(.semiBold, size: 11))
+                        .foregroundStyle(AppColors.Default.success)
                 }
             }
+            .padding(.horizontal, AppSizes.Spacing.lg)
             .padding(.top, AppSizes.Spacing.sm)
+
+            LazyVStack(spacing: 0) {
+                ForEach(viewModel.membersByRole, id: \.role) { group in
+                    // عنوان المجموعة
+                    HStack(spacing: 6) {
+                        Image(systemName: group.role.icon)
+                            .font(.system(size: 10))
+                            .foregroundStyle(group.role.color)
+                        Text("\(group.role.titleAr) (\(group.members.count))")
+                            .font(.cairo(.bold, size: 11))
+                            .foregroundStyle(group.role.color)
+                        Spacer()
+                    }
+                    .padding(.horizontal, AppSizes.Spacing.lg)
+                    .padding(.top, AppSizes.Spacing.md)
+                    .padding(.bottom, 4)
+
+                    ForEach(group.members) { member in
+                        ClanMemberRow(
+                            member: member,
+                            canManage: viewModel.canManage && member.id != viewModel.myId,
+                            onAction: { action in
+                                Task { await viewModel.handleMember(member, action: action) }
+                            }
+                        )
+                        Divider().overlay(.white.opacity(0.05)).padding(.leading, 60)
+                    }
+                }
+            }
+            .padding(.bottom, AppSizes.Spacing.lg)
+
             if viewModel.members.isEmpty { ClanEmptyState(icon: "person.2.slash", title: "لا أعضاء") }
         }
+    }
+
+    // MARK: - Stats Tab (إحصائيات + MVP)
+    private var statsTab: some View {
+        ScrollView {
+            VStack(spacing: AppSizes.Spacing.md) {
+                if let clan = viewModel.clan {
+                    // Grid إحصائيات رئيسية
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2),
+                              spacing: 10) {
+                        ClanStatTile(
+                            icon: "chart.line.uptrend.xyaxis",
+                            label: "نقاط الأسبوع",
+                            value: "\(clan.weeklyPoints)",
+                            color: clan.displayColor
+                        )
+                        ClanStatTile(
+                            icon: "medal.fill",
+                            label: "النقاط الكلية",
+                            value: "\(clan.totalPoints ?? 0)",
+                            color: Color(hex: "F59E0B")
+                        )
+                        ClanStatTile(
+                            icon: "person.2.fill",
+                            label: "الأعضاء",
+                            value: "\(clan.memberCount ?? 0)/\(clan.maxMembers ?? 30)",
+                            color: Color(hex: "22C55E")
+                        )
+                        ClanStatTile(
+                            icon: "circle.fill",
+                            label: "متصلون الآن",
+                            value: "\(viewModel.onlineMembersCount)",
+                            color: AppColors.Default.success
+                        )
+                    }
+
+                    // تقدّم المستوى
+                    VStack(alignment: .leading, spacing: AppSizes.Spacing.xs) {
+                        HStack {
+                            Image(systemName: "shield.lefthalf.filled")
+                                .font(.system(size: 14))
+                                .foregroundStyle(clan.displayColor)
+                            Text("المستوى \(clan.level)")
+                                .font(.cairo(.bold, size: AppSizes.Font.body))
+                                .foregroundStyle(.white)
+                            Spacer()
+                            Text("\(Int(clan.levelProgress * 100))%")
+                                .font(.poppins(.bold, size: 12))
+                                .foregroundStyle(clan.displayColor)
+                        }
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(.white.opacity(0.08))
+                                Capsule()
+                                    .fill(
+                                        LinearGradient(colors: [clan.displayColor.opacity(0.6), clan.displayColor],
+                                                       startPoint: .leading, endPoint: .trailing)
+                                    )
+                                    .frame(width: geo.size.width * clan.levelProgress)
+                                    .shadow(color: clan.displayColor.opacity(0.5), radius: 5)
+                            }
+                        }
+                        .frame(height: 10)
+
+                        Text(nextLevelHint(for: clan))
+                            .font(.cairo(.regular, size: 10))
+                            .foregroundStyle(.white.opacity(0.4))
+                    }
+                    .padding(AppSizes.Spacing.md)
+                    .background(.white.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+
+                    // MVP
+                    if let mvp = viewModel.mvp, mvp.weeklyPoints > 0 {
+                        mvpCard(mvp)
+                    }
+
+                    // الوصف
+                    if let desc = clan.description, !desc.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("الوصف", systemImage: "text.alignright")
+                                .font(.cairo(.semiBold, size: 11))
+                                .foregroundStyle(.white.opacity(0.5))
+                            Text(desc)
+                                .font(.cairo(.regular, size: AppSizes.Font.body))
+                                .foregroundStyle(.white.opacity(0.8))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(AppSizes.Spacing.md)
+                        .background(.white.opacity(0.04))
+                        .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+                    }
+
+                    // إعدادات (للمالك فقط)
+                    if viewModel.isOwner {
+                        Button {
+                            Task { await viewModel.toggleOpen() }
+                        } label: {
+                            HStack {
+                                Image(systemName: (clan.isOpen ?? true) ? "lock" : "lock.open")
+                                Text((clan.isOpen ?? true) ? "تحويل لمغلقة (بطلب)" : "تحويل لمفتوحة")
+                                Spacer()
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 10))
+                            }
+                            .font(.cairo(.semiBold, size: AppSizes.Font.body))
+                            .foregroundStyle(AppColors.Default.goldPrimary)
+                            .padding(AppSizes.Spacing.md)
+                            .background(AppColors.Default.goldPrimary.opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
+                                    .stroke(AppColors.Default.goldPrimary.opacity(0.2), lineWidth: 1)
+                            )
+                        }
+                    }
+                }
+            }
+            .padding(AppSizes.Spacing.lg)
+        }
+    }
+
+    // MARK: - بطاقة MVP
+    private func mvpCard(_ mvp: ClanMember) -> some View {
+        HStack(spacing: AppSizes.Spacing.md) {
+            ZStack(alignment: .topTrailing) {
+                AvatarView(imageURL: mvp.avatarUrl, size: 56)
+                Text("👑")
+                    .font(.system(size: 18))
+                    .offset(x: 4, y: -8)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Label("نجم الأسبوع", systemImage: "star.fill")
+                    .font(.cairo(.semiBold, size: 10))
+                    .foregroundStyle(Color(hex: "FFD700"))
+                Text(mvp.username)
+                    .font(.cairo(.bold, size: AppSizes.Font.body))
+                    .foregroundStyle(.white)
+                Text("\(mvp.weeklyPoints) نقطة هذا الأسبوع")
+                    .font(.poppins(.medium, size: 11))
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+            Spacer()
+        }
+        .padding(AppSizes.Spacing.md)
+        .background(
+            LinearGradient(
+                colors: [Color(hex: "FFD700").opacity(0.18), Color(hex: "FFD700").opacity(0.02)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
+                .stroke(Color(hex: "FFD700").opacity(0.35), lineWidth: 1)
+        )
+    }
+
+    private func nextLevelHint(for clan: Clan) -> String {
+        let thresholds = [5_000, 15_000]
+        if clan.level >= 3 { return "وصلت لأعلى مستوى حالياً" }
+        let next = thresholds[min(clan.level - 1, thresholds.count - 1)]
+        let remaining = max(0, next - clan.weeklyPoints)
+        return "تحتاج \(remaining) نقطة للوصول للمستوى \(clan.level + 1)"
     }
 
     // MARK: - Leaderboard Tab
@@ -369,57 +566,4 @@ struct ClanDetailView: View {
         }
     }
 
-    // MARK: - Info Tab
-    private var infoTab: some View {
-        ScrollView {
-            VStack(spacing: AppSizes.Spacing.md) {
-                if let clan = viewModel.clan {
-                    infoCard(title: "الوصف", value: clan.description ?? "لا يوجد", icon: "text.alignright")
-                    infoCard(title: "نقاط هذا الأسبوع", value: "\(clan.weeklyPoints)", icon: "chart.line.uptrend.xyaxis")
-                    if let total = clan.totalPoints {
-                        infoCard(title: "النقاط الكلية", value: "\(total)", icon: "medal.fill")
-                    }
-                    infoCard(title: "الأعضاء", value: "\(clan.memberCount ?? 0) / \(clan.maxMembers ?? 30)", icon: "person.2.fill")
-                    infoCard(title: "الحالة", value: (clan.isOpen ?? true) ? "مفتوحة" : "بطلب انضمام", icon: (clan.isOpen ?? true) ? "lock.open" : "lock")
-
-                    if viewModel.isOwner {
-                        Button {
-                            Task { await viewModel.toggleOpen() }
-                        } label: {
-                            HStack {
-                                Image(systemName: (clan.isOpen ?? true) ? "lock" : "lock.open")
-                                Text((clan.isOpen ?? true) ? "تحويل لمغلقة (بطلب)" : "تحويل لمفتوحة")
-                            }
-                            .font(.cairo(.semiBold, size: AppSizes.Font.body))
-                            .foregroundStyle(AppColors.Default.goldPrimary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, AppSizes.Spacing.md)
-                            .background(AppColors.Default.goldPrimary.opacity(0.1))
-                            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
-                        }
-                    }
-                }
-            }
-            .padding(AppSizes.Spacing.lg)
-        }
-    }
-
-    private func infoCard(title: String, value: String, icon: String) -> some View {
-        HStack(spacing: AppSizes.Spacing.sm) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundStyle(AppColors.Default.goldPrimary)
-                .frame(width: 32, height: 32)
-                .background(AppColors.Default.goldPrimary.opacity(0.1))
-                .clipShape(Circle())
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.cairo(.regular, size: 11)).foregroundStyle(.white.opacity(0.5))
-                Text(value).font(.cairo(.semiBold, size: AppSizes.Font.body)).foregroundStyle(.white)
-            }
-            Spacer()
-        }
-        .padding(AppSizes.Spacing.md)
-        .background(.white.opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
-    }
 }

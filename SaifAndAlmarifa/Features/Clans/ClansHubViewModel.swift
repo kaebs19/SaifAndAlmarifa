@@ -108,6 +108,7 @@ final class ClansHubViewModel: ObservableObject {
     // MARK: - Create (called from CreateClanSheet)
     func handleCreated(_ clan: Clan) {
         myClan = clan
+        ClanStateManager.shared.setMyClan(clan)
         HapticManager.success()
     }
 }

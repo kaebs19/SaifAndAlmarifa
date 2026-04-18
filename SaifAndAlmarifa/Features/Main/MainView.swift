@@ -12,6 +12,7 @@ struct MainView: View {
 
     @StateObject private var viewModel = MainViewModel()
     @StateObject private var authManager = AuthManager.shared
+    @StateObject private var clanState = ClanStateManager.shared
     @State private var showProfile = false
     @State private var showSpinWheel = false
     @State private var showPlayerCard = false
@@ -21,6 +22,7 @@ struct MainView: View {
     @State private var showStore = false
     @State private var showLeaderboard = false
     @State private var showClans = false
+    @State private var directClanId: String?
     @State private var appeared = false
 
     var body: some View {
@@ -75,6 +77,12 @@ struct MainView: View {
         .fullScreenCover(isPresented: $showStore) { StoreView() }
         .fullScreenCover(isPresented: $showLeaderboard) { LeaderboardView() }
         .fullScreenCover(isPresented: $showClans) { ClansHubView() }
+        .fullScreenCover(item: Binding(
+            get: { directClanId.map { IdentifiableString(value: $0) } },
+            set: { directClanId = $0?.value }
+        )) { wrapper in
+            ClanDetailView(clanId: wrapper.value) { directClanId = nil }
+        }
         .playerCard(
             isPresented: $showPlayerCard,
             data: authManager.currentUser.map {
@@ -197,10 +205,60 @@ struct MainView: View {
                 .overlay(Capsule().stroke(Color(hex: "60A5FA").opacity(0.2), lineWidth: 1))
             }
 
+            // شارة عشيرتي (وصول مباشر)
+            if let clan = clanState.myClan {
+                clanTopBarBadge(clan)
+            }
+
             // الإشعارات
             iconBadge("bell.fill", count: viewModel.unreadCount) { showNotifications = true }
             // الإعدادات
             iconBtn("gearshape.fill") { showProfile = true }
+        }
+    }
+
+    // MARK: - شارة العشيرة في الـ TopBar
+    private func clanTopBarBadge(_ clan: Clan) -> some View {
+        Button {
+            HapticManager.light()
+            directClanId = clan.id
+        } label: {
+            ZStack(alignment: .topLeading) {
+                ZStack {
+                    Circle()
+                        .fill(clan.displayColor.opacity(0.15))
+                        .frame(width: 34, height: 34)
+                    Circle()
+                        .strokeBorder(clan.displayColor.opacity(0.5), lineWidth: 1)
+                        .frame(width: 34, height: 34)
+                    Image(systemName: clanBadgeIcon(clan.badge))
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(clan.displayColor)
+                }
+                if clanState.unreadCount > 0 {
+                    Text("\(min(clanState.unreadCount, 9))\(clanState.unreadCount > 9 ? "+" : "")")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(minWidth: 14, minHeight: 14)
+                        .padding(.horizontal, 2)
+                        .background(AppColors.Default.error)
+                        .clipShape(Capsule())
+                        .offset(x: -2, y: -2)
+                }
+            }
+        }
+    }
+
+    private func clanBadgeIcon(_ badge: String?) -> String {
+        switch (badge ?? "").lowercased() {
+        case "eagle":  return "bird.fill"
+        case "lion":   return "pawprint.fill"
+        case "shield": return "shield.fill"
+        case "sword":  return "bolt.shield.fill"
+        case "crown":  return "crown.fill"
+        case "star":   return "star.fill"
+        case "flame":  return "flame.fill"
+        default:       return "flag.fill"
         }
     }
 
@@ -366,9 +424,84 @@ struct MainView: View {
                 }
             }
 
-            // صف 3: العشائر (عرض كامل)
+            // صف 3: العشائر (زر ذكي)
+            smartClanButton
+        }
+    }
+
+    // MARK: - الزر الذكي للعشائر
+    @ViewBuilder
+    private var smartClanButton: some View {
+        if let clan = clanState.myClan {
+            // عنده عشيرة → Detail مباشرة + معلومات العشيرة
+            Button {
+                HapticManager.medium()
+                directClanId = clan.id
+            } label: {
+                HStack(spacing: AppSizes.Spacing.sm) {
+                    ZStack(alignment: .topTrailing) {
+                        ClanBadgeView(badge: clan.badge, color: clan.displayColor, size: 38)
+                        if clanState.unreadCount > 0 {
+                            Text("\(min(clanState.unreadCount, 9))\(clanState.unreadCount > 9 ? "+" : "")")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(minWidth: 16, minHeight: 16)
+                                .padding(.horizontal, 3)
+                                .background(AppColors.Default.error)
+                                .clipShape(Capsule())
+                                .offset(x: 4, y: -4)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Text(clan.name)
+                                .font(.cairo(.bold, size: AppSizes.Font.body))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                            if let role = clan.myRole {
+                                Image(systemName: role.icon)
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(role.color)
+                            }
+                        }
+                        HStack(spacing: 6) {
+                            Label("Lv.\(clan.level)", systemImage: "shield.lefthalf.filled")
+                                .labelStyle(.titleAndIcon)
+                                .font(.poppins(.semiBold, size: 9))
+                                .foregroundStyle(clan.displayColor)
+                            Text("•").foregroundStyle(.white.opacity(0.2))
+                            Text("\(clan.memberCount ?? 0) عضو")
+                                .font(.cairo(.medium, size: 10))
+                                .foregroundStyle(.white.opacity(0.5))
+                        }
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+                .padding(.horizontal, AppSizes.Spacing.md)
+                .padding(.vertical, AppSizes.Spacing.sm)
+                .background(
+                    LinearGradient(
+                        colors: [clan.displayColor.opacity(0.15), clan.displayColor.opacity(0.03)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
+                        .stroke(clan.displayColor.opacity(0.3), lineWidth: 1)
+                )
+            }
+            .buttonStyle(ScaleButtonStyle())
+        } else {
+            // ما عنده عشيرة → Hub
             actionBtn(icon: "shield.lefthalf.filled",
-                      title: "العشائر",
+                      title: "انضم إلى عشيرة",
                       color: Color(hex: "FFD700"), badge: false) {
                 showClans = true
             }
