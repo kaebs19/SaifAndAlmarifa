@@ -152,6 +152,7 @@ struct NotificationPayload {
     let raw: [AnyHashable: Any]
 
     enum NotificationType: String {
+        // Clan
         case clanMessage           = "clan_message"
         case clanMention           = "clan_mention"
         case clanMemberJoined      = "clan_member_joined"
@@ -161,6 +162,10 @@ struct NotificationPayload {
         case clanMuted             = "clan_muted"
         case clanWarStarted        = "clan_war_started"
         case clanWarEnded          = "clan_war_ended"
+        // Rewards (محلية أو سيرفر)
+        case dailyRewardReady      = "daily_reward_ready"
+        case spinWheelReady        = "spin_wheel_ready"
+        case muteEnded             = "mute_ended"
         case unknown
     }
 

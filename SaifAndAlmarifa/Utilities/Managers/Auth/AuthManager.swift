@@ -67,6 +67,7 @@ final class AuthManager: ObservableObject {
         AppSocketManager.shared.disconnect()
         ClanStateManager.shared.clear()
         Task { await PushNotificationsManager.shared.unregister() }
+        LocalNotificationsManager.cancelAll()
         keychain.clearAll()
         clearUserLocally()
         currentUser = nil

@@ -40,8 +40,18 @@ final class SpinWheelViewModel: ObservableObject {
             maxExtraSpins = status.maxExtraSpins ?? 3
             extraSpinCost = status.extraSpinCost ?? 10
             startCountdown()
+            scheduleReminder()
         } catch {
             toast.error("فشل تحميل العجلة")
+        }
+    }
+
+    /// جدولة تذكير محلي لوقت توفّر العجلة التالي
+    private func scheduleReminder() {
+        if canSpin {
+            LocalNotificationsManager.cancel(.spinWheel)
+        } else if nextFreeIn > 0 {
+            LocalNotificationsManager.scheduleSpinWheel(after: TimeInterval(nextFreeIn))
         }
     }
 
@@ -99,6 +109,7 @@ final class SpinWheelViewModel: ObservableObject {
             nextFreeIn = status.nextFreeInSeconds ?? 0
             extraSpinsUsed = status.extraSpinsUsed ?? 0
             startCountdown()
+            scheduleReminder()
         }
     }
 

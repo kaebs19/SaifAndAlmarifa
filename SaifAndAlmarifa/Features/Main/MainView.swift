@@ -25,6 +25,7 @@ struct MainView: View {
     @State private var showClans = false
     @State private var directClanId: String?
     @State private var appeared = false
+    @State private var pulse = false
 
     var body: some View {
         ZStack {
@@ -90,9 +91,40 @@ struct MainView: View {
                 PlayerCardData.from(user: $0, stats: viewModel.userStats)
             }
         )
-        .task { await viewModel.onAppear() }
+        .task {
+            await viewModel.onAppear()
+            // أنيميشن نبض للنقطة الحمراء
+            withAnimation(.easeOut(duration: 1.2).repeatForever(autoreverses: false)) {
+                pulse = true
+            }
+        }
+        .onChange(of: viewModel.canClaimDaily) { _, canClaim in
+            // تحديث الإشعار المحلي بناءً على حالة المكافأة
+            if canClaim {
+                LocalNotificationsManager.cancel(.dailyReward)
+            } else {
+                scheduleDailyReminder()
+            }
+        }
+        .onChange(of: viewModel.canSpin) { _, canSpin in
+            if canSpin {
+                LocalNotificationsManager.cancel(.spinWheel)
+            }
+        }
         .onReceive(push.onNotificationTap) { payload in
             handleNotificationTap(payload)
+        }
+    }
+
+    /// جدولة تذكير المكافأة اليومية لمنتصف الليل التالي
+    private func scheduleDailyReminder() {
+        let now = Date()
+        if let tomorrow = Calendar.current.nextDate(
+            after: now,
+            matching: DateComponents(hour: 0, minute: 0),
+            matchingPolicy: .nextTime
+        ) {
+            LocalNotificationsManager.scheduleDailyReward(after: tomorrow.timeIntervalSince(now))
         }
     }
 
@@ -102,13 +134,20 @@ struct MainView: View {
         switch payload.type {
         case .clanMessage, .clanMention, .clanMemberJoined,
              .clanRequestAccepted, .clanRoleChanged,
-             .clanMuted, .clanWarStarted, .clanWarEnded:
+             .clanMuted, .clanWarStarted, .clanWarEnded,
+             .muteEnded:
             if let id = payload.clanId {
                 directClanId = id
             }
         case .clanKicked:
             ClanStateManager.shared.removeMyClan()
             ToastManager.shared.info("تم طردك من العشيرة")
+        case .dailyRewardReady:
+            Task { await viewModel.onAppear() } // حدّث الحالة
+            showDailyReward = true
+        case .spinWheelReady:
+            Task { await viewModel.onAppear() }
+            showSpinWheel = true
         case .unknown:
             break
         }
@@ -598,23 +637,34 @@ struct MainView: View {
                     Image(systemName: icon)
                         .font(.system(size: 22))
                         .foregroundStyle(color)
+                        .shadow(color: badge ? color.opacity(0.8) : .clear, radius: badge ? 8 : 0)
                     if badge {
-                        Circle().fill(AppColors.Default.error).frame(width: 8, height: 8).offset(x: -4, y: -4)
+                        // نقطة نابضة
+                        Circle()
+                            .fill(AppColors.Default.error)
+                            .frame(width: 10, height: 10)
+                            .overlay(
+                                Circle()
+                                    .stroke(AppColors.Default.error.opacity(0.5), lineWidth: 2)
+                                    .scaleEffect(pulse ? 1.8 : 1.0)
+                                    .opacity(pulse ? 0 : 1)
+                            )
+                            .offset(x: -4, y: -4)
                     }
                 }
                 Text(title)
                     .font(.cairo(.medium, size: 11))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(badge ? .white : .white.opacity(0.6))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, AppSizes.Spacing.md)
-            .background(color.opacity(0.05))
+            .background(badge ? color.opacity(0.12) : color.opacity(0.05))
             .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
             .overlay(
                 RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
-                    .stroke(color.opacity(0.15), lineWidth: 1)
+                    .stroke(color.opacity(badge ? 0.4 : 0.15), lineWidth: badge ? 1.5 : 1)
             )
         }
         .buttonStyle(ScaleButtonStyle())
