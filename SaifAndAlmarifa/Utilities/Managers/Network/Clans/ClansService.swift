@@ -90,8 +90,8 @@ final class ClansService: APIService {
         try await network.request(ClansEndpoint.ChatList(id: id, beforeId: beforeId, limit: limit))
     }
 
-    func sendMessage(_ id: String, content: String, type: String = "text") async throws -> ClanMessage {
-        try await network.request(ClansEndpoint.SendMessage(id: id, content: content, type: type))
+    func sendMessage(_ id: String, content: String, type: String = "text", replyToId: String? = nil) async throws -> ClanMessage {
+        try await network.request(ClansEndpoint.SendMessage(id: id, content: content, type: type, replyToId: replyToId))
     }
 
     func sendGameCode(_ id: String, roomCode: String) async throws -> ClanMessage {

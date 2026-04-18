@@ -199,10 +199,23 @@ enum ClansEndpoint {
         let id: String
         let content: String
         let type: String  // text | announcement
+        let replyToId: String?
+
+        init(id: String, content: String, type: String, replyToId: String? = nil) {
+            self.id = id; self.content = content; self.type = type; self.replyToId = replyToId
+        }
+
         var path: String { "/clans/\(id)/chat" }
         var method: HTTPMethod { .post }
         var requiresAuth: Bool { true }
-        var body: Encodable? { ["content": content, "type": type] }
+        var body: Encodable? {
+            var d: [String: AnyEncodable] = [
+                "content": AnyEncodable(content),
+                "type": AnyEncodable(type)
+            ]
+            if let replyToId { d["replyToId"] = AnyEncodable(replyToId) }
+            return d
+        }
     }
 
     struct SendGameCode: Endpoint {

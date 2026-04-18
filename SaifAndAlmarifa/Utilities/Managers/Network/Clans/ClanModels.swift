@@ -107,7 +107,7 @@ struct ClanMember: Decodable, Identifiable {
 }
 
 // MARK: - رسالة داخل الشات
-struct ClanMessage: Decodable, Identifiable {
+struct ClanMessage: Codable, Identifiable {
     let id: String
     let type: MessageType
     let content: String
@@ -115,12 +115,16 @@ struct ClanMessage: Decodable, Identifiable {
     let roomCode: String?
     let user: MessageUser?
     let createdAt: String?
+    /// للرد/الاقتباس — id الرسالة الأصلية + مقتطف (اختياري)
+    let replyToId: String?
+    let replyToSnippet: String?
+    let replyToUsername: String?
 
-    enum MessageType: String, Decodable {
+    enum MessageType: String, Codable {
         case text, game_code, system, announcement
     }
 
-    struct MessageUser: Decodable {
+    struct MessageUser: Codable {
         let id: String
         let username: String
         let avatarUrl: String?
@@ -130,6 +134,26 @@ struct ClanMessage: Decodable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, type, content, isPinned, roomCode, createdAt
         case user = "User"
+        case replyToId, replyToSnippet, replyToUsername
+    }
+
+    // MARK: - Helpers
+    /// وقت الرسالة كـ Date
+    var date: Date? {
+        guard let createdAt else { return nil }
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f.date(from: createdAt) ?? ISO8601DateFormatter().date(from: createdAt)
+    }
+
+    /// استخراج @mentions من النص
+    var mentions: [String] {
+        let pattern = "@([\\p{L}0-9_]+)"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+        let range = NSRange(content.startIndex..., in: content)
+        return regex.matches(in: content, range: range).compactMap {
+            Range($0.range(at: 1), in: content).map { String(content[$0]) }
+        }
     }
 }
 

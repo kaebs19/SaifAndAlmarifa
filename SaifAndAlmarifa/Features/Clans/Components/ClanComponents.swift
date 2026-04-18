@@ -286,6 +286,7 @@ struct ClanScreenHeader: View {
 struct ClanMessageBubble: View {
     let message: ClanMessage
     let isMine: Bool
+    var showTimestamp: Bool = false   // إظهار الوقت (عند الضغط)
 
     var body: some View {
         Group {
@@ -299,7 +300,7 @@ struct ClanMessageBubble: View {
             }
         }
         .padding(.horizontal, AppSizes.Spacing.lg)
-        .padding(.vertical, 4)
+        .padding(.vertical, 3)
     }
 
     // MARK: نص عادي
@@ -315,13 +316,38 @@ struct ClanMessageBubble: View {
                         .font(.cairo(.semiBold, size: 10))
                         .foregroundStyle(AppColors.Default.goldPrimary)
                 }
+
+                // اقتباس الرد (إن وُجد)
+                if let replyUser = message.replyToUsername, let snippet = message.replyToSnippet {
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(spacing: 3) {
+                            Image(systemName: "arrowshape.turn.up.left.fill")
+                                .font(.system(size: 8))
+                            Text(replyUser)
+                                .font(.cairo(.bold, size: 9))
+                        }
+                        .foregroundStyle(AppColors.Default.goldPrimary)
+                        Text(snippet)
+                            .font(.cairo(.regular, size: 10))
+                            .foregroundStyle(.white.opacity(0.6))
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .frame(maxWidth: 220, alignment: .leading)
+                    .background(AppColors.Default.goldPrimary.opacity(0.08))
+                    .overlay(
+                        HStack { Rectangle().fill(AppColors.Default.goldPrimary).frame(width: 2); Spacer() }
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+
                 HStack(spacing: 4) {
                     if message.type == .announcement {
                         Image(systemName: "megaphone.fill")
                             .font(.system(size: 10))
                             .foregroundStyle(Color(hex: "FFD700"))
                     }
-                    Text(message.content)
+                    Text(message.content.chatAttributed())
                         .font(.cairo(.regular, size: AppSizes.Font.body))
                         .foregroundStyle(.white)
                 }
@@ -342,6 +368,13 @@ struct ClanMessageBubble: View {
                             lineWidth: 1
                         )
                 )
+
+                // الوقت
+                if showTimestamp, let date = message.date {
+                    Text(ChatDateFormat.timeLabel(for: date))
+                        .font(.poppins(.medium, size: 9))
+                        .foregroundStyle(.white.opacity(0.35))
+                }
             }
             if !isMine { Spacer(minLength: 40) }
         }

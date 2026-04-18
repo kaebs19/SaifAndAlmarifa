@@ -8,6 +8,7 @@
 
 import Foundation
 import Combine
+import UIKit
 
 @MainActor
 final class ClanDetailViewModel: ObservableObject {
@@ -30,6 +31,11 @@ final class ClanDetailViewModel: ObservableObject {
     @Published var typingUsernames: Set<String> = []  // من يكتب الآن
     @Published var isLoadingMore: Bool = false
     @Published var hasMoreMessages: Bool = true
+    @Published var replyingTo: ClanMessage?             // رسالة للرد عليها
+    @Published var tappedMessageId: String?             // لإظهار الوقت
+    @Published var showEmojiBar: Bool = false           // الشريط الإيموجي
+    @Published var mentionQuery: String? = nil          // @ — نص البحث بعد @
+    @Published var mentionRange: NSRange? = nil         // موقع @ في النص
 
     // MARK: - Dependencies
     private let service = ClansService.shared
@@ -102,7 +108,21 @@ final class ClanDetailViewModel: ObservableObject {
     func onAppear() async {
         socket.joinClanRoom(clanId)
         ClanStateManager.shared.enteringClanScreen(clanId)
+        // فتح فوري من الكاش
+        loadFromCache()
         await loadAll()
+    }
+
+    private func loadFromCache() {
+        if let cached = LocalCache.load([ClanMessage].self, key: LocalCache.Keys.clanMessages(clanId)) {
+            messages = cached
+        }
+    }
+
+    private func saveToCache() {
+        // احفظ آخر 50 رسالة فقط
+        let toSave = Array(messages.prefix(50))
+        LocalCache.save(toSave, key: LocalCache.Keys.clanMessages(clanId))
     }
 
     func onDisappear() {
@@ -168,6 +188,7 @@ final class ClanDetailViewModel: ObservableObject {
         // تجنّب التكرار (الراسل يضيف محلياً قبل وصول الـ socket)
         if messages.contains(where: { $0.id == msg.id }) { return }
         messages.insert(msg, at: 0)
+        saveToCache()
 
         // إخفاء "يكتب" للمُرسل
         if let uid = msg.user?.id, let username = msg.user?.username {
@@ -243,20 +264,93 @@ final class ClanDetailViewModel: ObservableObject {
         let isAdminMode = canManage && content.hasPrefix("!") // رسالة إعلان لو بدأت بـ !
         let type = isAdminMode ? "announcement" : "text"
         let finalContent = isAdminMode ? String(content.dropFirst()) : content
+        let replyId = replyingTo?.id
 
         isSending = true
         defer { isSending = false }
 
         do {
-            let msg = try await service.sendMessage(clanId, content: finalContent, type: type)
+            let msg = try await service.sendMessage(clanId, content: finalContent, type: type, replyToId: replyId)
             messageText = ""
+            replyingTo = nil
+            showEmojiBar = false
+            mentionQuery = nil
             messages.insert(msg, at: 0)
+            saveToCache()
             HapticManager.light()
         } catch let e as APIError {
             toast.error(e.errorDescription ?? "فشل الإرسال")
         } catch {
             toast.error("فشل الإرسال")
         }
+    }
+
+    /// إرسال رسالة سريعة (Preset)
+    func sendPreset(_ preset: ChatPreset) async {
+        messageText = preset.text
+        await sendMessage()
+    }
+
+    /// إدراج إيموجي في النص
+    func insertEmoji(_ emoji: String) {
+        messageText += emoji
+    }
+
+    /// فتح الرد على رسالة
+    func reply(to msg: ClanMessage) {
+        replyingTo = msg
+        HapticManager.light()
+    }
+
+    func cancelReply() {
+        replyingTo = nil
+    }
+
+    /// نسخ نص رسالة
+    func copy(_ msg: ClanMessage) {
+        UIPasteboard.general.string = msg.content
+        HapticManager.light()
+        toast.info("تم النسخ")
+    }
+
+    /// mention عضو في النص
+    func mention(_ member: ClanMember) {
+        // لو كان في @partial نستبدلها، وإلا نضيف في النهاية
+        if let range = mentionRange, let r = Range(range, in: messageText) {
+            messageText.replaceSubrange(r, with: "@\(member.username) ")
+        } else {
+            messageText += "@\(member.username) "
+        }
+        mentionQuery = nil
+        mentionRange = nil
+    }
+
+    /// عند تغيّر نص الإدخال — كشف @mention
+    func onMessageTextChanged(_ new: String) {
+        notifyTyping()
+
+        // ابحث عن آخر @ قبل المؤشر
+        let pattern = "@([\\p{L}0-9_]*)$"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            mentionQuery = nil; return
+        }
+        let range = NSRange(new.startIndex..., in: new)
+        if let match = regex.firstMatch(in: new, range: range),
+           let whole = Range(match.range, in: new),
+           let name = Range(match.range(at: 1), in: new) {
+            mentionQuery = String(new[name])  // قد يكون ""
+            mentionRange = NSRange(whole, in: new)
+        } else {
+            mentionQuery = nil
+            mentionRange = nil
+        }
+    }
+
+    /// قائمة الأعضاء المطابقة للـ mention query
+    var mentionMatches: [ClanMember] {
+        guard let q = mentionQuery else { return [] }
+        if q.isEmpty { return Array(members.prefix(5)) }
+        return members.filter { $0.username.lowercased().contains(q.lowercased()) }
     }
 
     func togglePin(_ msg: ClanMessage) async {
@@ -271,6 +365,7 @@ final class ClanDetailViewModel: ObservableObject {
 
     func refreshChat() async {
         messages = await safeChat()   // يحدّث hasMoreMessages من الـ envelope
+        saveToCache()
     }
 
     /// جلب رسائل أقدم (pagination)

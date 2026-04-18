@@ -189,54 +189,7 @@ struct ClanDetailView: View {
                 ClanEmptyState(icon: "bubble.left", title: "لا توجد رسائل", subtitle: "كن أول من يبدأ المحادثة")
                     .frame(maxHeight: .infinity)
             } else {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            // Trigger: Load more عند الوصول للأعلى (الأقدم)
-                            if viewModel.hasMoreMessages && !viewModel.messages.isEmpty {
-                                Group {
-                                    if viewModel.isLoadingMore {
-                                        ProgressView().tint(.white.opacity(0.5))
-                                            .padding(.vertical, AppSizes.Spacing.sm)
-                                    } else {
-                                        Color.clear.frame(height: 1)
-                                            .onAppear { Task { await viewModel.loadMoreMessages() } }
-                                    }
-                                }
-                            }
-
-                            // السيرفر يرجع الأحدث أولاً → نعكس ليصير الأحدث أسفل
-                            ForEach(viewModel.messages.reversed()) { msg in
-                                ClanMessageBubble(
-                                    message: msg,
-                                    isMine: msg.user?.id == viewModel.myId
-                                )
-                                .id(msg.id)
-                                .contextMenu {
-                                    if viewModel.canManage {
-                                        Button { Task { await viewModel.togglePin(msg) } } label: {
-                                            Label(msg.isPinned == true ? "إلغاء التثبيت" : "تثبيت",
-                                                  systemImage: msg.isPinned == true ? "pin.slash" : "pin")
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.top, AppSizes.Spacing.sm)
-                    }
-                    .scrollIndicators(.hidden)
-                    .onChange(of: viewModel.messages.count) { old, new in
-                        // scroll للأسفل فقط لو رسالة جديدة (وليس عند load more قديم)
-                        if new > old, let last = viewModel.messages.first?.id {
-                            withAnimation { proxy.scrollTo(last, anchor: .bottom) }
-                        }
-                    }
-                    .onAppear {
-                        if let last = viewModel.messages.first?.id {
-                            proxy.scrollTo(last, anchor: .bottom)
-                        }
-                    }
-                }
+                chatMessagesList
             }
 
             if viewModel.isMember {
@@ -245,8 +198,103 @@ struct ClanDetailView: View {
         }
     }
 
+    // MARK: - قائمة الرسائل مع فواصل التاريخ
+    private var chatMessagesList: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    // Trigger: Load more عند الوصول للأعلى (الأقدم)
+                    if viewModel.hasMoreMessages && !viewModel.messages.isEmpty {
+                        Group {
+                            if viewModel.isLoadingMore {
+                                ProgressView().tint(.white.opacity(0.5))
+                                    .padding(.vertical, AppSizes.Spacing.sm)
+                            } else {
+                                Color.clear.frame(height: 1)
+                                    .onAppear { Task { await viewModel.loadMoreMessages() } }
+                            }
+                        }
+                    }
+
+                    // السيرفر يرجع الأحدث أولاً → نعكس ليصير الأحدث أسفل
+                    let ordered = viewModel.messages.reversed()
+                    ForEach(Array(ordered.enumerated()), id: \.element.id) { idx, msg in
+                        // فاصل التاريخ
+                        if shouldShowDateSeparator(current: msg, previousIndex: idx, all: Array(ordered)) {
+                            if let d = msg.date {
+                                ChatDateSeparator(label: ChatDateFormat.dayLabel(for: d))
+                            }
+                        }
+
+                        ClanMessageBubble(
+                            message: msg,
+                            isMine: msg.user?.id == viewModel.myId,
+                            showTimestamp: viewModel.tappedMessageId == msg.id
+                        )
+                        .id(msg.id)
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                viewModel.tappedMessageId = viewModel.tappedMessageId == msg.id ? nil : msg.id
+                            }
+                        }
+                        .contextMenu {
+                            messageContextMenu(msg)
+                        }
+                    }
+                }
+                .padding(.top, AppSizes.Spacing.sm)
+            }
+            .scrollIndicators(.hidden)
+            .onChange(of: viewModel.messages.count) { old, new in
+                if new > old, let last = viewModel.messages.first?.id {
+                    withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+                }
+            }
+            .onAppear {
+                if let last = viewModel.messages.first?.id {
+                    proxy.scrollTo(last, anchor: .bottom)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func messageContextMenu(_ msg: ClanMessage) -> some View {
+        if msg.type == .text || msg.type == .announcement {
+            Button { viewModel.reply(to: msg) } label: {
+                Label("رد", systemImage: "arrowshape.turn.up.left")
+            }
+            Button { viewModel.copy(msg) } label: {
+                Label("نسخ", systemImage: "doc.on.doc")
+            }
+        }
+        if viewModel.canManage {
+            Button { Task { await viewModel.togglePin(msg) } } label: {
+                Label(msg.isPinned == true ? "إلغاء التثبيت" : "تثبيت",
+                      systemImage: msg.isPinned == true ? "pin.slash" : "pin")
+            }
+        }
+    }
+
+    /// يظهر الفاصل إذا الرسالة في يوم جديد مقارنة باللي قبلها
+    private func shouldShowDateSeparator(current: ClanMessage, previousIndex: Int, all: [ClanMessage]) -> Bool {
+        guard let currentDate = current.date else { return false }
+        guard previousIndex > 0 else { return true }  // أول رسالة دائماً
+        guard let prev = all[previousIndex - 1].date else { return true }
+        return !Calendar.current.isDate(currentDate, inSameDayAs: prev)
+    }
+
     private var chatInputBar: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 0) {
+            // Mention suggestions (فوق كل شي)
+            if viewModel.mentionQuery != nil, !viewModel.mentionMatches.isEmpty {
+                MentionSuggestionsList(members: viewModel.mentionMatches) { member in
+                    viewModel.mention(member)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .padding(.bottom, 4)
+            }
+
             // مؤشّر "يكتب"
             if !viewModel.typingUsernames.isEmpty {
                 HStack(spacing: 6) {
@@ -257,10 +305,47 @@ struct ClanDetailView: View {
                     Spacer()
                 }
                 .padding(.horizontal, AppSizes.Spacing.lg)
+                .padding(.top, 4)
                 .transition(.opacity)
             }
 
-            HStack(spacing: AppSizes.Spacing.sm) {
+            // Reply preview
+            if let target = viewModel.replyingTo {
+                ChatReplyPreview(targetMessage: target) {
+                    viewModel.cancelReply()
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
+            // الرسائل السريعة (Presets) — تظهر عند ما يكون مربع الكتابة فاضي
+            if viewModel.messageText.isEmpty && !viewModel.showEmojiBar && viewModel.replyingTo == nil {
+                ChatPresetsBar { preset in
+                    Task { await viewModel.sendPreset(preset) }
+                }
+                .transition(.opacity)
+            }
+
+            // شريط الإيموجي
+            if viewModel.showEmojiBar {
+                ChatEmojiPickerBar { emoji in
+                    viewModel.insertEmoji(emoji)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
+            // صف الإدخال الرئيسي
+            HStack(spacing: AppSizes.Spacing.xs) {
+                // زر الإيموجي
+                Button {
+                    HapticManager.light()
+                    withAnimation { viewModel.showEmojiBar.toggle() }
+                } label: {
+                    Image(systemName: viewModel.showEmojiBar ? "keyboard" : "face.smiling")
+                        .font(.system(size: 20))
+                        .foregroundStyle(viewModel.showEmojiBar ? AppColors.Default.goldPrimary : .white.opacity(0.5))
+                        .frame(width: 36, height: 36)
+                }
+
                 TextField("اكتب رسالة...", text: $viewModel.messageText, axis: .vertical)
                     .font(.cairo(.regular, size: AppSizes.Font.body))
                     .foregroundStyle(.white)
@@ -271,7 +356,7 @@ struct ClanDetailView: View {
                     .background(.white.opacity(0.06))
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .onChange(of: viewModel.messageText) { _, new in
-                        if !new.isEmpty { viewModel.notifyTyping() }
+                        viewModel.onMessageTextChanged(new)
                     }
 
                 Button {
@@ -290,6 +375,9 @@ struct ClanDetailView: View {
             .padding(.vertical, AppSizes.Spacing.sm)
         }
         .animation(.easeInOut(duration: 0.2), value: viewModel.typingUsernames.isEmpty)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.showEmojiBar)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.replyingTo?.id)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.mentionQuery)
         .background(Color.black.opacity(0.2))
     }
 
