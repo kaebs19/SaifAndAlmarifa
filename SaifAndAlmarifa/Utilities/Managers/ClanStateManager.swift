@@ -145,6 +145,32 @@ final class ClanStateManager: ObservableObject {
                 Task { await self.loadMyClan() }
             }
             .store(in: &cancellables)
+
+        // حذف رسالة — لو كانت آخر رسالة، أعد الجلب
+        socket.onClanMessageDeleted
+            .sink { [weak self] messageId in
+                guard let self, self.lastMessage?.id == messageId else { return }
+                Task { await self.refreshLastMessage() }
+            }
+            .store(in: &cancellables)
+
+        // مسح الشات — صفّر آخر رسالة
+        socket.onClanChatCleared
+            .sink { [weak self] clanId in
+                guard let self, clanId == self.myClan?.id else { return }
+                self.lastMessage = nil
+            }
+            .store(in: &cancellables)
+    }
+
+    /// إعادة جلب آخر رسالة (بعد حذف أو تنظيف)
+    private func refreshLastMessage() async {
+        guard let id = myClan?.id else { return }
+        if let page = try? await service.chat(id, limit: 1) {
+            lastMessage = page.messages.first
+        } else {
+            lastMessage = nil
+        }
     }
 
     private func handleIncomingMessage(_ payload: [String: Any]) {

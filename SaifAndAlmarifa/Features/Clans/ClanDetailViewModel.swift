@@ -146,6 +146,17 @@ final class ClanDetailViewModel: ObservableObject {
         socket.onClanMessageDeleted
             .sink { [weak self] messageId in
                 self?.messages.removeAll { $0.id == messageId }
+                self?.saveToCache()
+            }
+            .store(in: &cancellables)
+
+        // مسح كل الشات
+        socket.onClanChatCleared
+            .sink { [weak self] incomingClanId in
+                guard let self, incomingClanId == self.clanId else { return }
+                self.messages.removeAll()
+                self.saveToCache()
+                self.toast.info("تم مسح الشات")
             }
             .store(in: &cancellables)
 
