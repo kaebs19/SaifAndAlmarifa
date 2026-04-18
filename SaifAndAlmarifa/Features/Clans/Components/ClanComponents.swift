@@ -134,7 +134,7 @@ struct ClanMemberRow: View {
     var onTap: (() -> Void)? = nil
     var onAction: ((MemberAction) -> Void)? = nil
 
-    enum MemberAction { case promote, demote, kick, transfer }
+    enum MemberAction { case promote, demote, kick, transfer, mute, unmute }
 
     var body: some View {
         HStack(spacing: AppSizes.Spacing.sm) {
@@ -176,6 +176,13 @@ struct ClanMemberRow: View {
 
             Spacer()
 
+            // مؤشر "مكتوم"
+            if member.isMuted {
+                Image(systemName: "mic.slash.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(AppColors.Default.warning)
+            }
+
             if canManage && member.role != .owner, let onAction {
                 Menu {
                     if member.role == .member {
@@ -183,6 +190,11 @@ struct ClanMemberRow: View {
                     }
                     if member.role == .admin {
                         Button { onAction(.demote) } label: { Label("تنزيل لعضو", systemImage: "arrow.down.circle") }
+                    }
+                    if member.isMuted {
+                        Button { onAction(.unmute) } label: { Label("رفع الكتم", systemImage: "mic") }
+                    } else {
+                        Button { onAction(.mute) } label: { Label("كتم", systemImage: "mic.slash") }
                     }
                     Button { onAction(.transfer) } label: { Label("نقل الزعامة", systemImage: "crown") }
                     Button(role: .destructive) { onAction(.kick) } label: { Label("طرد", systemImage: "xmark.circle") }

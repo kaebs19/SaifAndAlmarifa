@@ -102,6 +102,31 @@ final class ClansService: APIService {
         try await network.requestVoid(ClansEndpoint.PinMessage(clanId: clanId, messageId: messageId))
     }
 
+    // MARK: - Admin
+    func deleteMessage(_ clanId: String, messageId: String) async throws {
+        try await network.requestVoid(ClansEndpoint.DeleteMessage(clanId: clanId, messageId: messageId))
+    }
+
+    func clearChat(_ clanId: String) async throws {
+        try await network.requestVoid(ClansEndpoint.ClearChat(clanId: clanId))
+    }
+
+    func reportMessage(_ clanId: String, messageId: String, reason: String) async throws {
+        try await network.requestVoid(ClansEndpoint.ReportMessage(clanId: clanId, messageId: messageId, reason: reason))
+    }
+
+    func muteMember(_ clanId: String, userId: String, durationMinutes: Int) async throws {
+        try await network.requestVoid(ClansEndpoint.MuteMember(clanId: clanId, userId: userId, durationMinutes: durationMinutes))
+    }
+
+    func unmuteMember(_ clanId: String, userId: String) async throws {
+        try await network.requestVoid(ClansEndpoint.UnmuteMember(clanId: clanId, userId: userId))
+    }
+
+    func setReadOnly(_ id: String, readOnly: Bool) async throws -> Clan {
+        try await network.request(ClansEndpoint.SetReadOnly(id: id, readOnly: readOnly))
+    }
+
     // MARK: - Leaderboards
     func topClans() async throws -> [ClanRankEntry] {
         try await network.request(ClansEndpoint.Leaderboard())

@@ -237,6 +237,65 @@ enum ClansEndpoint {
         var requiresAuth: Bool { true }
     }
 
+    // MARK: - Admin Tools
+    struct DeleteMessage: Endpoint {
+        typealias Response = EmptyData
+        let clanId: String
+        let messageId: String
+        var path: String { "/clans/\(clanId)/chat/\(messageId)" }
+        var method: HTTPMethod { .delete }
+        var requiresAuth: Bool { true }
+    }
+
+    struct ClearChat: Endpoint {
+        typealias Response = EmptyData
+        let clanId: String
+        var path: String { "/clans/\(clanId)/chat" }
+        var method: HTTPMethod { .delete }
+        var requiresAuth: Bool { true }
+    }
+
+    struct ReportMessage: Endpoint {
+        typealias Response = EmptyData
+        let clanId: String
+        let messageId: String
+        let reason: String
+        var path: String { "/clans/\(clanId)/chat/\(messageId)/report" }
+        var method: HTTPMethod { .post }
+        var requiresAuth: Bool { true }
+        var body: Encodable? { ["reason": reason] }
+    }
+
+    struct MuteMember: Endpoint {
+        typealias Response = EmptyData
+        let clanId: String
+        let userId: String
+        let durationMinutes: Int   // 0 = رفع الكتم
+        var path: String { "/clans/\(clanId)/members/\(userId)/mute" }
+        var method: HTTPMethod { .post }
+        var requiresAuth: Bool { true }
+        var body: Encodable? { ["durationMinutes": durationMinutes] }
+    }
+
+    struct UnmuteMember: Endpoint {
+        typealias Response = EmptyData
+        let clanId: String
+        let userId: String
+        var path: String { "/clans/\(clanId)/members/\(userId)/unmute" }
+        var method: HTTPMethod { .post }
+        var requiresAuth: Bool { true }
+    }
+
+    struct SetReadOnly: Endpoint {
+        typealias Response = Clan
+        let id: String
+        let readOnly: Bool
+        var path: String { "/clans/\(id)" }
+        var method: HTTPMethod { .patch }
+        var requiresAuth: Bool { true }
+        var body: Encodable? { ["readOnly": readOnly] }
+    }
+
     // MARK: - Leaderboards
     struct Leaderboard: Endpoint {
         typealias Response = [ClanRankEntry]

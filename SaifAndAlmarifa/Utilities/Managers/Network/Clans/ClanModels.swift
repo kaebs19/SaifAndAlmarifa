@@ -54,6 +54,7 @@ struct Clan: Codable, Identifiable {
     let memberCount: Int?
     let maxMembers: Int?
     let isOpen: Bool?
+    let readOnly: Bool?         // وضع الإعلانات فقط (admins only can send)
     let ownerId: String?
     let createdAt: String?
 
@@ -104,6 +105,14 @@ struct ClanMember: Decodable, Identifiable {
     let weeklyPoints: Int
     let isOnline: Bool?
     let rank: Int?
+    /// حتى متى مكتوم (ISO string). nil = غير مكتوم
+    let mutedUntil: String?
+
+    var isMuted: Bool {
+        guard let s = mutedUntil,
+              let date = ISO8601DateFormatter().date(from: s) else { return false }
+        return date > Date()
+    }
 }
 
 // MARK: - رسالة داخل الشات

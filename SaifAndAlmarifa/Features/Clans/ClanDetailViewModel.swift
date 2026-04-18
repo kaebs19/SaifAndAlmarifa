@@ -261,6 +261,20 @@ final class ClanDetailViewModel: ObservableObject {
         let content = messageText.trimmingCharacters(in: .whitespaces)
         guard !content.isEmpty else { return }
 
+        // فحص قدرة الإرسال (كتم / Read-only)
+        if let reason = sendBlockedReason {
+            toast.error(reason)
+            HapticManager.error()
+            return
+        }
+
+        // فلتر كلمات محلي
+        if let bad = WordFilter.contains(bannedWord: content) {
+            toast.error("كلمة غير مسموحة: \(bad)")
+            HapticManager.error()
+            return
+        }
+
         let isAdminMode = canManage && content.hasPrefix("!") // رسالة إعلان لو بدأت بـ !
         let type = isAdminMode ? "announcement" : "text"
         let finalContent = isAdminMode ? String(content.dropFirst()) : content
@@ -363,6 +377,122 @@ final class ClanDetailViewModel: ObservableObject {
         }
     }
 
+    // MARK: - ═══════ أدوات الأدمن ═══════
+
+    /// حذف رسالة (الكاتب يحذف رسالته، المشرف/الزعيم يحذف أي رسالة)
+    func deleteMessage(_ msg: ClanMessage) async {
+        // السماح بالحذف: إما صاحب الرسالة أو مشرف/زعيم
+        let canDelete = (msg.user?.id == myId) || canManage
+        guard canDelete else {
+            toast.error("لا تملك صلاحية الحذف")
+            return
+        }
+
+        do {
+            try await service.deleteMessage(clanId, messageId: msg.id)
+            messages.removeAll { $0.id == msg.id }
+            saveToCache()
+            HapticManager.success()
+            toast.info("تم حذف الرسالة")
+        } catch let e as APIError {
+            toast.error(e.errorDescription ?? "فشل الحذف")
+        } catch {
+            toast.error("فشل الحذف")
+        }
+    }
+
+    /// مسح كل الشات (الزعيم فقط)
+    func clearAllChat() async {
+        guard isOwner else {
+            toast.error("الزعيم فقط يقدر يمسح الشات")
+            return
+        }
+        do {
+            try await service.clearChat(clanId)
+            messages.removeAll()
+            saveToCache()
+            HapticManager.success()
+            toast.info("تم مسح الشات")
+        } catch let e as APIError {
+            toast.error(e.errorDescription ?? "فشل المسح")
+        } catch {
+            toast.error("فشل المسح")
+        }
+    }
+
+    /// تبليغ عن رسالة
+    func reportMessage(_ msg: ClanMessage, reason: String) async {
+        do {
+            try await service.reportMessage(clanId, messageId: msg.id, reason: reason)
+            HapticManager.success()
+            toast.success("شكراً — تم إرسال البلاغ")
+        } catch let e as APIError {
+            toast.error(e.errorDescription ?? "فشل التبليغ")
+        } catch {
+            toast.error("فشل التبليغ")
+        }
+    }
+
+    /// كتم عضو لمدة محددة
+    func mute(_ member: ClanMember, durationMinutes: Int) async {
+        do {
+            try await service.muteMember(clanId, userId: member.id, durationMinutes: durationMinutes)
+            HapticManager.success()
+            toast.info("تم كتم \(member.username)")
+            await loadAll()
+        } catch let e as APIError {
+            toast.error(e.errorDescription ?? "فشل الكتم")
+        } catch {
+            toast.error("فشل الكتم")
+        }
+    }
+
+    /// رفع الكتم
+    func unmute(_ member: ClanMember) async {
+        do {
+            try await service.unmuteMember(clanId, userId: member.id)
+            HapticManager.success()
+            toast.info("تم رفع الكتم")
+            await loadAll()
+        } catch {
+            toast.error("فشلت العملية")
+        }
+    }
+
+    /// تبديل وضع "الإعلانات فقط" (Read-only)
+    func toggleReadOnly() async {
+        guard isOwner, let c = clan else { return }
+        let newVal = !(c.readOnly ?? false)
+        do {
+            clan = try await service.setReadOnly(clanId, readOnly: newVal)
+            HapticManager.success()
+            toast.info(newVal ? "تم تفعيل وضع الإعلانات فقط" : "تم تعطيل الوضع")
+        } catch {
+            toast.error("فشلت العملية")
+        }
+    }
+
+    // MARK: - Derived — hypo state for sending
+    /// هل يقدر المستخدم يرسل رسالة عادية؟
+    var canSendMessages: Bool {
+        guard isMember else { return false }
+        // مكتوم؟
+        if myMemberRecord?.isMuted == true { return false }
+        // وضع Read-only؟
+        if clan?.readOnly == true && !canManage { return false }
+        return true
+    }
+
+    var sendBlockedReason: String? {
+        if let record = myMemberRecord, record.isMuted {
+            return "أنت مكتوم مؤقتاً"
+        }
+        if clan?.readOnly == true && !canManage {
+            return "الشات في وضع الإعلانات فقط"
+        }
+        return nil
+    }
+
     func refreshChat() async {
         messages = await safeChat()   // يحدّث hasMoreMessages من الـ envelope
         saveToCache()
@@ -387,6 +517,7 @@ final class ClanDetailViewModel: ObservableObject {
 
     // MARK: - Member actions
     func handleMember(_ member: ClanMember, action: ClanMemberRow.MemberAction) async {
+        // الكتم يحتاج sheet اختيار المدة — يُعالج خارج هذه الدالة
         do {
             switch action {
             case .promote:
@@ -401,6 +532,12 @@ final class ClanDetailViewModel: ObservableObject {
             case .transfer:
                 try await service.transfer(clanId, to: member.id)
                 toast.success("تم نقل الزعامة")
+            case .unmute:
+                try await service.unmuteMember(clanId, userId: member.id)
+                toast.info("تم رفع الكتم")
+            case .mute:
+                // يُعالج عبر sheet — لا نرسل هنا
+                return
             }
             HapticManager.success()
             await loadAll()

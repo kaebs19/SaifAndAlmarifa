@@ -17,6 +17,9 @@ struct ClanDetailView: View {
 
     @State private var showLeaveConfirm = false
     @State private var showDeleteConfirm = false
+    @State private var showClearChatConfirm = false
+    @State private var reportingMessage: ClanMessage?
+    @State private var muteTarget: ClanMember?
     @State private var joinInFlight = false
 
     var onClose: () -> Void
@@ -67,6 +70,24 @@ struct ClanDetailView: View {
             Button("حذف", role: .destructive) { Task { await viewModel.deleteClan() } }
             Button("إلغاء", role: .cancel) {}
         }
+        .confirmationDialog("مسح كل الرسائل؟", isPresented: $showClearChatConfirm, titleVisibility: .visible) {
+            Button("مسح الكل", role: .destructive) { Task { await viewModel.clearAllChat() } }
+            Button("إلغاء", role: .cancel) {}
+        }
+        .sheet(item: $reportingMessage) { msg in
+            ReportReasonSheet(message: msg) { reason in
+                Task { await viewModel.reportMessage(msg, reason: reason) }
+                reportingMessage = nil
+            }
+            .presentationDetents([.height(320)])
+        }
+        .sheet(item: $muteTarget) { member in
+            MuteMemberSheet(member: member) { minutes in
+                Task { await viewModel.mute(member, durationMinutes: minutes) }
+                muteTarget = nil
+            }
+            .presentationDetents([.height(360)])
+        }
     }
 
     // MARK: - Header
@@ -85,6 +106,25 @@ struct ClanDetailView: View {
                 Spacer()
                 if viewModel.isMember {
                     Menu {
+                        // أدوات الإدارة (للزعيم فقط)
+                        if viewModel.isOwner, let clan = viewModel.clan {
+                            Section("أدوات الإدارة") {
+                                Button {
+                                    Task { await viewModel.toggleReadOnly() }
+                                } label: {
+                                    Label(
+                                        (clan.readOnly ?? false) ? "تعطيل وضع الإعلانات فقط" : "تفعيل وضع الإعلانات فقط",
+                                        systemImage: (clan.readOnly ?? false) ? "speaker.wave.2" : "megaphone"
+                                    )
+                                }
+                                Button(role: .destructive) {
+                                    showClearChatConfirm = true
+                                } label: {
+                                    Label("مسح كل الرسائل", systemImage: "trash.slash")
+                                }
+                            }
+                        }
+
                         if viewModel.isOwner {
                             Button(role: .destructive) { showDeleteConfirm = true } label: {
                                 Label("حذف العشيرة", systemImage: "trash")
@@ -193,9 +233,32 @@ struct ClanDetailView: View {
             }
 
             if viewModel.isMember {
-                chatInputBar
+                if viewModel.canSendMessages {
+                    chatInputBar
+                } else {
+                    sendBlockedBar
+                }
             }
         }
+    }
+
+    // MARK: - شريط "غير مسموح بالإرسال"
+    private var sendBlockedBar: some View {
+        HStack(spacing: AppSizes.Spacing.sm) {
+            Image(systemName: viewModel.myMemberRecord?.isMuted == true ? "mic.slash.fill" : "megaphone.fill")
+                .font(.system(size: 16))
+                .foregroundStyle(AppColors.Default.warning)
+            Text(viewModel.sendBlockedReason ?? "غير مسموح")
+                .font(.cairo(.semiBold, size: AppSizes.Font.caption))
+                .foregroundStyle(.white.opacity(0.7))
+            Spacer()
+        }
+        .padding(AppSizes.Spacing.md)
+        .background(AppColors.Default.warning.opacity(0.08))
+        .overlay(
+            Rectangle().fill(AppColors.Default.warning.opacity(0.3)).frame(height: 1),
+            alignment: .top
+        )
     }
 
     // MARK: - قائمة الرسائل مع فواصل التاريخ
@@ -268,10 +331,41 @@ struct ClanDetailView: View {
                 Label("نسخ", systemImage: "doc.on.doc")
             }
         }
+
         if viewModel.canManage {
             Button { Task { await viewModel.togglePin(msg) } } label: {
                 Label(msg.isPinned == true ? "إلغاء التثبيت" : "تثبيت",
                       systemImage: msg.isPinned == true ? "pin.slash" : "pin")
+            }
+        }
+
+        // حذف — صاحب الرسالة أو مشرف/زعيم
+        let canDelete = (msg.user?.id == viewModel.myId) || viewModel.canManage
+        if canDelete && msg.type != .system {
+            Button(role: .destructive) {
+                Task { await viewModel.deleteMessage(msg) }
+            } label: {
+                Label("حذف", systemImage: "trash")
+            }
+        }
+
+        // كتم العضو (للمشرفين، ليس الرسائل الخاصة بي)
+        if viewModel.canManage, let user = msg.user, user.id != viewModel.myId,
+           let member = viewModel.members.first(where: { $0.id == user.id }),
+           member.role != .owner {
+            Button {
+                muteTarget = member
+            } label: {
+                Label("كتم \(user.username)", systemImage: "mic.slash")
+            }
+        }
+
+        // تبليغ (لأي رسالة مو تبعي)
+        if msg.user?.id != viewModel.myId && msg.type != .system {
+            Button {
+                reportingMessage = msg
+            } label: {
+                Label("تبليغ", systemImage: "exclamationmark.triangle")
             }
         }
     }
@@ -431,7 +525,11 @@ struct ClanDetailView: View {
                             member: member,
                             canManage: viewModel.canManage && member.id != viewModel.myId,
                             onAction: { action in
-                                Task { await viewModel.handleMember(member, action: action) }
+                                if action == .mute {
+                                    muteTarget = member
+                                } else {
+                                    Task { await viewModel.handleMember(member, action: action) }
+                                }
                             }
                         )
                         Divider().overlay(.white.opacity(0.05)).padding(.leading, 60)
