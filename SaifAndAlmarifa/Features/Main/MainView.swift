@@ -13,6 +13,7 @@ struct MainView: View {
     @StateObject private var viewModel = MainViewModel()
     @StateObject private var authManager = AuthManager.shared
     @StateObject private var clanState = ClanStateManager.shared
+    @StateObject private var push = PushNotificationsManager.shared
     @State private var showProfile = false
     @State private var showSpinWheel = false
     @State private var showPlayerCard = false
@@ -90,6 +91,28 @@ struct MainView: View {
             }
         )
         .task { await viewModel.onAppear() }
+        .onReceive(push.onNotificationTap) { payload in
+            handleNotificationTap(payload)
+        }
+    }
+
+    // MARK: - Deep link handler
+    private func handleNotificationTap(_ payload: NotificationPayload) {
+        HapticManager.light()
+        switch payload.type {
+        case .clanMessage, .clanMention, .clanMemberJoined,
+             .clanRequestAccepted, .clanRoleChanged,
+             .clanMuted, .clanWarStarted, .clanWarEnded:
+            if let id = payload.clanId {
+                directClanId = id
+            }
+        case .clanKicked:
+            ClanStateManager.shared.removeMyClan()
+            ToastManager.shared.info("تم طردك من العشيرة")
+        case .unknown:
+            break
+        }
+        push.clearBadge()
     }
 
     // MARK: - ═══════ الخلفية ═══════

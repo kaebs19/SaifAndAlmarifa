@@ -8,19 +8,33 @@
 import SwiftUI
 import SwiftData
 import UIKit
+import FirebaseCore
+import FirebaseMessaging
 
-// MARK: - AppDelegate — تدوير الشاشة + إشعارات APNs
+// MARK: - AppDelegate — تدوير الشاشة + Firebase Cloud Messaging
 class AppDelegate: NSObject, UIApplicationDelegate {
+
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        // تهيئة Firebase
+        FirebaseApp.configure()
+        // تسجيل PushNotificationsManager كـ MessagingDelegate لاستقبال FCM token
+        Messaging.messaging().delegate = PushNotificationsManager.shared
+        return true
+    }
+
     func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
         OrientationManager.shared.locked
     }
 
-    // MARK: - Push Notifications Callbacks
+    // MARK: - APNs Token → Firebase (FCM يحتاجه داخلياً)
     func application(_ application: UIApplication,
                      didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        Task { @MainActor in
-            PushNotificationsManager.shared.didRegister(deviceToken: deviceToken)
-        }
+        // Firebase يحول APNs token إلى FCM token تلقائياً
+        Messaging.messaging().apnsToken = deviceToken
+        #if DEBUG
+        print("✅ [APNs] Token forwarded to Firebase")
+        #endif
     }
 
     func application(_ application: UIApplication,

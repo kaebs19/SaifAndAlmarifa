@@ -11,6 +11,7 @@ import Foundation
 import UIKit
 import UserNotifications
 import Combine
+import FirebaseMessaging
 
 @MainActor
 final class PushNotificationsManager: NSObject, ObservableObject {
@@ -20,7 +21,8 @@ final class PushNotificationsManager: NSObject, ObservableObject {
 
     // MARK: - State
     @Published private(set) var authorizationStatus: UNAuthorizationStatus = .notDetermined
-    @Published private(set) var deviceToken: String?
+    /// FCM token (Firebase Cloud Messaging) — هذا اللي يُرسل للسيرفر
+    @Published private(set) var fcmToken: String?
 
     /// يُبث عند لمس إشعار (يمكن للـ UI الانتقال للشاشة المناسبة)
     let onNotificationTap = PassthroughSubject<NotificationPayload, Never>()
@@ -59,24 +61,18 @@ final class PushNotificationsManager: NSObject, ObservableObject {
         authorizationStatus = settings.authorizationStatus
     }
 
-    /// يُستدعى من AppDelegate عند نجاح التسجيل
-    func didRegister(deviceToken data: Data) {
-        let token = data.map { String(format: "%02x", $0) }.joined()
-        deviceToken = token
-        keychain.save(token, for: .deviceToken)
-        Task { await sendTokenToServer(token) }
-    }
-
-    /// يُستدعى من AppDelegate عند فشل التسجيل
+    /// يُستدعى من AppDelegate عند فشل تسجيل APNs
     func didFailToRegister(error: Error) {
         #if DEBUG
-        print("⚠️ [Push] Register failed: \(error)")
+        print("⚠️ [Push] APNs register failed: \(error)")
         #endif
     }
 
     /// إلغاء تسجيل عند logout
     func unregister() async {
-        deviceToken = nil
+        // حذف FCM token محلياً
+        try? await Messaging.messaging().deleteToken()
+        fcmToken = nil
         keychain.delete(.deviceToken)
         _ = try? await network.requestVoid(DeviceEndpoint.Unregister())
     }
@@ -94,12 +90,27 @@ final class PushNotificationsManager: NSObject, ObservableObject {
                 DeviceEndpoint.Register(deviceToken: token, platform: "ios")
             )
             #if DEBUG
-            print("✅ [Push] Token registered with server")
+            print("✅ [FCM] Token registered with server")
             #endif
         } catch {
             #if DEBUG
-            print("⚠️ [Push] Token register failed: \(error)")
+            print("⚠️ [FCM] Token register failed: \(error)")
             #endif
+        }
+    }
+}
+
+// MARK: - Firebase Messaging Delegate (FCM token lifecycle)
+extension PushNotificationsManager: MessagingDelegate {
+    nonisolated func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        guard let token = fcmToken else { return }
+        Task { @MainActor in
+            self.fcmToken = token
+            self.keychain.save(token, for: .deviceToken)
+            #if DEBUG
+            print("✅ [FCM] New token: \(String(token.prefix(20)))...")
+            #endif
+            await self.sendTokenToServer(token)
         }
     }
 }
@@ -133,16 +144,30 @@ extension PushNotificationsManager: UNUserNotificationCenterDelegate {
 
 // MARK: - حمل الإشعار (parsing)
 struct NotificationPayload {
-    /// نوع الإشعار: clan_message, clan_mention, clan_role_change, clan_war, ...
-    let type: String
+    /// نوع الإشعار — يطابق `data.type` من FCM
+    let type: NotificationType
     let clanId: String?
     let messageId: String?
     let userId: String?
     let raw: [AnyHashable: Any]
 
+    enum NotificationType: String {
+        case clanMessage           = "clan_message"
+        case clanMention           = "clan_mention"
+        case clanMemberJoined      = "clan_member_joined"
+        case clanRequestAccepted   = "clan_request_accepted"
+        case clanKicked            = "clan_kicked"
+        case clanRoleChanged       = "clan_role_changed"
+        case clanMuted             = "clan_muted"
+        case clanWarStarted        = "clan_war_started"
+        case clanWarEnded          = "clan_war_ended"
+        case unknown
+    }
+
     static func from(_ userInfo: [AnyHashable: Any]) -> NotificationPayload {
-        NotificationPayload(
-            type:      userInfo["type"] as? String ?? "",
+        let typeStr = userInfo["type"] as? String ?? ""
+        return NotificationPayload(
+            type:      NotificationType(rawValue: typeStr) ?? .unknown,
             clanId:    userInfo["clanId"] as? String,
             messageId: userInfo["messageId"] as? String,
             userId:    userInfo["userId"] as? String,

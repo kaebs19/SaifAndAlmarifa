@@ -35,6 +35,10 @@
 	<string>720728750667-oo4ou6sibftqj8rp1u737b0thks1fqul.apps.googleusercontent.com</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>لاختيار صورة شخصية جديدة من الكاميرا</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>لاختيار صورة شخصية من معرض الصور</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>
@@ -49,6 +53,10 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
