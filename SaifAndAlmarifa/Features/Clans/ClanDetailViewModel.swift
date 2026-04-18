@@ -43,10 +43,22 @@ final class ClanDetailViewModel: ObservableObject {
     private var typingThrottle: Date = .distantPast
 
     // MARK: - Derived
-    var myRole: ClanRole? { clan?.myRole }
+    /// الدور الخاص بي — يحاول من الـ response أولاً ثم من ClanStateManager (عشيرتي)
+    var myRole: ClanRole? {
+        if let role = clan?.myRole { return role }
+        // احتياطي: إذا هذه عشيرتي، استخدم الدور المحفوظ globally
+        if let myClan = ClanStateManager.shared.myClan, myClan.id == clanId {
+            return myClan.myRole
+        }
+        return nil
+    }
     var canManage: Bool { myRole?.canManage ?? false }
     var isOwner: Bool { myRole == .owner }
-    var isMember: Bool { myRole != nil }
+    /// هل أنا عضو؟ من الدور أو من ClanStateManager (مرجع ثابت)
+    var isMember: Bool {
+        if myRole != nil { return true }
+        return ClanStateManager.shared.myClan?.id == clanId
+    }
     var myId: String? { auth.currentUser?.id }
 
     var availableTabs: [String] {
@@ -214,7 +226,14 @@ final class ClanDetailViewModel: ObservableObject {
     private func safeDetail() async -> Clan? { try? await service.detail(clanId) }
     private func safeMembers() async -> [ClanMember] { (try? await service.members(clanId)) ?? [] }
     private func safeLeaderboard() async -> [ClanMember] { (try? await service.membersLeaderboard(clanId)) ?? [] }
-    private func safeChat() async -> [ClanMessage] { (try? await service.chat(clanId)) ?? [] }
+    private func safeChat() async -> [ClanMessage] {
+        guard let page = try? await service.chat(clanId) else {
+            hasMoreMessages = false
+            return []
+        }
+        hasMoreMessages = page.hasMore
+        return page.messages
+    }
 
     // MARK: - Chat
     func sendMessage() async {
@@ -251,8 +270,7 @@ final class ClanDetailViewModel: ObservableObject {
     }
 
     func refreshChat() async {
-        messages = await safeChat()
-        hasMoreMessages = messages.count >= 30
+        messages = await safeChat()   // يحدّث hasMoreMessages من الـ envelope
     }
 
     /// جلب رسائل أقدم (pagination)
@@ -261,14 +279,14 @@ final class ClanDetailViewModel: ObservableObject {
         isLoadingMore = true
         defer { isLoadingMore = false }
         do {
-            let older = try await service.chat(clanId, beforeId: oldest.id, limit: 30)
-            if older.isEmpty { hasMoreMessages = false; return }
-            // نضيف للأسفل (الأقدم)
+            let page = try await service.chat(clanId, beforeId: oldest.id, limit: 30)
             let existing = Set(messages.map(\.id))
-            messages.append(contentsOf: older.filter { !existing.contains($0.id) })
-            hasMoreMessages = older.count >= 30
+            let fresh = page.messages.filter { !existing.contains($0.id) }
+            messages.append(contentsOf: fresh)
+            hasMoreMessages = page.hasMore
         } catch {
-            // تجاهل
+            // عند خطأ، أوقف المحاولات لتجنّب loop
+            hasMoreMessages = false
         }
     }
 

@@ -12,6 +12,7 @@ import SwiftUI
 struct ClanDetailView: View {
 
     @StateObject private var viewModel: ClanDetailViewModel
+    @StateObject private var clanState = ClanStateManager.shared
     @Environment(\.dismiss) private var dismiss
 
     @State private var showLeaveConfirm = false

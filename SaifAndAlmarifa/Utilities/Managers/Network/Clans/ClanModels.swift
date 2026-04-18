@@ -153,3 +153,11 @@ struct ClanJoinResponse: Decodable {
     let status: String
     var isJoined: Bool { status == "joined" }
 }
+
+// MARK: - صفحة شات (Pagination Envelope)
+struct ChatPage: Decodable {
+    let messages: [ClanMessage]
+    let hasMore: Bool
+    let nextBefore: String?
+    let limit: Int?
+}

@@ -23,6 +23,7 @@ final class ClanStateManager: ObservableObject {
     @Published private(set) var myClan: Clan?
     @Published private(set) var unreadCount: Int = 0
     @Published private(set) var isLoading: Bool = false
+    @Published private(set) var lastMessage: ClanMessage?   // آخر رسالة للعرض السريع
 
     // MARK: - State
     private var activeClanScreenId: String?      // إذا كان الشات مفتوح، ما نعدّ unread
@@ -60,6 +61,11 @@ final class ClanStateManager: ObservableObject {
             LocalCache.save(clan, key: LocalCache.Keys.myClan)
             // انضم لغرفة socket حتى لو ما كانت الشاشة مفتوحة (نستقبل الرسائل)
             socket.joinClanRoom(clan.id)
+            // آخر رسالة (أول عنصر في الـ API = الأحدث)
+            if let page = try? await service.chat(clan.id, limit: 1),
+               let latest = page.messages.first {
+                lastMessage = latest
+            }
         } catch APIError.notFound {
             clear()
         } catch {
@@ -72,6 +78,7 @@ final class ClanStateManager: ObservableObject {
         if let id = myClan?.id { socket.leaveClanRoom(id) }
         myClan = nil
         unreadCount = 0
+        lastMessage = nil
         UserDefaults.standard.removeObject(forKey: unreadKey)
         UserDefaults.standard.removeObject(forKey: lastSeenKey)
         LocalCache.remove(key: LocalCache.Keys.myClan)
@@ -144,11 +151,20 @@ final class ClanStateManager: ObservableObject {
         guard let myId = myClan?.id,
               (payload["clanId"] as? String) == myId else { return }
 
+        // فك الرسالة لعرضها في الـ preview
+        let messageDict = (payload["message"] as? [String: Any]) ?? payload
+        if let data = try? JSONSerialization.data(withJSONObject: messageDict) {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            if let msg = try? decoder.decode(ClanMessage.self, from: data) {
+                lastMessage = msg
+            }
+        }
+
         // إذا الشاشة مفتوحة حالياً، ما نزيد عداد
         if activeClanScreenId == myId { return }
 
         // ما نعدّ رسائل System
-        let messageDict = (payload["message"] as? [String: Any]) ?? payload
         let type = messageDict["type"] as? String
         if type == "system" { return }
 

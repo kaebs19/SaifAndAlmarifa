@@ -175,7 +175,7 @@ enum ClansEndpoint {
 
     // MARK: - Chat
     struct ChatList: Endpoint {
-        typealias Response = [ClanMessage]
+        typealias Response = ChatPage
         let id: String
         let beforeId: String?   // pagination cursor (رسائل أقدم من messageId)
         let limit: Int

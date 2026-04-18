@@ -138,7 +138,7 @@ struct MainView: View {
         HStack(spacing: AppSizes.Spacing.sm) {
             // الأفاتار + الاسم → بطاقة اللاعب (popup)
             Button { showPlayerCard = true } label: {
-                HStack(spacing: AppSizes.Spacing.sm) {
+                HStack(spacing: AppSizes.Spacing.xs) {
                     ZStack(alignment: .bottomTrailing) {
                         AsyncImage(url: URL(string: authManager.currentUser?.fullAvatarUrl ?? "")) { img in
                             img.resizable().scaledToFill()
@@ -147,7 +147,7 @@ struct MainView: View {
                                 .font(.system(size: 20))
                                 .foregroundStyle(.gray)
                         }
-                        .frame(width: 46, height: 46)
+                        .frame(width: 42, height: 42)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(tierColor, lineWidth: 2))
 
@@ -161,19 +161,23 @@ struct MainView: View {
 
                     VStack(alignment: .leading, spacing: 1) {
                         Text(authManager.currentUser?.username ?? "محارب")
-                            .font(.cairo(.bold, size: AppSizes.Font.body))
+                            .font(.cairo(.bold, size: 12))
                             .foregroundStyle(.white)
                             .lineLimit(1)
+                            .truncationMode(.tail)
 
-                        Text("\(AppStrings.Main.level) \(authManager.currentUser?.level ?? 1)")
-                            .font(.cairo(.medium, size: 10))
+                        Text("Lv.\(authManager.currentUser?.level ?? 1)")
+                            .font(.poppins(.semiBold, size: 9))
                             .foregroundStyle(tierColor)
+                            .lineLimit(1)
                     }
+                    .fixedSize(horizontal: true, vertical: false)
+                    .layoutPriority(1)
                 }
             }
             .buttonStyle(.plain)
 
-            Spacer()
+            Spacer(minLength: 4)
 
             // الذهب
             Button { showStore = true } label: {
@@ -246,6 +250,54 @@ struct MainView: View {
                         .offset(x: -2, y: -2)
                 }
             }
+        }
+    }
+
+    // MARK: - معاينة آخر رسالة في عشيرتي
+    private func chatPreviewRow(_ msg: ClanMessage, clanColor: Color) -> some View {
+        HStack(spacing: 6) {
+            // أيقونة حسب النوع
+            Image(systemName: previewIcon(for: msg.type))
+                .font(.system(size: 10))
+                .foregroundStyle(clanColor.opacity(0.7))
+
+            if msg.type != .system, let username = msg.user?.username {
+                Text(username + ":")
+                    .font(.cairo(.semiBold, size: 10))
+                    .foregroundStyle(clanColor)
+                    .lineLimit(1)
+            }
+
+            Text(previewText(for: msg))
+                .font(.cairo(.regular, size: 11))
+                .foregroundStyle(.white.opacity(0.7))
+                .lineLimit(1)
+                .truncationMode(.tail)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, AppSizes.Spacing.sm)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.white.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func previewIcon(for type: ClanMessage.MessageType) -> String {
+        switch type {
+        case .text:         return "bubble.left.fill"
+        case .announcement: return "megaphone.fill"
+        case .game_code:    return "gamecontroller.fill"
+        case .system:       return "info.circle"
+        }
+    }
+
+    private func previewText(for msg: ClanMessage) -> String {
+        switch msg.type {
+        case .game_code:
+            return "دعوة لعب" + (msg.roomCode.map { " — \($0)" } ?? "")
+        default:
+            return msg.content
         }
     }
 
@@ -433,55 +485,63 @@ struct MainView: View {
     @ViewBuilder
     private var smartClanButton: some View {
         if let clan = clanState.myClan {
-            // عنده عشيرة → Detail مباشرة + معلومات العشيرة
+            // عنده عشيرة → Detail مباشرة + معلومات العشيرة + آخر رسالة
             Button {
                 HapticManager.medium()
                 directClanId = clan.id
             } label: {
-                HStack(spacing: AppSizes.Spacing.sm) {
-                    ZStack(alignment: .topTrailing) {
-                        ClanBadgeView(badge: clan.badge, color: clan.displayColor, size: 38)
-                        if clanState.unreadCount > 0 {
-                            Text("\(min(clanState.unreadCount, 9))\(clanState.unreadCount > 9 ? "+" : "")")
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundStyle(.white)
-                                .frame(minWidth: 16, minHeight: 16)
-                                .padding(.horizontal, 3)
-                                .background(AppColors.Default.error)
-                                .clipShape(Capsule())
-                                .offset(x: 4, y: -4)
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 4) {
-                            Text(clan.name)
-                                .font(.cairo(.bold, size: AppSizes.Font.body))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                            if let role = clan.myRole {
-                                Image(systemName: role.icon)
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(role.color)
+                VStack(spacing: 8) {
+                    // الصف العلوي: معلومات العشيرة
+                    HStack(spacing: AppSizes.Spacing.sm) {
+                        ZStack(alignment: .topTrailing) {
+                            ClanBadgeView(badge: clan.badge, color: clan.displayColor, size: 38)
+                            if clanState.unreadCount > 0 {
+                                Text("\(min(clanState.unreadCount, 9))\(clanState.unreadCount > 9 ? "+" : "")")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(minWidth: 16, minHeight: 16)
+                                    .padding(.horizontal, 3)
+                                    .background(AppColors.Default.error)
+                                    .clipShape(Capsule())
+                                    .offset(x: 4, y: -4)
                             }
                         }
-                        HStack(spacing: 6) {
-                            Label("Lv.\(clan.level)", systemImage: "shield.lefthalf.filled")
-                                .labelStyle(.titleAndIcon)
-                                .font(.poppins(.semiBold, size: 9))
-                                .foregroundStyle(clan.displayColor)
-                            Text("•").foregroundStyle(.white.opacity(0.2))
-                            Text("\(clan.memberCount ?? 0) عضو")
-                                .font(.cairo(.medium, size: 10))
-                                .foregroundStyle(.white.opacity(0.5))
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 4) {
+                                Text(clan.name)
+                                    .font(.cairo(.bold, size: AppSizes.Font.body))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(1)
+                                if let role = clan.myRole {
+                                    Image(systemName: role.icon)
+                                        .font(.system(size: 9))
+                                        .foregroundStyle(role.color)
+                                }
+                            }
+                            HStack(spacing: 6) {
+                                Label("Lv.\(clan.level)", systemImage: "shield.lefthalf.filled")
+                                    .labelStyle(.titleAndIcon)
+                                    .font(.poppins(.semiBold, size: 9))
+                                    .foregroundStyle(clan.displayColor)
+                                Text("•").foregroundStyle(.white.opacity(0.2))
+                                Text("\(clan.memberCount ?? 0) عضو")
+                                    .font(.cairo(.medium, size: 10))
+                                    .foregroundStyle(.white.opacity(0.5))
+                            }
                         }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.4))
                     }
 
-                    Spacer()
-
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.4))
+                    // Chat preview (آخر رسالة)
+                    if let msg = clanState.lastMessage {
+                        chatPreviewRow(msg, clanColor: clan.displayColor)
+                    }
                 }
                 .padding(.horizontal, AppSizes.Spacing.md)
                 .padding(.vertical, AppSizes.Spacing.sm)

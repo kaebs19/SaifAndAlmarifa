@@ -86,7 +86,7 @@ final class ClansService: APIService {
     }
 
     // MARK: - Chat
-    func chat(_ id: String, beforeId: String? = nil, limit: Int = 30) async throws -> [ClanMessage] {
+    func chat(_ id: String, beforeId: String? = nil, limit: Int = 30) async throws -> ChatPage {
         try await network.request(ClansEndpoint.ChatList(id: id, beforeId: beforeId, limit: limit))
     }
 
