@@ -22,6 +22,9 @@ final class ClanDetailViewModel: ObservableObject {
     @Published var leaderboard: [ClanMember] = []
     @Published var messages: [ClanMessage] = []
     @Published var requests: [ClanJoinRequest] = []
+    @Published var events: [ClanEvent] = []
+    @Published var treasuryHistory: [TreasuryTransaction] = []
+    @Published var currentWar: ClanWar?
 
     @Published var messageText: String = ""
     @Published var selectedTab: Int = 0       // 0 شات, 1 الأعضاء, 2 الترتيب, 3 الطلبات, 4 معلومات
@@ -68,7 +71,7 @@ final class ClanDetailViewModel: ObservableObject {
     var myId: String? { auth.currentUser?.id }
 
     var availableTabs: [String] {
-        var tabs = ["الشات", "الإحصائيات", "الترتيب", "الأعضاء"]
+        var tabs = ["الشات", "الإحصائيات", "الترتيب", "الأعضاء", "الحرب", "الخزينة", "الامتيازات", "السجل"]
         if canManage { tabs.append("الطلبات") }
         return tabs
     }
@@ -259,6 +262,46 @@ final class ClanDetailViewModel: ObservableObject {
 
         if canManage {
             requests = (try? await service.requests(clanId)) ?? []
+        }
+
+        // إضافية — parallel
+        async let ev = safeEvents()
+        async let th = safeTreasuryHistory()
+        async let cw = safeCurrentWar()
+        events = await ev
+        treasuryHistory = await th
+        currentWar = await cw
+    }
+
+    private func safeEvents() async -> [ClanEvent] {
+        (try? await service.events(clanId)) ?? []
+    }
+
+    private func safeTreasuryHistory() async -> [TreasuryTransaction] {
+        (try? await service.treasuryHistory(clanId)) ?? []
+    }
+
+    private func safeCurrentWar() async -> ClanWar? {
+        try? await service.currentWar(clanId)
+    }
+
+    // MARK: - Treasury
+    @discardableResult
+    func donate(amount: Int) async -> Bool {
+        do {
+            let result = try await service.donateToTreasury(clanId, amount: amount)
+            HapticManager.success()
+            toast.success("تم التبرّع بـ \(result.amount) 🪙")
+            // حدّث clan treasury محلياً
+            await loadAll()
+            _ = try? await AuthService.shared.getMe()
+            return true
+        } catch let e as APIError {
+            toast.error(e.errorDescription ?? "فشل التبرّع")
+            return false
+        } catch {
+            toast.error("فشل التبرّع")
+            return false
         }
     }
 

@@ -8,6 +8,7 @@
 //  مدير حالة المصادقة — حفظ/استعادة/حذف بيانات المستخدم تلقائياً
 
 import Foundation
+import UIKit
 import Combine
 
 // MARK: - Auth Manager
@@ -45,6 +46,14 @@ final class AuthManager: ObservableObject {
         isAuthenticated = true
         AppSocketManager.shared.connect()
         Task { await ClanStateManager.shared.loadMyClan() }
+        // طلب إشعارات عند أول تسجيل (لو ما سألنا بعد)
+        Task {
+            if PushNotificationsManager.shared.authorizationStatus == .notDetermined {
+                _ = await PushNotificationsManager.shared.requestAuthorization()
+            } else if PushNotificationsManager.shared.authorizationStatus == .authorized {
+                await MainActor.run { UIApplication.shared.registerForRemoteNotifications() }
+            }
+        }
     }
 
     // MARK: - تحديث بيانات المستخدم (getMe)
@@ -57,6 +66,7 @@ final class AuthManager: ObservableObject {
     func logout() {
         AppSocketManager.shared.disconnect()
         ClanStateManager.shared.clear()
+        Task { await PushNotificationsManager.shared.unregister() }
         keychain.clearAll()
         clearUserLocally()
         currentUser = nil

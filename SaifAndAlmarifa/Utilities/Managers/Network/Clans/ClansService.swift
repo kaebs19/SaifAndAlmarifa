@@ -132,6 +132,25 @@ final class ClansService: APIService {
         try await network.request(ClansEndpoint.SetReadOnly(id: id, readOnly: readOnly))
     }
 
+    // MARK: - History
+    func events(_ id: String, limit: Int = 50) async throws -> [ClanEvent] {
+        try await network.request(ClansEndpoint.Events(id: id, limit: limit))
+    }
+
+    // MARK: - Treasury
+    func donateToTreasury(_ id: String, amount: Int) async throws -> TreasuryDonationResult {
+        try await network.request(ClansEndpoint.DonateToTreasury(id: id, amount: amount))
+    }
+
+    func treasuryHistory(_ id: String) async throws -> [TreasuryTransaction] {
+        try await network.request(ClansEndpoint.TreasuryHistory(id: id))
+    }
+
+    // MARK: - Wars
+    func currentWar(_ id: String) async throws -> ClanWar {
+        try await network.request(ClansEndpoint.CurrentWar(id: id))
+    }
+
     // MARK: - Leaderboards
     func topClans() async throws -> [ClanRankEntry] {
         try await network.request(ClansEndpoint.Leaderboard())

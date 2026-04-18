@@ -55,6 +55,7 @@ struct Clan: Codable, Identifiable {
     let maxMembers: Int?
     let isOpen: Bool?
     let readOnly: Bool?         // وضع الإعلانات فقط (admins only can send)
+    let treasury: Int?          // خزينة الذهب المشترك
     let ownerId: String?
     let createdAt: String?
 
@@ -196,6 +197,149 @@ struct ClanJoinResponse: Decodable {
     /// "joined" | "pending"
     let status: String
     var isJoined: Bool { status == "joined" }
+}
+
+// MARK: - Treasury
+struct TreasuryDonationResult: Decodable {
+    let amount: Int
+    let newTreasury: Int
+    let newUserGold: Int
+}
+
+struct TreasuryTransaction: Decodable, Identifiable {
+    let id: String
+    let type: String             // "donation" | "withdraw"
+    let amount: Int
+    let user: TreasuryUser?
+    let createdAt: String?
+    let note: String?
+
+    struct TreasuryUser: Decodable {
+        let id: String
+        let username: String
+        let avatarUrl: String?
+    }
+}
+
+// MARK: - Clan Wars
+struct ClanWar: Decodable, Identifiable {
+    let id: String
+    let status: WarStatus
+    let startAt: String?
+    let endAt: String?
+    let myClan: WarSide
+    let enemyClan: WarSide
+    let winnerClanId: String?
+
+    enum WarStatus: String, Decodable {
+        case scheduled, active, ended
+    }
+
+    struct WarSide: Decodable {
+        let clanId: String
+        let name: String
+        let badge: String?
+        let color: String?
+        let score: Int
+    }
+
+    var isActive: Bool { status == .active }
+    var isEnded: Bool { status == .ended }
+    var didWin: Bool { winnerClanId == myClan.clanId }
+
+    var displayColorEnemy: Color {
+        guard let hex = enemyClan.color, !hex.isEmpty else { return .red }
+        return Color(hex: hex.replacingOccurrences(of: "#", with: ""))
+    }
+
+    var displayColorMine: Color {
+        guard let hex = myClan.color, !hex.isEmpty else { return Color(hex: "FFD700") }
+        return Color(hex: hex.replacingOccurrences(of: "#", with: ""))
+    }
+}
+
+// MARK: - حدث في سجل العشيرة
+struct ClanEvent: Decodable, Identifiable {
+    let id: String
+    let type: EventType
+    let createdAt: String?
+    let actor: EventUser?      // من قام بالفعل
+    let target: EventUser?     // المتأثر (إن وُجد)
+    let metadata: [String: String]?
+
+    enum EventType: String, Decodable {
+        case memberJoined      = "member_joined"
+        case memberLeft        = "member_left"
+        case memberKicked      = "member_kicked"
+        case memberPromoted    = "member_promoted"
+        case memberDemoted     = "member_demoted"
+        case memberMuted       = "member_muted"
+        case memberUnmuted     = "member_unmuted"
+        case clanCreated       = "clan_created"
+        case clanUpdated       = "clan_updated"
+        case ownerTransferred  = "owner_transferred"
+        case levelUp           = "level_up"
+        case warWon            = "war_won"
+        case warLost           = "war_lost"
+        case treasuryDonation  = "treasury_donation"
+        case unknown
+    }
+
+    struct EventUser: Decodable {
+        let id: String
+        let username: String
+        let avatarUrl: String?
+    }
+
+    /// وصف الحدث بالعربي
+    var arabicDescription: String {
+        let actorName = actor?.username ?? "شخص"
+        let targetName = target?.username ?? "عضو"
+        switch type {
+        case .memberJoined:      return "\(actorName) انضم للعشيرة 🎉"
+        case .memberLeft:        return "\(actorName) غادر العشيرة"
+        case .memberKicked:      return "\(actorName) طرد \(targetName)"
+        case .memberPromoted:    return "\(actorName) ترقّى لمشرف ⭐"
+        case .memberDemoted:     return "\(targetName) تم تنزيله لعضو"
+        case .memberMuted:       return "\(actorName) كتم \(targetName) 🔇"
+        case .memberUnmuted:     return "\(actorName) رفع الكتم عن \(targetName)"
+        case .clanCreated:       return "تأسست العشيرة 🎊"
+        case .clanUpdated:       return "\(actorName) حدّث معلومات العشيرة"
+        case .ownerTransferred:  return "\(actorName) سلّم الزعامة لـ \(targetName) 👑"
+        case .levelUp:
+            let lvl = metadata?["level"] ?? "?"
+            return "العشيرة وصلت للمستوى \(lvl) 🚀"
+        case .warWon:            return "فزنا في الحرب! 🏆"
+        case .warLost:           return "خسرنا الحرب 💔"
+        case .treasuryDonation:
+            let amount = metadata?["amount"] ?? "0"
+            return "\(actorName) تبرّع بـ \(amount) 🪙"
+        case .unknown:           return "حدث"
+        }
+    }
+
+    var icon: String {
+        switch type {
+        case .memberJoined, .memberLeft: return "person.crop.circle"
+        case .memberKicked, .memberMuted: return "xmark.circle.fill"
+        case .memberPromoted: return "arrow.up.circle.fill"
+        case .memberDemoted:  return "arrow.down.circle.fill"
+        case .memberUnmuted:  return "mic.fill"
+        case .clanCreated:    return "sparkles"
+        case .clanUpdated:    return "pencil.circle"
+        case .ownerTransferred: return "crown.fill"
+        case .levelUp:        return "arrow.up.square.fill"
+        case .warWon:         return "trophy.fill"
+        case .warLost:        return "flag.slash"
+        case .treasuryDonation: return "dollarsign.circle.fill"
+        case .unknown:        return "circle"
+        }
+    }
+
+    var date: Date? {
+        guard let s = createdAt else { return nil }
+        return ISO8601DateFormatter().date(from: s)
+    }
 }
 
 // MARK: - صفحة شات (Pagination Envelope)

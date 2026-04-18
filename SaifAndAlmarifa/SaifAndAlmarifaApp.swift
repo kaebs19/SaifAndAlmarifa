@@ -9,10 +9,25 @@ import SwiftUI
 import SwiftData
 import UIKit
 
-// MARK: - AppDelegate لدعم تدوير الشاشة
+// MARK: - AppDelegate — تدوير الشاشة + إشعارات APNs
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
         OrientationManager.shared.locked
+    }
+
+    // MARK: - Push Notifications Callbacks
+    func application(_ application: UIApplication,
+                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        Task { @MainActor in
+            PushNotificationsManager.shared.didRegister(deviceToken: deviceToken)
+        }
+    }
+
+    func application(_ application: UIApplication,
+                     didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        Task { @MainActor in
+            PushNotificationsManager.shared.didFailToRegister(error: error)
+        }
     }
 }
 

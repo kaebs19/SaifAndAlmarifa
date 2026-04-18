@@ -18,6 +18,7 @@ struct ClanDetailView: View {
     @State private var showLeaveConfirm = false
     @State private var showDeleteConfirm = false
     @State private var showClearChatConfirm = false
+    @State private var showDonateSheet = false
     @State private var reportingMessage: ClanMessage?
     @State private var muteTarget: ClanMember?
     @State private var joinInFlight = false
@@ -43,7 +44,16 @@ struct ClanDetailView: View {
                     statsTab.tag(1)
                     leaderboardTab.tag(2)
                     membersTab.tag(3)
-                    if viewModel.canManage { requestsTab.tag(4) }
+                    ClanWarsTab(war: viewModel.currentWar, isLoading: viewModel.isLoading).tag(4)
+                    ClanTreasuryTab(
+                        treasury: clan.treasury ?? 0,
+                        history: viewModel.treasuryHistory,
+                        myGold: AuthManager.shared.currentUser?.gold ?? 0,
+                        onDonate: { showDonateSheet = true }
+                    ).tag(5)
+                    ClanPerksTab(clanLevel: clan.level).tag(6)
+                    ClanHistoryTab(events: viewModel.events, isLoading: viewModel.isLoading).tag(7)
+                    if viewModel.canManage { requestsTab.tag(8) }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
             } else if viewModel.isLoading {
@@ -87,6 +97,14 @@ struct ClanDetailView: View {
                 muteTarget = nil
             }
             .presentationDetents([.height(360)])
+        }
+        .sheet(isPresented: $showDonateSheet) {
+            TreasuryDonateSheet(myGold: AuthManager.shared.currentUser?.gold ?? 0) { amount in
+                Task {
+                    if await viewModel.donate(amount: amount) { showDonateSheet = false }
+                }
+            }
+            .presentationDetents([.height(480)])
         }
     }
 

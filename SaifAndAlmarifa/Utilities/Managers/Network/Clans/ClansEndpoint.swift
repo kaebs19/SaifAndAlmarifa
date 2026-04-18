@@ -307,6 +307,46 @@ enum ClansEndpoint {
         var body: Encodable? { ["readOnly": readOnly] }
     }
 
+    // MARK: - Treasury
+    struct DonateToTreasury: Endpoint {
+        typealias Response = TreasuryDonationResult
+        let id: String
+        let amount: Int
+        var path: String { "/clans/\(id)/treasury/donate" }
+        var method: HTTPMethod { .post }
+        var requiresAuth: Bool { true }
+        var body: Encodable? { ["amount": amount] }
+    }
+
+    struct TreasuryHistory: Endpoint {
+        typealias Response = [TreasuryTransaction]
+        let id: String
+        var path: String { "/clans/\(id)/treasury/history" }
+        var method: HTTPMethod { .get }
+        var requiresAuth: Bool { true }
+    }
+
+    // MARK: - Wars
+    struct CurrentWar: Endpoint {
+        typealias Response = ClanWar
+        let id: String
+        var path: String { "/clans/\(id)/wars/current" }
+        var method: HTTPMethod { .get }
+        var requiresAuth: Bool { true }
+    }
+
+    // MARK: - History / Feed
+    struct Events: Endpoint {
+        typealias Response = [ClanEvent]
+        let id: String
+        let limit: Int
+        init(id: String, limit: Int = 50) { self.id = id; self.limit = limit }
+        var path: String { "/clans/\(id)/events" }
+        var method: HTTPMethod { .get }
+        var requiresAuth: Bool { true }
+        var queryItems: [URLQueryItem]? { [.init(name: "limit", value: "\(limit)")] }
+    }
+
     // MARK: - Leaderboards
     struct Leaderboard: Endpoint {
         typealias Response = [ClanRankEntry]

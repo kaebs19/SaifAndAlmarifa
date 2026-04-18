@@ -162,5 +162,76 @@ extension ClanMessage: @retroactive Equatable {
     public static func == (lhs: ClanMessage, rhs: ClanMessage) -> Bool { lhs.id == rhs.id }
 }
 
+// MARK: - شيت التبرّع للخزينة
+struct TreasuryDonateSheet: View {
+
+    let myGold: Int
+    var onConfirm: (Int) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var amount: Int = 50
+
+    private let presets = [10, 50, 100, 250, 500, 1000]
+
+    var body: some View {
+        VStack(spacing: AppSizes.Spacing.md) {
+            Capsule().fill(.white.opacity(0.2)).frame(width: 36, height: 4).padding(.top, 8)
+
+            Text("تبرّع للخزينة")
+                .font(.cairo(.bold, size: AppSizes.Font.title3))
+                .foregroundStyle(.white)
+
+            Text("رصيدك: \(myGold) 🪙")
+                .font(.cairo(.medium, size: AppSizes.Font.body))
+                .foregroundStyle(.white.opacity(0.6))
+
+            // المبلغ المختار
+            HStack(spacing: 4) {
+                Text("\(amount)")
+                    .font(.poppins(.black, size: 42))
+                    .foregroundStyle(Color(hex: "FFD700"))
+                Text("🪙").font(.system(size: 28))
+            }
+
+            // presets
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+                ForEach(presets.filter { $0 <= myGold }, id: \.self) { value in
+                    Button {
+                        HapticManager.selection()
+                        amount = value
+                    } label: {
+                        Text("\(value)")
+                            .font(.poppins(.bold, size: 13))
+                            .foregroundStyle(amount == value ? .black : .white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, AppSizes.Spacing.sm)
+                            .background(amount == value ? AppColors.Default.goldPrimary : .white.opacity(0.05))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                }
+            }
+            .padding(.horizontal, AppSizes.Spacing.lg)
+
+            Spacer()
+
+            Button {
+                onConfirm(amount)
+            } label: {
+                Text("تبرّع الآن")
+                    .font(.cairo(.bold, size: AppSizes.Font.body))
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, AppSizes.Spacing.sm)
+                    .background(amount > myGold || amount <= 0 ? .gray : AppColors.Default.goldPrimary)
+                    .clipShape(Capsule())
+            }
+            .disabled(amount > myGold || amount <= 0)
+            .padding(.horizontal, AppSizes.Spacing.lg)
+            .padding(.bottom, AppSizes.Spacing.md)
+        }
+        .background(GradientBackground.main)
+    }
+}
+
 // MARK: - Identifiable conformance للـ ClanMember (للـ sheet(item:))
 // Already Identifiable via id
