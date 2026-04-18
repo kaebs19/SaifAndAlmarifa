@@ -299,6 +299,7 @@ struct ClanMessageBubble: View {
     let message: ClanMessage
     let isMine: Bool
     var showTimestamp: Bool = false   // إظهار الوقت (عند الضغط)
+    var onReaction: ((String) -> Void)? = nil   // callback عند اختيار emoji
 
     var body: some View {
         Group {
@@ -380,6 +381,13 @@ struct ClanMessageBubble: View {
                             lineWidth: 1
                         )
                 )
+
+                // التفاعلات
+                if let reactions = message.reactions, !reactions.isEmpty {
+                    ReactionChipsView(reactions: reactions) { r in
+                        onReaction?(r.emoji)
+                    }
+                }
 
                 // الوقت
                 if showTimestamp, let date = message.date {

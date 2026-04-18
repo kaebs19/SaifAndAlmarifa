@@ -60,6 +60,7 @@ final class AppSocketManager: ObservableObject {
     let onClanMessage = PassthroughSubject<[String: Any], Never>()          // رسالة جديدة
     let onClanMessageDeleted = PassthroughSubject<String, Never>()          // messageId
     let onClanChatCleared = PassthroughSubject<String, Never>()             // clanId
+    let onClanMessageReaction = PassthroughSubject<[String: Any], Never>()  // { clanId, messageId, reactions }
     let onClanMemberJoined = PassthroughSubject<[String: Any], Never>()
     let onClanMemberLeft = PassthroughSubject<[String: Any], Never>()
     let onClanMemberRoleChanged = PassthroughSubject<[String: Any], Never>()
@@ -381,6 +382,12 @@ final class AppSocketManager: ObservableObject {
                 if let d = data.first as? [String: Any], let id = d["clanId"] as? String {
                     self?.onClanChatCleared.send(id)
                 }
+            }
+        }
+
+        socket.on("clan:message-reaction") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onClanMessageReaction.send(d) }
             }
         }
 

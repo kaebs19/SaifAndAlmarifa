@@ -160,6 +160,13 @@ final class ClanDetailViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
+        // تفاعل
+        socket.onClanMessageReaction
+            .sink { [weak self] payload in
+                self?.applyReactions(payload)
+            }
+            .store(in: &cancellables)
+
         // تغيّر عضو (انضمام/مغادرة/دور)
         Publishers.Merge3(
             socket.onClanMemberJoined,
@@ -467,6 +474,53 @@ final class ClanDetailViewModel: ObservableObject {
             await loadAll()
         } catch {
             toast.error("فشلت العملية")
+        }
+    }
+
+    // MARK: - ═══════ Reactions ═══════
+
+    /// toggle تفاعل بإيموجي معيّن
+    func react(to msg: ClanMessage, emoji: String) async {
+        // optimistic update
+        if let idx = messages.firstIndex(where: { $0.id == msg.id }) {
+            var current = messages[idx].reactions ?? []
+            if let exIdx = current.firstIndex(where: { $0.emoji == emoji }) {
+                let ex = current[exIdx]
+                // toggle
+                let newCount = ex.mine ? ex.count - 1 : ex.count + 1
+                if newCount <= 0 {
+                    current.remove(at: exIdx)
+                } else {
+                    current[exIdx] = MessageReaction(emoji: emoji, count: newCount, mine: !ex.mine)
+                }
+            } else {
+                current.append(MessageReaction(emoji: emoji, count: 1, mine: true))
+            }
+            messages[idx].reactions = current
+        }
+
+        do {
+            let updated = try await service.reactMessage(clanId, messageId: msg.id, emoji: emoji)
+            if let idx = messages.firstIndex(where: { $0.id == msg.id }) {
+                messages[idx].reactions = updated
+            }
+            HapticManager.light()
+        } catch {
+            // تراجع — أعد تحميل
+            await refreshChat()
+            toast.error("فشل التفاعل")
+        }
+    }
+
+    /// تطبيق payload من الـ socket
+    private func applyReactions(_ payload: [String: Any]) {
+        guard (payload["clanId"] as? String) == clanId,
+              let messageId = payload["messageId"] as? String else { return }
+        guard let data = try? JSONSerialization.data(withJSONObject: payload["reactions"] ?? []),
+              let reactions = try? JSONDecoder().decode([MessageReaction].self, from: data) else { return }
+
+        if let idx = messages.firstIndex(where: { $0.id == messageId }) {
+            messages[idx].reactions = reactions
         }
     }
 

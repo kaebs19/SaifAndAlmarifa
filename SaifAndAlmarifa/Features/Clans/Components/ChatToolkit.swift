@@ -228,6 +228,69 @@ struct MentionSuggestionsList: View {
     }
 }
 
+// MARK: - شريط تفاعلات سريعة (يظهر عند Long press)
+struct ReactionQuickPicker: View {
+    static let quickReactions: [String] = ["❤️", "🔥", "👏", "😂", "😮", "😢"]
+
+    var onPick: (String) -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(Self.quickReactions, id: \.self) { emoji in
+                Button {
+                    HapticManager.selection()
+                    onPick(emoji)
+                } label: {
+                    Text(emoji)
+                        .font(.system(size: 22))
+                        .padding(6)
+                        .background(.white.opacity(0.08))
+                        .clipShape(Circle())
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color(hex: "1A1147").opacity(0.95))
+        .clipShape(Capsule())
+        .overlay(
+            Capsule().stroke(AppColors.Default.goldPrimary.opacity(0.25), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.3), radius: 10, y: 4)
+    }
+}
+
+// MARK: - عرض التفاعلات تحت الرسالة (شرائط)
+struct ReactionChipsView: View {
+    let reactions: [MessageReaction]
+    var onTap: (MessageReaction) -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(reactions) { r in
+                Button {
+                    HapticManager.selection()
+                    onTap(r)
+                } label: {
+                    HStack(spacing: 3) {
+                        Text(r.emoji).font(.system(size: 12))
+                        Text("\(r.count)")
+                            .font(.poppins(.bold, size: 10))
+                            .foregroundStyle(r.mine ? AppColors.Default.goldPrimary : .white.opacity(0.7))
+                    }
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .background(r.mine ? AppColors.Default.goldPrimary.opacity(0.15) : .white.opacity(0.06))
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(r.mine ? AppColors.Default.goldPrimary.opacity(0.5) : .white.opacity(0.1), lineWidth: 1)
+                    )
+                }
+            }
+        }
+    }
+}
+
 // MARK: - AttributedString helper للرسائل مع @mentions
 extension String {
     /// يرجّع AttributedString مع تمييز @mentions بلون ذهبي

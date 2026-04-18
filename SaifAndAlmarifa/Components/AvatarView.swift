@@ -15,11 +15,21 @@ struct AvatarView: View {
     var showOnlineIndicator: Bool = false
     var isOnline: Bool = false
     var onTap: (() -> Void)? = nil  // ✅ جديد — اختياري
-    
+
+    /// يحوّل المسار النسبي (مثل `/uploads/...`) إلى URL كامل.
+    private var resolvedURL: URL? {
+        guard let path = imageURL, !path.isEmpty else { return nil }
+        if path.hasPrefix("http") {
+            return URL(string: path)
+        }
+        let base = APIConfig.environment.baseURL.replacingOccurrences(of: "/api/v1", with: "")
+        return URL(string: base + path)
+    }
+
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            if let url = imageURL, !url.isEmpty {
-                AsyncImage(url: URL(string: url)) { phase in
+            if let url = resolvedURL {
+                AsyncImage(url: url) { phase in
                     switch phase {
                     case .success(let image):
                         image

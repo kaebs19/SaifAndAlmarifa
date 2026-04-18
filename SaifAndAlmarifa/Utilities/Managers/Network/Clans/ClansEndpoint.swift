@@ -237,6 +237,17 @@ enum ClansEndpoint {
         var requiresAuth: Bool { true }
     }
 
+    struct ReactMessage: Endpoint {
+        typealias Response = [MessageReaction]
+        let clanId: String
+        let messageId: String
+        let emoji: String
+        var path: String { "/clans/\(clanId)/chat/\(messageId)/react" }
+        var method: HTTPMethod { .post }
+        var requiresAuth: Bool { true }
+        var body: Encodable? { ["emoji": emoji] }
+    }
+
     // MARK: - Admin Tools
     struct DeleteMessage: Endpoint {
         typealias Response = EmptyData

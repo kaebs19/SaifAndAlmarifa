@@ -115,6 +115,14 @@ struct ClanMember: Decodable, Identifiable {
     }
 }
 
+// MARK: - تفاعل على رسالة
+struct MessageReaction: Codable, Identifiable, Hashable {
+    let emoji: String
+    let count: Int
+    let mine: Bool
+    var id: String { emoji }
+}
+
 // MARK: - رسالة داخل الشات
 struct ClanMessage: Codable, Identifiable {
     let id: String
@@ -128,6 +136,8 @@ struct ClanMessage: Codable, Identifiable {
     let replyToId: String?
     let replyToSnippet: String?
     let replyToUsername: String?
+    /// تفاعلات
+    var reactions: [MessageReaction]?
 
     enum MessageType: String, Codable {
         case text, game_code, system, announcement
@@ -144,6 +154,7 @@ struct ClanMessage: Codable, Identifiable {
         case id, type, content, isPinned, roomCode, createdAt
         case user = "User"
         case replyToId, replyToSnippet, replyToUsername
+        case reactions
     }
 
     // MARK: - Helpers

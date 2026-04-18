@@ -292,7 +292,10 @@ struct ClanDetailView: View {
                         ClanMessageBubble(
                             message: msg,
                             isMine: msg.user?.id == viewModel.myId,
-                            showTimestamp: viewModel.tappedMessageId == msg.id
+                            showTimestamp: viewModel.tappedMessageId == msg.id,
+                            onReaction: { emoji in
+                                Task { await viewModel.react(to: msg, emoji: emoji) }
+                            }
                         )
                         .id(msg.id)
                         .onTapGesture {
@@ -302,6 +305,17 @@ struct ClanDetailView: View {
                         }
                         .contextMenu {
                             messageContextMenu(msg)
+                        } preview: {
+                            // معاينة + شريط تفاعلات سريع
+                            VStack(spacing: 8) {
+                                ClanMessageBubble(message: msg, isMine: msg.user?.id == viewModel.myId)
+                                    .padding(.top, 8)
+                                ReactionQuickPicker { emoji in
+                                    Task { await viewModel.react(to: msg, emoji: emoji) }
+                                }
+                                .padding(.bottom, 10)
+                            }
+                            .background(Color(hex: "0A0E27"))
                         }
                     }
                 }
@@ -324,6 +338,17 @@ struct ClanDetailView: View {
     @ViewBuilder
     private func messageContextMenu(_ msg: ClanMessage) -> some View {
         if msg.type == .text || msg.type == .announcement {
+            // تفاعلات سريعة
+            Menu {
+                ForEach(ReactionQuickPicker.quickReactions, id: \.self) { emoji in
+                    Button(emoji) {
+                        Task { await viewModel.react(to: msg, emoji: emoji) }
+                    }
+                }
+            } label: {
+                Label("تفاعل", systemImage: "face.smiling")
+            }
+
             Button { viewModel.reply(to: msg) } label: {
                 Label("رد", systemImage: "arrowshape.turn.up.left")
             }

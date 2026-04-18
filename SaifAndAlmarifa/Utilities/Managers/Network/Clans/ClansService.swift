@@ -102,6 +102,11 @@ final class ClansService: APIService {
         try await network.requestVoid(ClansEndpoint.PinMessage(clanId: clanId, messageId: messageId))
     }
 
+    /// تفاعل (toggle) — يُرجع قائمة التفاعلات المحدّثة
+    func reactMessage(_ clanId: String, messageId: String, emoji: String) async throws -> [MessageReaction] {
+        try await network.request(ClansEndpoint.ReactMessage(clanId: clanId, messageId: messageId, emoji: emoji))
+    }
+
     // MARK: - Admin
     func deleteMessage(_ clanId: String, messageId: String) async throws {
         try await network.requestVoid(ClansEndpoint.DeleteMessage(clanId: clanId, messageId: messageId))
