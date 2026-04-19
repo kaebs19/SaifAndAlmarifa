@@ -300,6 +300,7 @@ struct ClanMessageBubble: View {
     let isMine: Bool
     var showTimestamp: Bool = false   // إظهار الوقت (عند الضغط)
     var onReaction: ((String) -> Void)? = nil   // callback عند اختيار emoji
+    var onJoinRoom: ((String) -> Void)? = nil   // callback عند اللمس على game_code
 
     var body: some View {
         Group {
@@ -404,31 +405,43 @@ struct ClanMessageBubble: View {
     private var gameCodeMessage: some View {
         HStack {
             if isMine { Spacer() }
-            VStack(alignment: .center, spacing: 6) {
-                HStack(spacing: 6) {
-                    Image(systemName: "gamecontroller.fill")
-                        .foregroundStyle(AppColors.Default.goldPrimary)
-                    Text(message.content)
-                        .font(.cairo(.semiBold, size: AppSizes.Font.caption))
-                        .foregroundStyle(.white)
+            Button {
+                guard !isMine, let code = message.roomCode else { return }
+                HapticManager.medium()
+                onJoinRoom?(code)
+            } label: {
+                VStack(alignment: .center, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "gamecontroller.fill")
+                            .foregroundStyle(AppColors.Default.goldPrimary)
+                        Text(message.content)
+                            .font(.cairo(.semiBold, size: AppSizes.Font.caption))
+                            .foregroundStyle(.white)
+                    }
+                    if let code = message.roomCode {
+                        Text(code)
+                            .font(.poppins(.bold, size: 18))
+                            .foregroundStyle(AppColors.Default.goldPrimary)
+                            .padding(.horizontal, AppSizes.Spacing.md)
+                            .padding(.vertical, 6)
+                            .background(AppColors.Default.goldPrimary.opacity(0.12))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                    if !isMine {
+                        Text("اضغط للانضمام →")
+                            .font(.cairo(.semiBold, size: 10))
+                            .foregroundStyle(AppColors.Default.goldPrimary.opacity(0.8))
+                    }
                 }
-                if let code = message.roomCode {
-                    Text(code)
-                        .font(.poppins(.bold, size: 18))
-                        .foregroundStyle(AppColors.Default.goldPrimary)
-                        .padding(.horizontal, AppSizes.Spacing.md)
-                        .padding(.vertical, 6)
-                        .background(AppColors.Default.goldPrimary.opacity(0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
+                .padding(AppSizes.Spacing.sm)
+                .background(Color(hex: "1E1B4B").opacity(0.8))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(AppColors.Default.goldPrimary.opacity(0.3), lineWidth: 1)
+                )
             }
-            .padding(AppSizes.Spacing.sm)
-            .background(Color(hex: "1E1B4B").opacity(0.8))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(AppColors.Default.goldPrimary.opacity(0.3), lineWidth: 1)
-            )
+            .buttonStyle(.plain)
             if !isMine { Spacer() }
         }
     }

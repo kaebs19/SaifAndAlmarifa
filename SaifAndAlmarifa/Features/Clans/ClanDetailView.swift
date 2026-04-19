@@ -313,6 +313,11 @@ struct ClanDetailView: View {
                             showTimestamp: viewModel.tappedMessageId == msg.id,
                             onReaction: { emoji in
                                 Task { await viewModel.react(to: msg, emoji: emoji) }
+                            },
+                            onJoinRoom: { code in
+                                AppSocketManager.shared.joinRoom(code: code)
+                                ToastManager.shared.info("جاري الانضمام لـ \(code)...")
+                                onClose()
                             }
                         )
                         .id(msg.id)
