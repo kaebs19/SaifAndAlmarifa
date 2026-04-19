@@ -60,19 +60,10 @@ struct MainView: View {
                 HapticManager.light()
             }
 
-            if viewModel.isSearching {
-                MatchSearchOverlay(modeName: viewModel.searchMode?.title) {
-                    viewModel.cancelSearch()
-                }
-                .transition(.opacity)
-            }
         }
-        .animation(.easeInOut(duration: 0.25), value: viewModel.isSearching)
-        .sheet(isPresented: $viewModel.showRoomCode) {
-            RoomCodeSheet(code: viewModel.roomCode ?? "")
-        }
-        .sheet(isPresented: $viewModel.showFriendPicker) {
-            FriendPickerSheet(friends: viewModel.friends) { viewModel.inviteFriend($0) }
+        .fullScreenCover(item: $viewModel.activeLobby) { mode in
+            MatchLobbyView(mode: mode, viewModel: viewModel)
+                .withToast()
         }
         .sheet(isPresented: $viewModel.showJoinRoom) {
             JoinRoomSheet { viewModel.joinRoom(code: $0) }

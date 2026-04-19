@@ -28,6 +28,12 @@ final class MainViewModel: ObservableObject {
     @Published var showJoinRoom: Bool = false
     @Published var friends: [Friend] = []
     @Published var pendingRoomMode: GameMode?
+    @Published var invitedFriends: [Friend] = []          // الأصدقاء المدعوين في غرفة خاصة
+    @Published var roomPlayers: [String] = []              // أسماء اللاعبين في الغرفة (حالياً)
+
+    // MARK: - Lobby (الشاشة الموحّدة)
+    @Published var activeLobby: GameMode? = nil
+    @Published var matchFoundId: String? = nil
 
     // MARK: - Dependencies
     private let authManager = AuthManager.shared
@@ -66,17 +72,49 @@ final class MainViewModel: ObservableObject {
 
     // MARK: - ═══════════════ أوضاع اللعب ═══════════════
 
+    /// يفتح شاشة اللوبي الموحّدة للوضع المطلوب ويشغّل العملية المناسبة
     func selectMode(_ mode: GameMode) {
+        // نظّف الحالة السابقة
+        resetLobbyState()
+        activeLobby = mode
+        pendingRoomMode = mode
+        HapticManager.medium()
+
         switch mode {
         case .random1v1, .random4:
             startQueueSearch(mode)
         case .private1v1:
             createRoom(mode)
         case .challengeFriend, .friends4:
-            pendingRoomMode = mode
+            // الأصدقاء يُحمَّلون أولاً، ثم يختار اللاعب من الـ lobby
             Task { await loadFriends() }
-            showFriendPicker = true
         }
+    }
+
+    /// يُستدعى عند إغلاق شاشة اللوبي
+    func closeLobby() {
+        // ألغِ أي طابور نشط
+        if isSearching {
+            socket.leaveQueue()
+        }
+        // ألغِ غرفة إذا كانت مفتوحة
+        if roomCode != nil {
+            socket.leaveRoom()
+        }
+        resetLobbyState()
+    }
+
+    private func resetLobbyState() {
+        isSearching = false
+        searchMode = nil
+        roomCode = nil
+        showRoomCode = false
+        showFriendPicker = false
+        invitedFriends = []
+        roomPlayers = []
+        pendingRoomMode = nil
+        matchFoundId = nil
+        activeLobby = nil
     }
 
     // MARK: بحث عشوائي
@@ -106,9 +144,26 @@ final class MainViewModel: ObservableObject {
 
     // MARK: دعوة صديق
     func inviteFriend(_ friend: Friend) {
-        guard let code = roomCode else { return }
-        socket.inviteFriend(code: code, friendId: friend.id)
-        toast.info("تم إرسال الدعوة لـ \(friend.username)")
+        // لو ما في غرفة بعد، أنشئها أولاً — سيتم تسجيل الصديق في `invitedFriends` وتُرسل الدعوة عند توفّر الكود
+        if invitedFriends.contains(where: { $0.id == friend.id }) {
+            toast.info("\(friend.username) مدعو بالفعل")
+            return
+        }
+
+        invitedFriends.append(friend)
+
+        if let code = roomCode {
+            socket.inviteFriend(code: code, friendId: friend.id)
+            toast.success("تم دعوة \(friend.username)")
+        } else if let mode = pendingRoomMode {
+            // أنشئ الغرفة الآن — الدعوات ستُرسل عند استقبال room:created
+            createRoom(mode)
+        }
+    }
+
+    /// إلغاء دعوة
+    func uninviteFriend(_ friend: Friend) {
+        invitedFriends.removeAll { $0.id == friend.id }
     }
 
     // MARK: تحميل الأصدقاء
@@ -146,22 +201,51 @@ final class MainViewModel: ObservableObject {
                 self?.searchMode = nil
                 HapticManager.success()
                 let matchId = data["matchId"] as? String ?? ""
+                self?.matchFoundId = matchId
                 self?.toast.success("تم إيجاد مباراة!")
-                // TODO: الانتقال لشاشة المباراة
                 self?.socket.joinMatch(matchId: matchId)
+                // الإغلاق التلقائي للّوبي بعد ثانيتين
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    self?.activeLobby = nil
+                }
             }
             .store(in: &cancellables)
 
         // غرفة أُنشئت
         socket.onRoomCreated
             .sink { [weak self] data in
+                guard let self else { return }
                 if let code = data["code"] as? String {
-                    self?.roomCode = code
-                    // إذا يحتاج صديق → أبقِ friend picker مفتوح
-                    if self?.pendingRoomMode?.needsFriend != true {
-                        self?.showRoomCode = true
-                    }
+                    self.roomCode = code
                     HapticManager.success()
+
+                    // أرسل الدعوات للأصدقاء المختارين سابقاً
+                    for friend in self.invitedFriends {
+                        self.socket.inviteFriend(code: code, friendId: friend.id)
+                    }
+                }
+            }
+            .store(in: &cancellables)
+
+        // لاعب انضم للغرفة
+        socket.onRoomPlayerJoined
+            .sink { [weak self] data in
+                guard let self else { return }
+                if let username = data["username"] as? String,
+                   !self.roomPlayers.contains(username) {
+                    self.roomPlayers.append(username)
+                    HapticManager.light()
+                }
+            }
+            .store(in: &cancellables)
+
+        // لاعب غادر الغرفة
+        socket.onRoomPlayerLeft
+            .sink { [weak self] data in
+                guard let self else { return }
+                if let username = data["username"] as? String {
+                    self.roomPlayers.removeAll { $0 == username }
                 }
             }
             .store(in: &cancellables)

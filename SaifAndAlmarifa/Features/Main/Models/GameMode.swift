@@ -74,6 +74,47 @@ enum GameMode: String, CaseIterable, Identifiable {
         case .random4, .friends4: return "4player"
         }
     }
+
+    // MARK: - تفاصيل اللوبي
+
+    /// عدد اللاعبين المطلوبين
+    var playersRequired: Int {
+        switch self {
+        case .random1v1, .private1v1, .challengeFriend: return 2
+        case .random4, .friends4: return 4
+        }
+    }
+
+    /// عدد الأسئلة في المباراة
+    var questionsCount: Int { 10 }
+
+    /// مدة المباراة التقديرية بالدقائق
+    var estimatedMinutes: Int {
+        switch self {
+        case .random1v1, .private1v1, .challengeFriend: return 5
+        case .random4, .friends4: return 8
+        }
+    }
+
+    /// جائزة الفوز بالذهب
+    var winReward: Int { 50 }
+
+    /// جائزة الخسارة
+    var loseReward: Int { 10 }
+
+    /// هل يُشارك كود غرفة
+    var hasRoomCode: Bool { !isQueue }
+
+    /// مفاتيح الوصف (3 معلومات)
+    struct Detail { let icon: String; let label: String; let value: String }
+
+    var details: [Detail] {
+        [
+            Detail(icon: "person.2.fill", label: "لاعبين", value: "\(playersRequired)"),
+            Detail(icon: "questionmark.circle.fill", label: "سؤال", value: "\(questionsCount)"),
+            Detail(icon: "clock.fill", label: "دقائق", value: "~\(estimatedMinutes)")
+        ]
+    }
 }
 
 // MARK: - التابات الرئيسية
