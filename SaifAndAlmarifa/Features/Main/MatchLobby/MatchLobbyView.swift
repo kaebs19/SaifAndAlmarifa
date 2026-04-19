@@ -239,8 +239,41 @@ struct MatchLobbyView: View {
                         .font(.system(size: 32))
                         .foregroundStyle(.white.opacity(0.3))
                     Text("لا يوجد أصدقاء بعد")
-                        .font(.cairo(.medium, size: AppSizes.Font.body))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .font(.cairo(.bold, size: AppSizes.Font.body))
+                        .foregroundStyle(.white.opacity(0.7))
+                    Text("شارك الكود بطريقة أخرى")
+                        .font(.cairo(.regular, size: AppSizes.Font.caption))
+                        .foregroundStyle(.white.opacity(0.4))
+
+                    HStack(spacing: AppSizes.Spacing.sm) {
+                        Button {
+                            HapticManager.light()
+                            showShareSheet = true
+                        } label: {
+                            Label("مشاركة خارجية", systemImage: "square.and.arrow.up")
+                                .font(.cairo(.semiBold, size: 11))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, AppSizes.Spacing.sm)
+                                .padding(.vertical, 8)
+                                .background(Color(hex: "60A5FA"))
+                                .clipShape(Capsule())
+                        }
+
+                        if ClanStateManager.shared.myClan != nil {
+                            Button {
+                                Task { await viewModel.shareRoomCodeToClan() }
+                            } label: {
+                                Label("لعشيرتي", systemImage: "shield.lefthalf.filled")
+                                    .font(.cairo(.semiBold, size: 11))
+                                    .foregroundStyle(.black)
+                                    .padding(.horizontal, AppSizes.Spacing.sm)
+                                    .padding(.vertical, 8)
+                                    .background(AppColors.Default.goldPrimary)
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                    .padding(.top, 6)
                 }
                 .padding(AppSizes.Spacing.lg)
                 .frame(maxWidth: .infinity)
@@ -453,52 +486,60 @@ struct MatchLobbyView: View {
 
     // Slot لي (المضيف) — يستخدم أفاتار من AuthManager
     private var meSlot: some View {
-        slotRow(
-            avatarUrl: viewModel.user?.avatarUrl,
-            name: viewModel.user?.username ?? "أنت",
-            level: viewModel.user?.level,
-            isHost: true
+        HStack(spacing: AppSizes.Spacing.sm) {
+            AvatarView(imageURL: viewModel.user?.avatarUrl, size: 36)
+                .overlay(
+                    Circle().stroke(AppColors.Default.goldPrimary, lineWidth: 2)
+                )
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 4) {
+                    Text("أنت")
+                        .font(.cairo(.bold, size: AppSizes.Font.body))
+                        .foregroundStyle(.white)
+                    Text("👑")
+                        .font(.system(size: 13))
+                    if let username = viewModel.user?.username {
+                        Text("(\(username))")
+                            .font(.cairo(.regular, size: 10))
+                            .foregroundStyle(.white.opacity(0.4))
+                    }
+                }
+                if let lvl = viewModel.user?.level {
+                    Text("Lv.\(lvl) • المضيف")
+                        .font(.poppins(.medium, size: 10))
+                        .foregroundStyle(AppColors.Default.goldPrimary.opacity(0.7))
+                }
+            }
+            Spacer()
+            readyBadge
+        }
+        .padding(.horizontal, AppSizes.Spacing.sm)
+        .padding(.vertical, 6)
+        .background(AppColors.Default.goldPrimary.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(AppColors.Default.goldPrimary.opacity(0.3), lineWidth: 1)
         )
     }
 
     // Slot للاعب آخر — من RoomPlayer
     private func playerSlot(player: RoomPlayer) -> some View {
-        slotRow(
-            avatarUrl: player.avatarUrl,
-            name: player.username,
-            level: player.level,
-            isHost: false
-        )
-    }
-
-    // مكوّن موحّد
-    private func slotRow(avatarUrl: String?, name: String, level: Int?, isHost: Bool) -> some View {
         HStack(spacing: AppSizes.Spacing.sm) {
-            AvatarView(imageURL: avatarUrl, size: 36)
+            AvatarView(imageURL: player.avatarUrl, size: 36)
             VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 4) {
-                    Text(name)
-                        .font(.cairo(.bold, size: AppSizes.Font.body))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                    if isHost {
-                        Text("👑")
-                            .font(.system(size: 10))
-                    }
-                }
-                if let lvl = level {
+                Text(player.username)
+                    .font(.cairo(.bold, size: AppSizes.Font.body))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                if let lvl = player.level {
                     Text("Lv.\(lvl)")
                         .font(.poppins(.medium, size: 10))
                         .foregroundStyle(AppColors.Default.goldPrimary.opacity(0.7))
                 }
             }
             Spacer()
-            Text("جاهز")
-                .font(.cairo(.semiBold, size: 10))
-                .foregroundStyle(AppColors.Default.success)
-                .padding(.horizontal, 8).padding(.vertical, 3)
-                .background(AppColors.Default.success.opacity(0.15))
-                .clipShape(Capsule())
+            readyBadge
         }
         .padding(.horizontal, AppSizes.Spacing.sm)
         .padding(.vertical, 6)
@@ -510,20 +551,55 @@ struct MatchLobbyView: View {
         )
     }
 
+    private var readyBadge: some View {
+        Text("جاهز")
+            .font(.cairo(.semiBold, size: 10))
+            .foregroundStyle(AppColors.Default.success)
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .background(AppColors.Default.success.opacity(0.15))
+            .clipShape(Capsule())
+    }
+
+    // Slot فارغ — قابل للضغط لدعوة صديق
     private var emptySlot: some View {
-        HStack(spacing: AppSizes.Spacing.sm) {
-            Circle().strokeBorder(.white.opacity(0.15), style: StrokeStyle(lineWidth: 1, dash: [4]))
-                .frame(width: 36, height: 36)
-            Text("في انتظار لاعب...")
-                .font(.cairo(.medium, size: AppSizes.Font.body))
-                .foregroundStyle(.white.opacity(0.3))
-            Spacer()
-            TypingDots()
+        Button {
+            HapticManager.light()
+            if !showFriendPicker {
+                Task { await viewModel.loadFriends() }
+                withAnimation { showFriendPicker = true }
+            } else {
+                showShareSheet = true
+            }
+        } label: {
+            HStack(spacing: AppSizes.Spacing.sm) {
+                ZStack {
+                    Circle()
+                        .strokeBorder(mode.accentColor.opacity(0.4),
+                                      style: StrokeStyle(lineWidth: 1.5, dash: [4]))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(mode.accentColor.opacity(0.7))
+                }
+                Text("دعوة لاعب")
+                    .font(.cairo(.semiBold, size: AppSizes.Font.body))
+                    .foregroundStyle(mode.accentColor.opacity(0.8))
+                Spacer()
+                Image(systemName: "person.badge.plus")
+                    .font(.system(size: 14))
+                    .foregroundStyle(mode.accentColor.opacity(0.5))
+            }
+            .padding(.horizontal, AppSizes.Spacing.sm)
+            .padding(.vertical, 6)
+            .background(mode.accentColor.opacity(0.04))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(mode.accentColor.opacity(0.2),
+                            style: StrokeStyle(lineWidth: 1, dash: [4]))
+            )
         }
-        .padding(.horizontal, AppSizes.Spacing.sm)
-        .padding(.vertical, 6)
-        .background(Color.white.opacity(0.02))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .buttonStyle(ScaleButtonStyle())
     }
 
     // MARK: - Match Found
