@@ -19,6 +19,8 @@ struct MatchLobbyView: View {
     @State private var elapsed = 0
     @State private var timer: Timer?
     @State private var pulse = false
+    @State private var showFriendPicker: Bool = false
+    @State private var showShareSheet: Bool = false
 
     var body: some View {
         ZStack {
@@ -64,6 +66,13 @@ struct MatchLobbyView: View {
         }
         .onDisappear {
             timer?.invalidate()
+        }
+        .sheet(isPresented: $showShareSheet) {
+            if let code = viewModel.roomCode {
+                ShareSheet(activityItems: [viewModel.shareMessage()])
+                    .presentationDetents([.medium])
+                    .onAppear { _ = code }
+            }
         }
     }
 
@@ -318,26 +327,12 @@ struct MatchLobbyView: View {
                 Text("كود الغرفة")
                     .font(.cairo(.medium, size: 11))
                     .foregroundStyle(.white.opacity(0.5))
-                HStack(spacing: AppSizes.Spacing.sm) {
-                    Text(viewModel.roomCode ?? "----")
-                        .font(.poppins(.black, size: 28))
-                        .foregroundStyle(mode.accentColor)
-                        .tracking(4)
-                    Button {
-                        UIPasteboard.general.string = viewModel.roomCode
-                        HapticManager.success()
-                        ToastManager.shared.info("تم النسخ")
-                    } label: {
-                        Image(systemName: "doc.on.doc.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(.white.opacity(0.6))
-                            .frame(width: 40, height: 40)
-                            .background(.white.opacity(0.06))
-                            .clipShape(Circle())
-                    }
-                }
+                Text(viewModel.roomCode ?? "----")
+                    .font(.poppins(.black, size: 32))
+                    .foregroundStyle(mode.accentColor)
+                    .tracking(6)
             }
-            .padding(AppSizes.Spacing.md)
+            .padding(.vertical, AppSizes.Spacing.md)
             .frame(maxWidth: .infinity)
             .background(mode.accentColor.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.large))
@@ -345,6 +340,9 @@ struct MatchLobbyView: View {
                 RoundedRectangle(cornerRadius: AppSizes.Radius.large)
                     .stroke(mode.accentColor.opacity(0.3), lineWidth: 1)
             )
+
+            // أزرار المشاركة
+            shareButtonsRow
 
             // اللاعبون في الغرفة
             VStack(alignment: .leading, spacing: 6) {
@@ -376,7 +374,100 @@ struct MatchLobbyView: View {
                 .foregroundStyle(.white.opacity(0.5))
             }
 
+            // زر "+ إضافة صديق" — إذا فيه slots فاضية
+            if canInviteMore {
+                Button {
+                    HapticManager.light()
+                    Task { await viewModel.loadFriends() }
+                    withAnimation { showFriendPicker.toggle() }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: showFriendPicker ? "chevron.up" : "plus.circle.fill")
+                        Text(showFriendPicker ? "إخفاء القائمة" : "دعوة صديق من القائمة")
+                    }
+                    .font(.cairo(.bold, size: AppSizes.Font.body))
+                    .foregroundStyle(mode.accentColor)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, AppSizes.Spacing.sm)
+                    .background(mode.accentColor.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
+                            .stroke(mode.accentColor.opacity(0.3), lineWidth: 1)
+                    )
+                }
+            }
+
+            if showFriendPicker {
+                friendsSection
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
             rewardPreview
+        }
+    }
+
+    /// هل يقدر يدعو مزيد؟
+    private var canInviteMore: Bool {
+        let currentCount = 1 + viewModel.roomPlayers.count + viewModel.invitedFriends.count
+        return currentCount < mode.playersRequired
+    }
+
+    // MARK: - أزرار المشاركة (نسخ / share / عشيرة)
+    private var shareButtonsRow: some View {
+        HStack(spacing: AppSizes.Spacing.sm) {
+            // نسخ
+            shareButton(
+                icon: "doc.on.doc.fill",
+                label: "نسخ",
+                color: AppColors.Default.goldPrimary
+            ) {
+                UIPasteboard.general.string = viewModel.roomCode
+                HapticManager.success()
+                ToastManager.shared.info("تم النسخ")
+            }
+
+            // مشاركة (iOS Share Sheet)
+            shareButton(
+                icon: "square.and.arrow.up.fill",
+                label: "مشاركة",
+                color: Color(hex: "60A5FA")
+            ) {
+                HapticManager.light()
+                showShareSheet = true
+            }
+
+            // إرسال لعشيرتي (إذا في عشيرة)
+            if ClanStateManager.shared.myClan != nil {
+                shareButton(
+                    icon: "shield.lefthalf.filled",
+                    label: "عشيرتي",
+                    color: Color(hex: "FFD700")
+                ) {
+                    Task { await viewModel.shareRoomCodeToClan() }
+                }
+            }
+        }
+    }
+
+    private func shareButton(icon: String, label: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 18))
+                    .foregroundStyle(color)
+                Text(label)
+                    .font(.cairo(.semiBold, size: 10))
+                    .foregroundStyle(.white.opacity(0.8))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, AppSizes.Spacing.sm)
+            .background(color.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
+                    .stroke(color.opacity(0.2), lineWidth: 1)
+            )
         }
     }
 
@@ -520,4 +611,16 @@ struct MatchLobbyView: View {
             Task { @MainActor in elapsed += 1 }
         }
     }
+}
+
+// MARK: - iOS Share Sheet Wrapper
+struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+    var applicationActivities: [UIActivity]? = nil
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: applicationActivities)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

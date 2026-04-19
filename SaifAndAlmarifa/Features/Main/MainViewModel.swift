@@ -166,6 +166,40 @@ final class MainViewModel: ObservableObject {
         invitedFriends.removeAll { $0.id == friend.id }
     }
 
+    /// إرسال كود الغرفة في شات العشيرة
+    func shareRoomCodeToClan() async -> Bool {
+        guard let code = roomCode else {
+            toast.error("لا يوجد كود غرفة")
+            return false
+        }
+        guard let clanId = ClanStateManager.shared.myClan?.id else {
+            toast.error("أنت لست في عشيرة")
+            return false
+        }
+        do {
+            _ = try await ClansService.shared.sendGameCode(clanId, roomCode: code)
+            HapticManager.success()
+            toast.success("تم الإرسال في شات العشيرة")
+            return true
+        } catch let e as APIError {
+            toast.error(e.errorDescription ?? "فشل الإرسال")
+            return false
+        } catch {
+            toast.error("فشل الإرسال")
+            return false
+        }
+    }
+
+    /// نص المشاركة للـ iOS Share Sheet
+    func shareMessage() -> String {
+        guard let code = roomCode else { return "" }
+        return """
+        انضم لمباراتي في سيف المعرفة! 🗡️
+        الكود: \(code)
+        افتح التطبيق → الانضمام بكود → \(code)
+        """
+    }
+
     // MARK: تحميل الأصدقاء
     func loadFriends() async {
         do {
