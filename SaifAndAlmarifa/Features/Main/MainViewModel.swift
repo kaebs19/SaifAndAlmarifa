@@ -86,8 +86,10 @@ final class MainViewModel: ObservableObject {
         case .private1v1:
             createRoom(mode)
         case .challengeFriend, .friends4:
-            // الأصدقاء يُحمَّلون أولاً، ثم يختار اللاعب من الـ lobby
+            // كل أوضاع الغرفة: أنشئ فوراً — المستخدم يقدر يشارك الكود
+            // أو يدعو أصدقاء داخل اللوبي
             Task { await loadFriends() }
+            createRoom(mode)
         }
     }
 

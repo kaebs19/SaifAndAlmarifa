@@ -33,15 +33,9 @@ struct MatchLobbyView: View {
                         modeHeader
                         modeDetails
 
-                        if mode.needsFriend && viewModel.roomCode == nil {
-                            friendsSection
-                        }
-
                         switch currentState {
                         case .creating:
                             creatingRoomSection
-                        case .waitingFriend:
-                            waitingFriendSection
                         case .roomReady:
                             roomReadySection
                         case .searching:
@@ -63,6 +57,10 @@ struct MatchLobbyView: View {
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                 pulse = true
             }
+            // افتح قائمة الأصدقاء تلقائياً لو الوضع يحتاج أصدقاء
+            if mode.needsFriend {
+                showFriendPicker = true
+            }
         }
         .onDisappear {
             timer?.invalidate()
@@ -77,12 +75,11 @@ struct MatchLobbyView: View {
     }
 
     // MARK: - الحالة الحالية
-    private enum LobbyState { case creating, waitingFriend, roomReady, searching, matchFound }
+    private enum LobbyState { case creating, roomReady, searching, matchFound }
 
     private var currentState: LobbyState {
         if viewModel.matchFoundId != nil { return .matchFound }
         if mode.isQueue { return .searching }
-        if mode.needsFriend && viewModel.roomCode == nil { return .waitingFriend }
         if viewModel.roomCode != nil { return .roomReady }
         return .creating
     }
@@ -232,25 +229,6 @@ struct MatchLobbyView: View {
         }
         .padding(AppSizes.Spacing.lg)
         .frame(maxWidth: .infinity)
-    }
-
-    // MARK: - قسم اختيار صديق
-    private var waitingFriendSection: some View {
-        VStack(spacing: AppSizes.Spacing.sm) {
-            HStack {
-                Image(systemName: "person.badge.plus")
-                    .foregroundStyle(mode.accentColor)
-                Text(mode == .friends4 ? "اختر 3 أصدقاء" : "اختر صديق")
-                    .font(.cairo(.bold, size: AppSizes.Font.body))
-                    .foregroundStyle(.white)
-                Spacer()
-                if !viewModel.invitedFriends.isEmpty {
-                    Text("\(viewModel.invitedFriends.count) مختار")
-                        .font(.cairo(.medium, size: 11))
-                        .foregroundStyle(mode.accentColor)
-                }
-            }
-        }
     }
 
     private var friendsSection: some View {
@@ -574,7 +552,7 @@ struct MatchLobbyView: View {
             }
             .padding(.horizontal, AppSizes.Spacing.lg)
             .padding(.bottom, AppSizes.Spacing.md)
-        case .waitingFriend, .creating:
+        case .creating:
             cancelButton("إلغاء")
         }
     }
