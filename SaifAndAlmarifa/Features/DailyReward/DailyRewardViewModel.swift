@@ -65,8 +65,12 @@ final class DailyRewardViewModel: ObservableObject {
                 let seconds = tomorrow.timeIntervalSince(now)
                 LocalNotificationsManager.scheduleDailyReward(after: seconds)
             }
+            // تذكير streak اليومي 9 مساءً (إذا في سلسلة نشطة)
+            if s.streak > 0 {
+                LocalNotificationsManager.scheduleStreakWarning(streak: s.streak)
+            }
         } else {
-            // المكافأة جاهزة — ألغِ أي تذكير قائم
+            // المكافأة جاهزة — ألغِ التذكير الفوري (streak warning يبقى يومياً)
             LocalNotificationsManager.cancel(.dailyReward)
         }
     }

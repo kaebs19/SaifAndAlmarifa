@@ -260,6 +260,9 @@ final class ClanDetailViewModel: ObservableObject {
         leaderboard = lbs
         messages = chs
 
+        // تذكير انتهاء الكتم (إن كنت مكتوماً)
+        scheduleMuteReminder()
+
         if canManage {
             requests = (try? await service.requests(clanId)) ?? []
         }
@@ -303,6 +306,18 @@ final class ClanDetailViewModel: ObservableObject {
             toast.error("فشل التبرّع")
             return false
         }
+    }
+
+    /// إذا كنت مكتوماً، يجدول إشعار لما ينتهي الكتم
+    private func scheduleMuteReminder() {
+        guard let mutedUntil = myMemberRecord?.mutedUntil,
+              let endDate = ISO8601DateFormatter().date(from: mutedUntil) else {
+            LocalNotificationsManager.cancel(.muteEnded)
+            return
+        }
+        let interval = endDate.timeIntervalSince(Date())
+        guard interval > 30 else { return }   // > 30 ثانية
+        LocalNotificationsManager.scheduleMuteEnded(after: interval, clanId: clanId)
     }
 
     private func safeDetail() async -> Clan? { try? await service.detail(clanId) }

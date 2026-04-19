@@ -16,9 +16,10 @@ enum LocalNotificationsManager {
 
     // MARK: - Identifiers (للإلغاء بدقة)
     enum NotificationID: String {
-        case dailyReward = "local.daily_reward.ready"
-        case spinWheel   = "local.spin_wheel.ready"
-        case muteEnded   = "local.mute.ended"
+        case dailyReward  = "local.daily_reward.ready"
+        case spinWheel    = "local.spin_wheel.ready"
+        case muteEnded    = "local.mute.ended"
+        case streakWarning = "local.streak.warning"
     }
 
     // MARK: - Public
@@ -60,6 +61,41 @@ enum LocalNotificationsManager {
                 "clanId": clanId
             ]
         )
+    }
+
+    /// تذكير "آخر فرصة" لسلسلة المكافآت اليومية (9 مساءً)
+    /// - Parameter streak: العدد الحالي للسلسلة (لتخصيص الرسالة)
+    static func scheduleStreakWarning(streak: Int) {
+        cancel(.streakWarning)
+
+        let content = UNMutableNotificationContent()
+        content.title = streak > 0 ? "⚠️ لا تكسر سلسلة \(streak) أيام!" : "⚠️ آخر فرصة اليوم!"
+        content.body = "ادخل الآن وخذ مكافأتك قبل منتصف الليل"
+        content.sound = .default
+        content.badge = 1
+        content.userInfo = ["type": NotificationType.dailyReward.rawValue]
+
+        // كل يوم الساعة 21:00
+        var components = DateComponents()
+        components.hour = 21
+        components.minute = 0
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+
+        let request = UNNotificationRequest(
+            identifier: NotificationID.streakWarning.rawValue,
+            content: content,
+            trigger: trigger
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            #if DEBUG
+            if let error {
+                print("⚠️ [Local] Streak schedule failed: \(error)")
+            } else {
+                print("✅ [Local] Streak warning scheduled daily at 21:00")
+            }
+            #endif
+        }
     }
 
     /// إلغاء إشعار محدّد

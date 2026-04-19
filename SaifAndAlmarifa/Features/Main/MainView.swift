@@ -14,6 +14,7 @@ struct MainView: View {
     @StateObject private var authManager = AuthManager.shared
     @StateObject private var clanState = ClanStateManager.shared
     @StateObject private var push = PushNotificationsManager.shared
+    @StateObject private var onlineStats = OnlineStatsManager.shared
     @State private var showProfile = false
     @State private var showSpinWheel = false
     @State private var showPlayerCard = false
@@ -35,6 +36,11 @@ struct MainView: View {
                 VStack(spacing: AppSizes.Spacing.lg) {
                     topBar
                         .staggeredAppear(order: 0)
+
+                    if onlineStats.onlineCount > 0 {
+                        onlineBadge
+                            .staggeredAppear(order: 1)
+                    }
 
                     mainCards
                         .staggeredAppear(order: 1)
@@ -135,7 +141,7 @@ struct MainView: View {
         case .clanMessage, .clanMention, .clanMemberJoined,
              .clanRequestAccepted, .clanRoleChanged,
              .clanMuted, .clanWarStarted, .clanWarEnded,
-             .muteEnded:
+             .clanLevelUp, .clanMvpOfWeek, .muteEnded:
             if let id = payload.clanId {
                 directClanId = id
             }
@@ -143,11 +149,14 @@ struct MainView: View {
             ClanStateManager.shared.removeMyClan()
             ToastManager.shared.info("تم طردك من العشيرة")
         case .dailyRewardReady:
-            Task { await viewModel.onAppear() } // حدّث الحالة
+            Task { await viewModel.onAppear() }
             showDailyReward = true
         case .spinWheelReady:
             Task { await viewModel.onAppear() }
             showSpinWheel = true
+        case .levelUp, .achievementUnlocked:
+            showPlayerCard = true
+            Task { await viewModel.onAppear() }
         case .unknown:
             break
         }
@@ -361,6 +370,40 @@ struct MainView: View {
         default:
             return msg.content
         }
+    }
+
+    // MARK: - شارة اللاعبين المتصلين
+    private var onlineBadge: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(AppColors.Default.success)
+                .frame(width: 8, height: 8)
+                .overlay(
+                    Circle()
+                        .stroke(AppColors.Default.success.opacity(0.5), lineWidth: 2)
+                        .scaleEffect(pulse ? 2.0 : 1.0)
+                        .opacity(pulse ? 0 : 1)
+                )
+            Text("\(formatCount(onlineStats.onlineCount))")
+                .font(.poppins(.bold, size: 12))
+                .foregroundStyle(AppColors.Default.success)
+                .contentTransition(.numericText())
+            Text("لاعب متصل الآن")
+                .font(.cairo(.medium, size: 11))
+                .foregroundStyle(.white.opacity(0.6))
+        }
+        .padding(.horizontal, AppSizes.Spacing.md)
+        .padding(.vertical, 6)
+        .background(AppColors.Default.success.opacity(0.08))
+        .clipShape(Capsule())
+        .overlay(
+            Capsule().stroke(AppColors.Default.success.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    private func formatCount(_ n: Int) -> String {
+        if n >= 1000 { return String(format: "%.1fK", Double(n) / 1000) }
+        return "\(n)"
     }
 
     private func clanBadgeIcon(_ badge: String?) -> String {

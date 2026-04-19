@@ -61,6 +61,9 @@ final class AppSocketManager: ObservableObject {
     let onClanMessageDeleted = PassthroughSubject<String, Never>()          // messageId
     let onClanChatCleared = PassthroughSubject<String, Never>()             // clanId
     let onClanMessageReaction = PassthroughSubject<[String: Any], Never>()  // { clanId, messageId, reactions }
+
+    // Global stats
+    let onOnlineCount = PassthroughSubject<Int, Never>()   // عدد اللاعبين المتصلين
     let onClanMemberJoined = PassthroughSubject<[String: Any], Never>()
     let onClanMemberLeft = PassthroughSubject<[String: Any], Never>()
     let onClanMemberRoleChanged = PassthroughSubject<[String: Any], Never>()
@@ -388,6 +391,15 @@ final class AppSocketManager: ObservableObject {
         socket.on("clan:message-reaction") { [weak self] data, _ in
             Task { @MainActor in
                 if let d = data.first as? [String: Any] { self?.onClanMessageReaction.send(d) }
+            }
+        }
+
+        // Global online count
+        socket.on("stats:online") { [weak self] data, _ in
+            Task { @MainActor in
+                let count = (data.first as? [String: Any])?["count"] as? Int
+                    ?? (data.first as? Int) ?? 0
+                self?.onOnlineCount.send(count)
             }
         }
 
