@@ -117,6 +117,28 @@ enum GameMode: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - لاعب في غرفة المباراة
+struct RoomPlayer: Identifiable, Equatable {
+    let id: String
+    let username: String
+    let avatarUrl: String?
+    let level: Int?
+
+    /// من dictionary (من الـ socket)
+    static func from(_ dict: [String: Any]) -> RoomPlayer? {
+        guard let id = dict["id"] as? String,
+              let username = dict["username"] as? String else { return nil }
+        return RoomPlayer(
+            id: id,
+            username: username,
+            avatarUrl: dict["avatarUrl"] as? String,
+            level: dict["level"] as? Int
+        )
+    }
+
+    static func ==(lhs: RoomPlayer, rhs: RoomPlayer) -> Bool { lhs.id == rhs.id }
+}
+
 // MARK: - التابات الرئيسية
 enum MainTab: String, CaseIterable {
     case home

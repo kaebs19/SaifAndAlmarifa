@@ -152,6 +152,8 @@ struct NotificationPayload {
     let raw: [AnyHashable: Any]
 
     enum NotificationType: String {
+        // Room invites
+        case roomInvite            = "room_invite"
         // Clan events
         case clanMessage           = "clan_message"
         case clanMention           = "clan_mention"
@@ -173,6 +175,9 @@ struct NotificationPayload {
         case achievementUnlocked   = "achievement_unlocked"
         case unknown
     }
+
+    /// roomCode — مفيد لـ room_invite
+    var roomCode: String? { raw["roomCode"] as? String }
 
     static func from(_ userInfo: [AnyHashable: Any]) -> NotificationPayload {
         let typeStr = userInfo["type"] as? String ?? ""

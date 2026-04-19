@@ -148,6 +148,11 @@ struct MainView: View {
         case .levelUp, .achievementUnlocked:
             showPlayerCard = true
             Task { await viewModel.onAppear() }
+        case .roomInvite:
+            // ضم مباشرة بالكود
+            if let code = payload.roomCode {
+                viewModel.joinRoom(code: code)
+            }
         case .unknown:
             break
         }

@@ -29,7 +29,8 @@ final class MainViewModel: ObservableObject {
     @Published var friends: [Friend] = []
     @Published var pendingRoomMode: GameMode?
     @Published var invitedFriends: [Friend] = []          // الأصدقاء المدعوين في غرفة خاصة
-    @Published var roomPlayers: [String] = []              // أسماء اللاعبين في الغرفة (حالياً)
+    @Published var roomPlayers: [RoomPlayer] = []          // اللاعبون الحاليون في الغرفة
+    @Published var roomShareLink: String?                  // رابط المشاركة (من السيرفر)
 
     // MARK: - Lobby (الشاشة الموحّدة)
     @Published var activeLobby: GameMode? = nil
@@ -114,6 +115,7 @@ final class MainViewModel: ObservableObject {
         showFriendPicker = false
         invitedFriends = []
         roomPlayers = []
+        roomShareLink = nil
         pendingRoomMode = nil
         matchFoundId = nil
         activeLobby = nil
@@ -195,11 +197,16 @@ final class MainViewModel: ObservableObject {
     /// نص المشاركة للـ iOS Share Sheet
     func shareMessage() -> String {
         guard let code = roomCode else { return "" }
-        return """
+        var text = """
         انضم لمباراتي في سيف المعرفة! 🗡️
         الكود: \(code)
-        افتح التطبيق → الانضمام بكود → \(code)
         """
+        if let link = roomShareLink {
+            text += "\n\(link)"
+        } else {
+            text += "\nافتح التطبيق → الانضمام بكود → \(code)"
+        }
+        return text
     }
 
     // MARK: تحميل الأصدقاء
@@ -254,7 +261,14 @@ final class MainViewModel: ObservableObject {
                 guard let self else { return }
                 if let code = data["code"] as? String {
                     self.roomCode = code
+                    self.roomShareLink = data["shareLink"] as? String
                     HapticManager.success()
+
+                    // بيانات اللاعبين الأوائل (لو الـ backend أرسلهم)
+                    if let playersArr = data["players"] as? [[String: Any]] {
+                        self.roomPlayers = playersArr.compactMap(RoomPlayer.from)
+                            .filter { $0.id != self.user?.id }  // استبعد نفسي (مذكور بطريقة مختلفة)
+                    }
 
                     // أرسل الدعوات للأصدقاء المختارين سابقاً
                     for friend in self.invitedFriends {
@@ -268,9 +282,21 @@ final class MainViewModel: ObservableObject {
         socket.onRoomPlayerJoined
             .sink { [weak self] data in
                 guard let self else { return }
-                if let username = data["username"] as? String,
-                   !self.roomPlayers.contains(username) {
-                    self.roomPlayers.append(username)
+
+                // طريقة جديدة: players array كاملة
+                if let playersArr = data["players"] as? [[String: Any]] {
+                    self.roomPlayers = playersArr.compactMap(RoomPlayer.from)
+                        .filter { $0.id != self.user?.id }
+                    HapticManager.light()
+                    return
+                }
+
+                // طريقة تكميلية: player object فقط
+                if let playerDict = data["player"] as? [String: Any],
+                   let player = RoomPlayer.from(playerDict),
+                   player.id != self.user?.id,
+                   !self.roomPlayers.contains(where: { $0.id == player.id }) {
+                    self.roomPlayers.append(player)
                     HapticManager.light()
                 }
             }
@@ -280,9 +306,33 @@ final class MainViewModel: ObservableObject {
         socket.onRoomPlayerLeft
             .sink { [weak self] data in
                 guard let self else { return }
-                if let username = data["username"] as? String {
-                    self.roomPlayers.removeAll { $0 == username }
+                if let userId = data["userId"] as? String {
+                    self.roomPlayers.removeAll { $0.id == userId }
+                } else if let playersArr = data["players"] as? [[String: Any]] {
+                    self.roomPlayers = playersArr.compactMap(RoomPlayer.from)
+                        .filter { $0.id != self.user?.id }
                 }
+            }
+            .store(in: &cancellables)
+
+        // غرفة تفكّكت
+        socket.onRoomDisbanded
+            .sink { [weak self] data in
+                guard let self else { return }
+                let reason = data["reason"] as? String ?? "انتهت الغرفة"
+                self.toast.info(reason)
+                self.resetLobbyState()
+            }
+            .store(in: &cancellables)
+
+        // دعوة لغرفة (من صديق)
+        socket.onRoomInvited
+            .sink { [weak self] data in
+                guard let self else { return }
+                let fromUser = (data["fromUser"] as? [String: Any])?["username"] as? String ?? "صديق"
+                let code = data["code"] as? String ?? ""
+                self.toast.info("\(fromUser) يدعوك لغرفة \(code)")
+                HapticManager.success()
             }
             .store(in: &cancellables)
 

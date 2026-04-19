@@ -331,9 +331,11 @@ struct MatchLobbyView: View {
                         .foregroundStyle(.white.opacity(0.7))
                     Spacer()
                 }
-                playerSlot(name: viewModel.user?.username ?? "أنت", isHost: true)
-                ForEach(viewModel.roomPlayers, id: \.self) { name in
-                    playerSlot(name: name, isHost: false)
+                // أنا (المضيف)
+                meSlot
+                // اللاعبون الآخرون
+                ForEach(viewModel.roomPlayers) { player in
+                    playerSlot(player: player)
                 }
                 // Slots فارغة
                 ForEach(0..<max(0, mode.playersRequired - 1 - viewModel.roomPlayers.count), id: \.self) { _ in
@@ -449,32 +451,63 @@ struct MatchLobbyView: View {
         }
     }
 
-    private func playerSlot(name: String, isHost: Bool) -> some View {
+    // Slot لي (المضيف) — يستخدم أفاتار من AuthManager
+    private var meSlot: some View {
+        slotRow(
+            avatarUrl: viewModel.user?.avatarUrl,
+            name: viewModel.user?.username ?? "أنت",
+            level: viewModel.user?.level,
+            isHost: true
+        )
+    }
+
+    // Slot للاعب آخر — من RoomPlayer
+    private func playerSlot(player: RoomPlayer) -> some View {
+        slotRow(
+            avatarUrl: player.avatarUrl,
+            name: player.username,
+            level: player.level,
+            isHost: false
+        )
+    }
+
+    // مكوّن موحّد
+    private func slotRow(avatarUrl: String?, name: String, level: Int?, isHost: Bool) -> some View {
         HStack(spacing: AppSizes.Spacing.sm) {
-            Circle()
-                .fill(AppColors.Default.success.opacity(0.2))
-                .frame(width: 36, height: 36)
-                .overlay(
-                    Image(systemName: "person.fill")
-                        .foregroundStyle(AppColors.Default.success)
-                )
-            Text(name).font(.cairo(.bold, size: AppSizes.Font.body)).foregroundStyle(.white)
-            if isHost {
-                Text("👑 مضيف").font(.cairo(.semiBold, size: 10))
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(AppColors.Default.goldPrimary.opacity(0.2))
-                    .clipShape(Capsule())
-                    .foregroundStyle(AppColors.Default.goldPrimary)
+            AvatarView(imageURL: avatarUrl, size: 36)
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 4) {
+                    Text(name)
+                        .font(.cairo(.bold, size: AppSizes.Font.body))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    if isHost {
+                        Text("👑")
+                            .font(.system(size: 10))
+                    }
+                }
+                if let lvl = level {
+                    Text("Lv.\(lvl)")
+                        .font(.poppins(.medium, size: 10))
+                        .foregroundStyle(AppColors.Default.goldPrimary.opacity(0.7))
+                }
             }
             Spacer()
             Text("جاهز")
                 .font(.cairo(.semiBold, size: 10))
                 .foregroundStyle(AppColors.Default.success)
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background(AppColors.Default.success.opacity(0.15))
+                .clipShape(Capsule())
         }
         .padding(.horizontal, AppSizes.Spacing.sm)
         .padding(.vertical, 6)
         .background(AppColors.Default.success.opacity(0.05))
         .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(AppColors.Default.success.opacity(0.15), lineWidth: 1)
+        )
     }
 
     private var emptySlot: some View {
