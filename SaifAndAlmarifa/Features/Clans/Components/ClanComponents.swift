@@ -401,49 +401,110 @@ struct ClanMessageBubble: View {
         }
     }
 
-    // MARK: كود لعبة
+    // MARK: كود لعبة — بطاقة CTA قابلة للضغط
     private var gameCodeMessage: some View {
-        HStack {
-            if isMine { Spacer() }
-            Button {
-                guard !isMine, let code = message.roomCode else { return }
-                HapticManager.medium()
-                onJoinRoom?(code)
-            } label: {
-                VStack(alignment: .center, spacing: 6) {
-                    HStack(spacing: 6) {
+        Button {
+            guard !isMine, let code = message.roomCode else { return }
+            HapticManager.medium()
+            onJoinRoom?(code)
+        } label: {
+            VStack(spacing: 10) {
+                // الهيدر: أيقونة لعبة + رسالة دعوة
+                HStack(spacing: AppSizes.Spacing.sm) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [AppColors.Default.goldPrimary, AppColors.Default.goldDark],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 40, height: 40)
+                            .shadow(color: AppColors.Default.goldPrimary.opacity(0.5), radius: 6)
                         Image(systemName: "gamecontroller.fill")
-                            .foregroundStyle(AppColors.Default.goldPrimary)
-                        Text(message.content)
-                            .font(.cairo(.semiBold, size: AppSizes.Font.caption))
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(.black)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("دعوة للعب 🎮")
+                            .font(.cairo(.bold, size: AppSizes.Font.body))
                             .foregroundStyle(.white)
+                        Text(message.content)
+                            .font(.cairo(.regular, size: 11))
+                            .foregroundStyle(.white.opacity(0.6))
+                            .lineLimit(1)
                     }
-                    if let code = message.roomCode {
-                        Text(code)
-                            .font(.poppins(.bold, size: 18))
-                            .foregroundStyle(AppColors.Default.goldPrimary)
-                            .padding(.horizontal, AppSizes.Spacing.md)
-                            .padding(.vertical, 6)
-                            .background(AppColors.Default.goldPrimary.opacity(0.12))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                    }
-                    if !isMine {
-                        Text("اضغط للانضمام →")
-                            .font(.cairo(.semiBold, size: 10))
-                            .foregroundStyle(AppColors.Default.goldPrimary.opacity(0.8))
-                    }
+                    Spacer()
                 }
-                .padding(AppSizes.Spacing.sm)
-                .background(Color(hex: "1E1B4B").opacity(0.8))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(AppColors.Default.goldPrimary.opacity(0.3), lineWidth: 1)
-                )
+
+                // الكود
+                if let code = message.roomCode {
+                    VStack(spacing: 2) {
+                        Text("كود الغرفة")
+                            .font(.cairo(.medium, size: 9))
+                            .foregroundStyle(.white.opacity(0.5))
+                        Text(code)
+                            .font(.poppins(.black, size: 22))
+                            .foregroundStyle(AppColors.Default.goldPrimary)
+                            .tracking(4)
+                    }
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity)
+                    .background(AppColors.Default.goldPrimary.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(AppColors.Default.goldPrimary.opacity(0.4),
+                                    style: StrokeStyle(lineWidth: 1, dash: [5]))
+                    )
+                }
+
+                // CTA
+                if !isMine {
+                    HStack {
+                        Spacer()
+                        Image(systemName: "arrow.right.circle.fill")
+                        Text("انضم الآن")
+                        Spacer()
+                    }
+                    .font(.cairo(.bold, size: AppSizes.Font.body))
+                    .foregroundStyle(.black)
+                    .padding(.vertical, 10)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(hex: "FFE55C"), Color(hex: "FFD700"), Color(hex: "DAA520")],
+                            startPoint: .leading, endPoint: .trailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .shadow(color: AppColors.Default.goldPrimary.opacity(0.3), radius: 6)
+                } else {
+                    HStack(spacing: 4) {
+                        Image(systemName: "paperplane.fill")
+                            .font(.system(size: 10))
+                        Text("تم إرسال الدعوة")
+                    }
+                    .font(.cairo(.medium, size: 11))
+                    .foregroundStyle(.white.opacity(0.5))
+                }
             }
-            .buttonStyle(.plain)
-            if !isMine { Spacer() }
+            .padding(AppSizes.Spacing.md)
+            .frame(maxWidth: 320)
+            .background(
+                LinearGradient(
+                    colors: [Color(hex: "1E1B4B").opacity(0.95), Color(hex: "15193D").opacity(0.95)],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(AppColors.Default.goldPrimary.opacity(isMine ? 0.2 : 0.5), lineWidth: 1.5)
+            )
+            .shadow(color: .black.opacity(0.3), radius: 8, y: 3)
         }
+        .buttonStyle(.plain)
+        .disabled(isMine)
     }
 
     // MARK: رسالة نظام

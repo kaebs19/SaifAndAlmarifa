@@ -21,6 +21,7 @@ struct MatchLobbyView: View {
     @State private var pulse = false
     @State private var showFriendPicker: Bool = false
     @State private var showShareSheet: Bool = false
+    @State private var showInviteSheet: Bool = false
 
     var body: some View {
         ZStack {
@@ -57,10 +58,6 @@ struct MatchLobbyView: View {
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                 pulse = true
             }
-            // افتح قائمة الأصدقاء تلقائياً لو الوضع يحتاج أصدقاء
-            if mode.needsFriend {
-                showFriendPicker = true
-            }
         }
         .onDisappear {
             timer?.invalidate()
@@ -71,6 +68,11 @@ struct MatchLobbyView: View {
                     .presentationDetents([.medium])
                     .onAppear { _ = code }
             }
+        }
+        .sheet(isPresented: $showInviteSheet) {
+            InviteFriendsSheet(viewModel: viewModel, mode: mode)
+                .presentationDetents([.large])
+                .withToast()
         }
     }
 
@@ -391,12 +393,11 @@ struct MatchLobbyView: View {
             if canInviteMore {
                 Button {
                     HapticManager.light()
-                    Task { await viewModel.loadFriends() }
-                    withAnimation { showFriendPicker.toggle() }
+                    showInviteSheet = true
                 } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: showFriendPicker ? "chevron.up" : "plus.circle.fill")
-                        Text(showFriendPicker ? "إخفاء القائمة" : "دعوة صديق من القائمة")
+                        Image(systemName: "person.badge.plus.fill")
+                        Text("فتح قائمة الأصدقاء")
                     }
                     .font(.cairo(.bold, size: AppSizes.Font.body))
                     .foregroundStyle(mode.accentColor)
@@ -409,11 +410,6 @@ struct MatchLobbyView: View {
                             .stroke(mode.accentColor.opacity(0.3), lineWidth: 1)
                     )
                 }
-            }
-
-            if showFriendPicker {
-                friendsSection
-                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
             rewardPreview
@@ -564,12 +560,7 @@ struct MatchLobbyView: View {
     private var emptySlot: some View {
         Button {
             HapticManager.light()
-            if !showFriendPicker {
-                Task { await viewModel.loadFriends() }
-                withAnimation { showFriendPicker = true }
-            } else {
-                showShareSheet = true
-            }
+            showInviteSheet = true
         } label: {
             HStack(spacing: AppSizes.Spacing.sm) {
                 ZStack {
