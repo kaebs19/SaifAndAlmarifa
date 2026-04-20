@@ -22,10 +22,25 @@ struct MatchLobbyView: View {
     @State private var showFriendPicker: Bool = false
     @State private var showShareSheet: Bool = false
     @State private var showInviteSheet: Bool = false
+    @State private var showQRSheet: Bool = false
+    @State private var copiedPulse: Bool = false
 
     var body: some View {
         ZStack {
             background
+
+            // Countdown Overlay (يطغى على كل شي)
+            if let count = viewModel.roomCountdown {
+                countdownOverlay(count: count)
+                    .zIndex(10)
+            }
+
+            // Copy animation overlay
+            if copiedPulse {
+                copiedToast
+                    .zIndex(9)
+                    .transition(.scale.combined(with: .opacity))
+            }
 
             VStack(spacing: 0) {
                 header
@@ -74,6 +89,62 @@ struct MatchLobbyView: View {
                 .presentationDetents([.large])
                 .withToast()
         }
+        .sheet(isPresented: $showQRSheet) {
+            if let code = viewModel.roomCode {
+                RoomQRSheet(
+                    code: code,
+                    shareLink: viewModel.roomShareLink,
+                    modeName: mode.title
+                )
+                .presentationDetents([.large])
+            }
+        }
+    }
+
+    // MARK: - Countdown Overlay
+    private func countdownOverlay(count: Int) -> some View {
+        ZStack {
+            Color.black.opacity(0.75).ignoresSafeArea()
+
+            VStack(spacing: AppSizes.Spacing.md) {
+                Text("🎉 الغرفة جاهزة!")
+                    .font(.cairo(.black, size: AppSizes.Font.title2))
+                    .foregroundStyle(.white)
+
+                Text("\(count)")
+                    .font(.poppins(.black, size: 140))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color(hex: "FFE55C"), Color(hex: "FFD700"), Color(hex: "DAA520")],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                    )
+                    .shadow(color: AppColors.Default.goldPrimary.opacity(0.8), radius: 30)
+                    .scaleEffect(pulse ? 1.1 : 0.9)
+                    .id(count)  // تتغيّر مع كل تحديث لتشغيل scale animation
+
+                Text("جاري بدء المباراة...")
+                    .font(.cairo(.bold, size: AppSizes.Font.body))
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .transition(.scale.combined(with: .opacity))
+        }
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: count)
+    }
+
+    // MARK: - Copied Toast
+    private var copiedToast: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(AppColors.Default.success)
+            Text("تم النسخ!")
+                .font(.cairo(.bold, size: AppSizes.Font.body))
+                .foregroundStyle(.white)
+        }
+        .padding(AppSizes.Spacing.lg)
+        .background(.black.opacity(0.8))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: - الحالة الحالية
@@ -422,9 +493,9 @@ struct MatchLobbyView: View {
         return currentCount < mode.playersRequired
     }
 
-    // MARK: - أزرار المشاركة (نسخ / share / عشيرة)
+    // MARK: - أزرار المشاركة (نسخ / QR / share / عشيرة)
     private var shareButtonsRow: some View {
-        HStack(spacing: AppSizes.Spacing.sm) {
+        HStack(spacing: AppSizes.Spacing.xs) {
             // نسخ
             shareButton(
                 icon: "doc.on.doc.fill",
@@ -433,7 +504,22 @@ struct MatchLobbyView: View {
             ) {
                 UIPasteboard.general.string = viewModel.roomCode
                 HapticManager.success()
-                ToastManager.shared.info("تم النسخ")
+                // Animation overlay
+                withAnimation(.spring()) { copiedPulse = true }
+                Task {
+                    try? await Task.sleep(nanoseconds: 1_200_000_000)
+                    withAnimation { copiedPulse = false }
+                }
+            }
+
+            // QR Code
+            shareButton(
+                icon: "qrcode",
+                label: "QR",
+                color: Color(hex: "A78BFA")
+            ) {
+                HapticManager.light()
+                showQRSheet = true
             }
 
             // مشاركة (iOS Share Sheet)

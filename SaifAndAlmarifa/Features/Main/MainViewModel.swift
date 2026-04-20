@@ -35,6 +35,8 @@ final class MainViewModel: ObservableObject {
     // MARK: - Lobby (الشاشة الموحّدة)
     @Published var activeLobby: GameMode? = nil
     @Published var matchFoundId: String? = nil
+    @Published var roomCountdown: Int? = nil   // عدّ تنازلي قبل البدء (3, 2, 1)
+    private var countdownTimer: Timer?
 
     // MARK: - Dependencies
     private let authManager = AuthManager.shared
@@ -119,6 +121,50 @@ final class MainViewModel: ObservableObject {
         pendingRoomMode = nil
         matchFoundId = nil
         activeLobby = nil
+        cancelRoomCountdown()
+    }
+
+    // MARK: - Room Countdown (Auto-start)
+
+    /// يُفحص بعد كل `room:player-joined` — إذا اكتملت الغرفة يبدأ countdown
+    fileprivate func checkRoomFull() {
+        guard let mode = activeLobby,
+              !mode.isQueue,
+              roomCountdown == nil else { return }
+
+        let total = 1 + roomPlayers.count   // أنا + الآخرون
+        if total >= mode.playersRequired {
+            startRoomCountdown()
+        }
+    }
+
+    private func startRoomCountdown() {
+        cancelRoomCountdown()
+        roomCountdown = 3
+        SoundManager.play(.roomFull)
+        HapticManager.heavy()
+
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] t in
+            Task { @MainActor in
+                guard let self else { t.invalidate(); return }
+                if let c = self.roomCountdown, c > 1 {
+                    self.roomCountdown = c - 1
+                    SoundManager.play(.countdown)
+                    HapticManager.light()
+                } else {
+                    t.invalidate()
+                    self.roomCountdown = nil
+                    // السيرفر سيبعث match:started تلقائياً عند اكتمال الغرفة.
+                    // هذا فقط visual — لا إرسال socket هنا.
+                }
+            }
+        }
+    }
+
+    fileprivate func cancelRoomCountdown() {
+        countdownTimer?.invalidate()
+        countdownTimer = nil
+        roomCountdown = nil
     }
 
     // MARK: بحث عشوائي
@@ -242,6 +288,7 @@ final class MainViewModel: ObservableObject {
             .sink { [weak self] data in
                 self?.isSearching = false
                 self?.searchMode = nil
+                SoundManager.play(.matchFound)
                 HapticManager.success()
                 let matchId = data["matchId"] as? String ?? ""
                 self?.matchFoundId = matchId
@@ -283,22 +330,29 @@ final class MainViewModel: ObservableObject {
             .sink { [weak self] data in
                 guard let self else { return }
 
+                let beforeCount = self.roomPlayers.count
+
                 // طريقة جديدة: players array كاملة
                 if let playersArr = data["players"] as? [[String: Any]] {
                     self.roomPlayers = playersArr.compactMap(RoomPlayer.from)
                         .filter { $0.id != self.user?.id }
-                    HapticManager.light()
-                    return
+                }
+                // طريقة تكميلية: player object فقط
+                else if let playerDict = data["player"] as? [String: Any],
+                        let player = RoomPlayer.from(playerDict),
+                        player.id != self.user?.id,
+                        !self.roomPlayers.contains(where: { $0.id == player.id }) {
+                    self.roomPlayers.append(player)
                 }
 
-                // طريقة تكميلية: player object فقط
-                if let playerDict = data["player"] as? [String: Any],
-                   let player = RoomPlayer.from(playerDict),
-                   player.id != self.user?.id,
-                   !self.roomPlayers.contains(where: { $0.id == player.id }) {
-                    self.roomPlayers.append(player)
-                    HapticManager.light()
+                // feedback فقط لو فيه لاعب جديد فعلاً
+                if self.roomPlayers.count > beforeCount {
+                    SoundManager.play(.playerJoined)
+                    HapticManager.success()
                 }
+
+                // الغرفة ممتلأة الآن
+                self.checkRoomFull()
             }
             .store(in: &cancellables)
 
@@ -306,11 +360,18 @@ final class MainViewModel: ObservableObject {
         socket.onRoomPlayerLeft
             .sink { [weak self] data in
                 guard let self else { return }
+                let beforeCount = self.roomPlayers.count
                 if let userId = data["userId"] as? String {
                     self.roomPlayers.removeAll { $0.id == userId }
                 } else if let playersArr = data["players"] as? [[String: Any]] {
                     self.roomPlayers = playersArr.compactMap(RoomPlayer.from)
                         .filter { $0.id != self.user?.id }
+                }
+                if self.roomPlayers.count < beforeCount {
+                    SoundManager.play(.playerLeft)
+                    HapticManager.warning()
+                    // ألغِ countdown لو كانت شغّالة
+                    self.cancelRoomCountdown()
                 }
             }
             .store(in: &cancellables)
