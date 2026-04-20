@@ -81,9 +81,16 @@ struct SaifAndAlmarifaApp: App {
                 .environment(\.layoutDirection, .rightToLeft)
                 // تطبيق ثيم المستخدم (System/Light/Dark)
                 .applyTheme()
-                // معالجة callback تسجيل الدخول عبر Google
+                // Custom scheme (saifiq://) + Google callback
                 .onOpenURL { url in
-                    GoogleSignInManager.handle(url: url)
+                    if GoogleSignInManager.handle(url: url) { return }
+                    DeepLinkManager.shared.handle(url)
+                }
+                // Universal Links (https://saifiq.halmanhaj.com/...)
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    if let url = activity.webpageURL {
+                        DeepLinkManager.shared.handle(url)
+                    }
                 }
         }
         .modelContainer(sharedModelContainer)

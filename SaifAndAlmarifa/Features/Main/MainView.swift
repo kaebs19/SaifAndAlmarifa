@@ -111,6 +111,21 @@ struct MainView: View {
         .onReceive(push.onNotificationTap) { payload in
             handleNotificationTap(payload)
         }
+        .onReceive(DeepLinkManager.shared.onDeepLink) { link in
+            handleDeepLink(link)
+        }
+    }
+
+    // MARK: - Deep Link (Universal / custom scheme)
+    private func handleDeepLink(_ link: DeepLink) {
+        switch link {
+        case .joinRoom(let code):
+            viewModel.joinRoom(code: code)
+            ToastManager.shared.info("جاري الانضمام لـ \(code)")
+            HapticManager.light()
+        case .openClan(let id):
+            directClanId = id
+        }
     }
 
     /// جدولة تذكير المكافأة اليومية لمنتصف الليل التالي

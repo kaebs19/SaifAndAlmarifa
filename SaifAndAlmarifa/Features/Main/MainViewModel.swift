@@ -38,6 +38,17 @@ final class MainViewModel: ObservableObject {
     @Published var roomCountdown: Int? = nil   // عدّ تنازلي قبل البدء (3, 2, 1)
     private var countdownTimer: Timer?
 
+    // MARK: - Ready Check
+    @Published var readyUserIds: Set<String> = []
+    @Published var amIReady: Bool = false
+
+    // MARK: - Room Chat
+    @Published var roomMessages: [RoomChatMessage] = []
+
+    // MARK: - Search Users (للدعوة)
+    @Published var userSearchResults: [FriendSearchResult] = []
+    @Published var isSearchingUsers: Bool = false
+
     // MARK: - Dependencies
     private let authManager = AuthManager.shared
     private let socket = AppSocketManager.shared
@@ -121,7 +132,63 @@ final class MainViewModel: ObservableObject {
         pendingRoomMode = nil
         matchFoundId = nil
         activeLobby = nil
+        readyUserIds = []
+        amIReady = false
+        roomMessages = []
+        userSearchResults = []
         cancelRoomCountdown()
+    }
+
+    // MARK: - ═══════ Ready Check ═══════
+
+    func toggleReady() {
+        amIReady.toggle()
+        socket.setReady(amIReady)
+        HapticManager.light()
+    }
+
+    // MARK: - ═══════ Kick Player ═══════
+
+    func kick(_ player: RoomPlayer) {
+        socket.kickFromRoom(userId: player.id)
+        toast.info("تم طرد \(player.username)")
+        HapticManager.warning()
+    }
+
+    // MARK: - ═══════ Room Chat ═══════
+
+    func sendRoomMessage(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        socket.sendRoomMessage(trimmed)
+    }
+
+    // MARK: - ═══════ Search Users ═══════
+
+    func searchUsers(_ query: String) async {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard q.count >= 2 else {
+            userSearchResults = []
+            return
+        }
+        isSearchingUsers = true
+        defer { isSearchingUsers = false }
+        userSearchResults = (try? await NetworkManager.shared.request(FriendsEndpoint.SearchUsers(query: q))) ?? []
+    }
+
+    /// دعوة لاعب (ليس صديق بالضرورة) — يحوّل SearchResult إلى Friend
+    func inviteUser(_ user: FriendSearchResult) {
+        let friend = Friend(
+            friendshipId: nil,
+            id: user.id,
+            username: user.username,
+            avatarUrl: user.avatarUrl,
+            level: user.level,
+            country: user.country,
+            friendCode: nil,
+            isOnline: nil
+        )
+        inviteFriend(friend)
     }
 
     // MARK: - Room Countdown (Auto-start)
@@ -394,6 +461,52 @@ final class MainViewModel: ObservableObject {
                 let code = data["code"] as? String ?? ""
                 self.toast.info("\(fromUser) يدعوك لغرفة \(code)")
                 HapticManager.success()
+            }
+            .store(in: &cancellables)
+
+        // حالة الاستعداد
+        socket.onRoomReadyState
+            .sink { [weak self] data in
+                guard let self else { return }
+                if let arr = data["readyUserIds"] as? [String] {
+                    self.readyUserIds = Set(arr)
+                    if let myId = self.user?.id {
+                        self.amIReady = self.readyUserIds.contains(myId)
+                    }
+                }
+            }
+            .store(in: &cancellables)
+
+        // الكل جاهز — بدء المباراة
+        socket.onRoomAllReady
+            .sink { [weak self] _ in
+                self?.checkRoomFull()  // يُشغّل countdown نفسه
+            }
+            .store(in: &cancellables)
+
+        // تم طردي من الغرفة
+        socket.onRoomKicked
+            .sink { [weak self] reason in
+                guard let self else { return }
+                self.toast.error(reason)
+                HapticManager.error()
+                self.resetLobbyState()
+            }
+            .store(in: &cancellables)
+
+        // رسالة شات في الغرفة
+        socket.onRoomChatMessage
+            .sink { [weak self] data in
+                guard let self else { return }
+                let payload = (data["message"] as? [String: Any]) ?? data
+                if let msg = RoomChatMessage.from(payload) {
+                    if !self.roomMessages.contains(where: { $0.id == msg.id }) {
+                        self.roomMessages.append(msg)
+                        if msg.userId != self.user?.id {
+                            SoundManager.play(.messageReceived)
+                        }
+                    }
+                }
             }
             .store(in: &cancellables)
 

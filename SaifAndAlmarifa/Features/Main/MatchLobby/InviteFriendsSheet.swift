@@ -16,19 +16,31 @@ struct InviteFriendsSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
+    @State private var selectedTab: Int = 0   // 0 = أصدقائي، 1 = بحث عن لاعب
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 header
+                tabBar
+
                 searchBar
                     .padding(.horizontal, AppSizes.Spacing.lg)
                     .padding(.vertical, AppSizes.Spacing.sm)
+                    .onChange(of: searchText) { _, new in
+                        if selectedTab == 1 {
+                            Task { await viewModel.searchUsers(new) }
+                        }
+                    }
 
-                if viewModel.friends.isEmpty {
-                    emptyState
+                if selectedTab == 0 {
+                    if viewModel.friends.isEmpty {
+                        emptyState
+                    } else {
+                        friendsList
+                    }
                 } else {
-                    friendsList
+                    usersSearchList
                 }
 
                 bottomShareBar
@@ -62,6 +74,126 @@ struct InviteFriendsSheet: View {
             .foregroundStyle(mode.accentColor)
         }
         .padding(.top, AppSizes.Spacing.md)
+    }
+
+    // MARK: - Tab Bar
+    private var tabBar: some View {
+        HStack(spacing: 0) {
+            tabButton("أصدقائي", tag: 0)
+            tabButton("بحث عن لاعب", tag: 1)
+        }
+        .padding(.horizontal, AppSizes.Spacing.lg)
+        .padding(.top, AppSizes.Spacing.sm)
+    }
+
+    private func tabButton(_ title: String, tag: Int) -> some View {
+        Button {
+            HapticManager.selection()
+            withAnimation { selectedTab = tag }
+            searchText = ""
+        } label: {
+            VStack(spacing: 4) {
+                Text(title)
+                    .font(.cairo(.semiBold, size: AppSizes.Font.caption))
+                    .foregroundStyle(selectedTab == tag ? AppColors.Default.goldPrimary : .white.opacity(0.4))
+                Capsule()
+                    .fill(selectedTab == tag ? AppColors.Default.goldPrimary : Color.clear)
+                    .frame(height: 2)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    // MARK: - Users Search List
+    private var usersSearchList: some View {
+        ScrollView {
+            if searchText.trimmingCharacters(in: .whitespaces).count < 2 {
+                VStack(spacing: AppSizes.Spacing.sm) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 44))
+                        .foregroundStyle(.white.opacity(0.2))
+                    Text("اكتب اسم لاعب للبحث")
+                        .font(.cairo(.medium, size: AppSizes.Font.body))
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+                .padding(.top, 60)
+                .frame(maxWidth: .infinity)
+            } else if viewModel.isSearchingUsers {
+                ProgressView().tint(.white).padding(.top, 40)
+            } else if viewModel.userSearchResults.isEmpty {
+                Text("لم نجد نتائج")
+                    .font(.cairo(.medium, size: AppSizes.Font.body))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .padding(.top, 40)
+            } else {
+                LazyVStack(spacing: 6) {
+                    ForEach(viewModel.userSearchResults) { user in
+                        userSearchRow(user)
+                    }
+                }
+                .padding(.horizontal, AppSizes.Spacing.lg)
+                .padding(.bottom, AppSizes.Spacing.md)
+            }
+        }
+    }
+
+    private func userSearchRow(_ user: FriendSearchResult) -> some View {
+        let isInvited = viewModel.invitedFriends.contains(where: { $0.id == user.id })
+        let maxReached = !isInvited && viewModel.invitedFriends.count >= (mode.playersRequired - 1)
+
+        return HStack(spacing: AppSizes.Spacing.sm) {
+            AvatarView(imageURL: user.avatarUrl, size: 44)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(user.username)
+                    .font(.cairo(.bold, size: AppSizes.Font.body))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    if let lvl = user.level {
+                        Text("Lv.\(lvl)")
+                            .font(.poppins(.semiBold, size: 10))
+                            .foregroundStyle(AppColors.Default.goldPrimary.opacity(0.7))
+                    }
+                    if let country = user.country, !country.isEmpty {
+                        Text("•").foregroundStyle(.white.opacity(0.2))
+                        Text(country)
+                            .font(.cairo(.regular, size: 10))
+                            .foregroundStyle(.white.opacity(0.4))
+                    }
+                }
+            }
+            Spacer()
+            Button {
+                HapticManager.selection()
+                if isInvited {
+                    if let f = viewModel.invitedFriends.first(where: { $0.id == user.id }) {
+                        viewModel.uninviteFriend(f)
+                    }
+                } else if !maxReached {
+                    viewModel.inviteUser(user)
+                }
+            } label: {
+                if isInvited {
+                    Label("تم", systemImage: "checkmark.circle.fill")
+                        .font(.cairo(.bold, size: 11))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, AppSizes.Spacing.sm).padding(.vertical, 6)
+                        .background(AppColors.Default.success)
+                        .clipShape(Capsule())
+                } else {
+                    Label("دعوة", systemImage: "plus")
+                        .font(.cairo(.bold, size: 11))
+                        .foregroundStyle(maxReached ? .white.opacity(0.3) : .black)
+                        .padding(.horizontal, AppSizes.Spacing.sm).padding(.vertical, 6)
+                        .background(maxReached ? Color.gray.opacity(0.2) : mode.accentColor)
+                        .clipShape(Capsule())
+                }
+            }
+            .disabled(maxReached)
+        }
+        .padding(AppSizes.Spacing.sm)
+        .background(isInvited ? mode.accentColor.opacity(0.08) : Color.white.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
     }
 
     // MARK: - Search

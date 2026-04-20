@@ -55,6 +55,10 @@ final class AppSocketManager: ObservableObject {
     let onRoomDisbanded = PassthroughSubject<[String: Any], Never>()
     let onRoomError = PassthroughSubject<[String: Any], Never>()
     let onRoomInvited = PassthroughSubject<[String: Any], Never>()
+    let onRoomReadyState = PassthroughSubject<[String: Any], Never>()   // { code, readyUserIds }
+    let onRoomAllReady = PassthroughSubject<String, Never>()            // clanId
+    let onRoomKicked = PassthroughSubject<String, Never>()              // أنا تم طردي
+    let onRoomChatMessage = PassthroughSubject<[String: Any], Never>()  // { code, message }
 
     // Clan Publishers
     let onClanMessage = PassthroughSubject<[String: Any], Never>()          // رسالة جديدة
@@ -160,6 +164,21 @@ final class AppSocketManager: ObservableObject {
     /// مغادرة الغرفة
     func leaveRoom() {
         emit("room:leave")
+    }
+
+    /// استعداد اللاعب (toggle)
+    func setReady(_ isReady: Bool) {
+        emit("room:ready", data: ["ready": isReady])
+    }
+
+    /// الهوست يطرد لاعب
+    func kickFromRoom(userId: String) {
+        emit("room:kick", data: ["userId": userId])
+    }
+
+    /// إرسال رسالة في شات الغرفة
+    func sendRoomMessage(_ content: String) {
+        emit("room:chat-message", data: ["content": content])
     }
 
     // MARK: - ═══════════════ Match ═══════════════
@@ -306,6 +325,32 @@ final class AppSocketManager: ObservableObject {
         socket.on("room:invited") { [weak self] data, _ in
             Task { @MainActor in
                 if let d = data.first as? [String: Any] { self?.onRoomInvited.send(d) }
+            }
+        }
+
+        socket.on("room:ready-state") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onRoomReadyState.send(d) }
+            }
+        }
+
+        socket.on("room:all-ready") { [weak self] data, _ in
+            Task { @MainActor in
+                let code = (data.first as? [String: Any])?["code"] as? String ?? ""
+                self?.onRoomAllReady.send(code)
+            }
+        }
+
+        socket.on("room:kicked") { [weak self] data, _ in
+            Task { @MainActor in
+                let reason = (data.first as? [String: Any])?["reason"] as? String ?? "تم طردك"
+                self?.onRoomKicked.send(reason)
+            }
+        }
+
+        socket.on("room:chat-message") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onRoomChatMessage.send(d) }
             }
         }
 

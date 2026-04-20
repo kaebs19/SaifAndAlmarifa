@@ -593,7 +593,7 @@ struct MatchLobbyView: View {
                 }
             }
             Spacer()
-            readyBadge
+            readyBadge(isReady: viewModel.amIReady)
         }
         .padding(.horizontal, AppSizes.Spacing.sm)
         .padding(.vertical, 6)
@@ -607,7 +607,10 @@ struct MatchLobbyView: View {
 
     // Slot للاعب آخر — من RoomPlayer
     private func playerSlot(player: RoomPlayer) -> some View {
-        HStack(spacing: AppSizes.Spacing.sm) {
+        let isReady = viewModel.readyUserIds.contains(player.id)
+        let canKick = amIHost && !mode.isQueue
+
+        return HStack(spacing: AppSizes.Spacing.sm) {
             AvatarView(imageURL: player.avatarUrl, size: 36)
             VStack(alignment: .leading, spacing: 1) {
                 Text(player.username)
@@ -621,25 +624,50 @@ struct MatchLobbyView: View {
                 }
             }
             Spacer()
-            readyBadge
+            readyBadge(isReady: isReady)
+
+            if canKick {
+                Menu {
+                    Button(role: .destructive) {
+                        viewModel.kick(player)
+                    } label: {
+                        Label("طرد من الغرفة", systemImage: "xmark.circle")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.4))
+                        .frame(width: 28, height: 28)
+                }
+            }
         }
         .padding(.horizontal, AppSizes.Spacing.sm)
         .padding(.vertical, 6)
-        .background(AppColors.Default.success.opacity(0.05))
+        .background(isReady ? AppColors.Default.success.opacity(0.08) : Color.white.opacity(0.03))
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(AppColors.Default.success.opacity(0.15), lineWidth: 1)
+                .stroke(
+                    isReady ? AppColors.Default.success.opacity(0.3) : .white.opacity(0.08),
+                    lineWidth: 1
+                )
         )
     }
 
-    private var readyBadge: some View {
-        Text("جاهز")
-            .font(.cairo(.semiBold, size: 10))
-            .foregroundStyle(AppColors.Default.success)
-            .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(AppColors.Default.success.opacity(0.15))
-            .clipShape(Capsule())
+    /// هل أنا الهوست؟ (أول من أنشأ الغرفة = أنا دائماً في iOS)
+    private var amIHost: Bool { true }
+
+    private func readyBadge(isReady: Bool) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: isReady ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 9))
+            Text(isReady ? "جاهز" : "ينتظر")
+        }
+        .font(.cairo(.semiBold, size: 10))
+        .foregroundStyle(isReady ? AppColors.Default.success : .white.opacity(0.4))
+        .padding(.horizontal, 8).padding(.vertical, 3)
+        .background((isReady ? AppColors.Default.success : Color.gray).opacity(0.15))
+        .clipShape(Capsule())
     }
 
     // Slot فارغ — قابل للضغط لدعوة صديق
@@ -728,16 +756,33 @@ struct MatchLobbyView: View {
         case .searching:
             cancelButton("إلغاء البحث")
         case .roomReady:
-            HStack(spacing: AppSizes.Spacing.sm) {
-                // إشارة "في انتظار اللاعبين"
-                Text("في انتظار اللاعبين...")
-                    .font(.cairo(.medium, size: AppSizes.Font.caption))
-                    .foregroundStyle(.white.opacity(0.5))
-                Spacer()
-                cancelButton("إلغاء").frame(width: 110)
+            VStack(spacing: 0) {
+                // شات الغرفة (expandable)
+                RoomChatBar(viewModel: viewModel)
+
+                HStack(spacing: AppSizes.Spacing.sm) {
+                    // زر الاستعداد
+                    Button {
+                        viewModel.toggleReady()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: viewModel.amIReady ? "checkmark.circle.fill" : "hand.raised.fill")
+                            Text(viewModel.amIReady ? "جاهز ✓" : "اضغط للاستعداد")
+                        }
+                        .font(.cairo(.bold, size: AppSizes.Font.body))
+                        .foregroundStyle(viewModel.amIReady ? .white : .black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, AppSizes.Spacing.sm)
+                        .background(viewModel.amIReady ? AppColors.Default.success : AppColors.Default.goldPrimary)
+                        .clipShape(Capsule())
+                    }
+
+                    cancelButton("إلغاء").frame(width: 100)
+                }
+                .padding(.horizontal, AppSizes.Spacing.lg)
+                .padding(.bottom, AppSizes.Spacing.md)
+                .padding(.top, AppSizes.Spacing.xs)
             }
-            .padding(.horizontal, AppSizes.Spacing.lg)
-            .padding(.bottom, AppSizes.Spacing.md)
         case .creating:
             cancelButton("إلغاء")
         }

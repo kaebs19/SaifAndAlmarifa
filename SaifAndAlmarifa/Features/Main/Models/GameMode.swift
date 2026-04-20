@@ -117,6 +117,32 @@ enum GameMode: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - رسالة في شات الغرفة
+struct RoomChatMessage: Identifiable, Equatable {
+    let id: String
+    let userId: String
+    let username: String
+    let avatarUrl: String?
+    let content: String
+    let createdAt: Date
+
+    static func from(_ dict: [String: Any]) -> RoomChatMessage? {
+        guard let id = dict["id"] as? String,
+              let userId = dict["userId"] as? String,
+              let content = dict["content"] as? String else { return nil }
+        let username = dict["username"] as? String ?? "?"
+        let avatarUrl = dict["avatarUrl"] as? String
+        return RoomChatMessage(
+            id: id,
+            userId: userId,
+            username: username,
+            avatarUrl: avatarUrl,
+            content: content,
+            createdAt: Date()
+        )
+    }
+}
+
 // MARK: - لاعب في غرفة المباراة
 struct RoomPlayer: Identifiable, Equatable {
     let id: String
