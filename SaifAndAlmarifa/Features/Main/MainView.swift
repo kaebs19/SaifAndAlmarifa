@@ -24,6 +24,7 @@ struct MainView: View {
     @State private var showStore = false
     @State private var showLeaderboard = false
     @State private var showClans = false
+    @State private var showChallenges = false
     @State private var directClanId: String?
     @State private var appeared = false
     @State private var pulse = false
@@ -45,7 +46,7 @@ struct MainView: View {
                     mainCards
                         .staggeredAppear(order: 1)
 
-                    secondaryModes
+                    challengesCard
                         .staggeredAppear(order: 2)
 
                     quickActions
@@ -76,6 +77,10 @@ struct MainView: View {
         .fullScreenCover(isPresented: $showStore) { StoreView() }
         .fullScreenCover(isPresented: $showLeaderboard) { LeaderboardView() }
         .fullScreenCover(isPresented: $showClans) { ClansHubView() }
+        .fullScreenCover(isPresented: $showChallenges) {
+            ChallengesView(viewModel: viewModel)
+                .withToast()
+        }
         .fullScreenCover(item: Binding(
             get: { directClanId.map { IdentifiableString(value: $0) } },
             set: { directClanId = $0?.value }
@@ -499,56 +504,98 @@ struct MainView: View {
         .buttonStyle(ScaleButtonStyle())
     }
 
-    // MARK: - ═══════ الأوضاع الثانوية ═══════
+    // MARK: - ═══════ كارت التحديات (مدخل الشاشة الجديدة) ═══════
 
-    private var secondaryModes: some View {
-        HStack(spacing: AppSizes.Spacing.md) {
-            secondaryCard(.private1v1)
-            secondaryCard(.challengeFriend)
-            secondaryCard(.friends4)
-        }
-    }
-
-    private func secondaryCard(_ mode: GameMode) -> some View {
+    private var challengesCard: some View {
         Button {
             HapticManager.medium()
-            viewModel.selectMode(mode)
+            showChallenges = true
         } label: {
-            VStack(spacing: AppSizes.Spacing.sm) {
+            HStack(spacing: AppSizes.Spacing.md) {
+                // أيقونة
                 ZStack {
                     Circle()
                         .fill(
-                            RadialGradient(
-                                colors: [AppColors.Default.goldPrimary.opacity(0.2), .clear],
-                                center: .center, startRadius: 5, endRadius: 28
+                            LinearGradient(
+                                colors: [Color(hex: "F59E0B").opacity(0.4), Color(hex: "DC2626").opacity(0.2)],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 50, height: 50)
+                        .frame(width: 56, height: 56)
 
-                    Image(mode.icon)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 28, height: 28)
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color(hex: "F59E0B"), Color(hex: "DC2626")],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        )
+                        .shadow(color: Color(hex: "F59E0B").opacity(0.6), radius: 8)
                 }
 
-                Text(mode.title)
-                    .font(.cairo(.bold, size: AppSizes.Font.body))
-                    .foregroundStyle(.white)
+                // النصوص
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text("التحديات")
+                            .font(.cairo(.black, size: AppSizes.Font.title3))
+                            .foregroundStyle(.white)
+                        Text("⚔️")
+                            .font(.system(size: 16))
+                    }
+                    Text("تحدى أصدقاءك في مبارزات خاصة")
+                        .font(.cairo(.medium, size: 11))
+                        .foregroundStyle(.white.opacity(0.6))
+                    HStack(spacing: 4) {
+                        miniChip("ضد شخص")
+                        miniChip("ضد صديق")
+                        miniChip("ضد أصحابي ٤")
+                    }
+                }
 
-                Text(mode.subtitle)
-                    .font(.cairo(.regular, size: 10))
-                    .foregroundStyle(AppColors.Default.goldPrimary.opacity(0.6))
+                Spacer()
+
+                // chevron
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color(hex: "F59E0B").opacity(0.7))
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, AppSizes.Spacing.md)
-            .background(Color(hex: "12103B").opacity(0.8))
+            .padding(AppSizes.Spacing.md)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color(hex: "2A1810"),
+                        Color(hex: "1A1028")
+                    ],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                )
+            )
             .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.large))
             .overlay(
                 RoundedRectangle(cornerRadius: AppSizes.Radius.large)
-                    .stroke(AppColors.Default.goldPrimary.opacity(0.15), lineWidth: 1.5)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color(hex: "F59E0B").opacity(0.5), Color(hex: "DC2626").opacity(0.2)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1.5
+                    )
             )
+            .shadow(color: Color(hex: "F59E0B").opacity(0.15), radius: 12, y: 6)
         }
         .buttonStyle(ScaleButtonStyle())
+    }
+
+    private func miniChip(_ text: String) -> some View {
+        Text(text)
+            .font(.cairo(.semiBold, size: 9))
+            .foregroundStyle(Color(hex: "F59E0B").opacity(0.9))
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(Color(hex: "F59E0B").opacity(0.1))
+            .clipShape(Capsule())
+            .overlay(
+                Capsule().stroke(Color(hex: "F59E0B").opacity(0.25), lineWidth: 0.5)
+            )
     }
 
     // MARK: - ═══════ الإجراءات السريعة ═══════
