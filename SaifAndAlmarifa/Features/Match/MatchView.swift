@@ -1,0 +1,242 @@
+//
+//  MatchView.swift
+//  SaifAndAlmarifa
+//
+//  Created by Mohammed Saleh on 15/04/2026.
+//
+//  Path: SaifAndAlmarifa/Features/Match/MatchView.swift
+//  الشاشة الأساسية للمباراة — Castle Battle
+
+import SwiftUI
+
+struct MatchView: View {
+
+    @StateObject private var viewModel: MatchViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var showExitConfirm = false
+
+    init(matchId: String, opponent: MatchPlayer) {
+        _viewModel = StateObject(wrappedValue: MatchViewModel(matchId: matchId, opponent: opponent))
+    }
+
+    var body: some View {
+        ZStack {
+            background
+
+            VStack(spacing: 0) {
+                MatchHeader(
+                    questionIndex: viewModel.currentQuestion?.index ?? 0,
+                    totalQuestions: viewModel.currentQuestion?.total ?? 10,
+                    timeRemaining: viewModel.timeRemaining,
+                    timeLimit: viewModel.currentQuestion?.timeLimit ?? 15,
+                    onClose: { showExitConfirm = true }
+                )
+                .padding(.horizontal, AppSizes.Spacing.lg)
+                .padding(.top, AppSizes.Spacing.md)
+
+                // البانر العلوي (قلعتين + HP + نقاط)
+                CastlesBanner(
+                    me: viewModel.me,
+                    opponent: MatchPlayer(
+                        id: viewModel.opponent.id,
+                        username: viewModel.opponent.username,
+                        avatarUrl: viewModel.opponent.avatarUrl,
+                        level: viewModel.opponent.level,
+                        hp: viewModel.opponentHP,
+                        score: viewModel.opponentScore
+                    ),
+                    myShaking: viewModel.myCastleShaking,
+                    opponentShaking: viewModel.opponentCastleShaking,
+                    attackAnimating: viewModel.attackAnimating
+                )
+                .padding(.horizontal, AppSizes.Spacing.sm)
+                .padding(.top, AppSizes.Spacing.sm)
+
+                // بطاقة السؤال + الإجابات
+                if let q = viewModel.currentQuestion {
+                    questionAndAnswers(q)
+                        .padding(.horizontal, AppSizes.Spacing.lg)
+                        .padding(.top, AppSizes.Spacing.md)
+                } else {
+                    waitingForQuestion
+                        .frame(maxHeight: .infinity)
+                }
+
+                Spacer()
+
+                // شريط العناصر
+                InventoryBar(
+                    inventory: viewModel.inventory,
+                    onUse: { viewModel.usePowerUp($0) },
+                    disabled: viewModel.selectedAnswerIndex != nil || viewModel.isRevealing
+                )
+                .padding(AppSizes.Spacing.lg)
+            }
+
+            // شاشة النهاية
+            if let result = viewModel.matchResult {
+                MatchEndView(result: result) {
+                    dismiss()
+                }
+                .transition(.opacity)
+                .zIndex(10)
+            }
+
+            // تأثير التجميد
+            if viewModel.isFrozen {
+                frozenOverlay.zIndex(5)
+            }
+
+            // تلميح
+            if let hint = viewModel.hintMessage {
+                hintBanner(hint).zIndex(6)
+            }
+        }
+        .task {
+            viewModel.start()
+        }
+        .onDisappear { viewModel.onDisappear() }
+        .confirmationDialog("هل تريد الخروج من المباراة؟", isPresented: $showExitConfirm, titleVisibility: .visible) {
+            Button("خروج", role: .destructive) { dismiss() }
+            Button("استكمال", role: .cancel) {}
+        }
+        .animation(.easeInOut(duration: 0.3), value: viewModel.matchResult)
+    }
+
+    // MARK: - Background
+    private var background: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color(hex: "08091E"), Color(hex: "12103B"), Color(hex: "0B0A24")],
+                startPoint: .top, endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            // هالات خلف القلعتين
+            GeometryReader { geo in
+                Circle()
+                    .fill(AppColors.Default.goldPrimary.opacity(0.08))
+                    .frame(width: 240, height: 240)
+                    .blur(radius: 80)
+                    .offset(x: -geo.size.width * 0.4, y: -geo.size.height * 0.2)
+
+                Circle()
+                    .fill(Color.red.opacity(0.08))
+                    .frame(width: 240, height: 240)
+                    .blur(radius: 80)
+                    .offset(x: geo.size.width * 0.4, y: -geo.size.height * 0.2)
+            }
+            .ignoresSafeArea()
+        }
+    }
+
+    // MARK: - السؤال + الإجابات
+    private func questionAndAnswers(_ q: MatchQuestion) -> some View {
+        VStack(spacing: AppSizes.Spacing.md) {
+            // بطاقة السؤال (مع parchment background)
+            ZStack {
+                UIBanner.scroll.image
+                    .resizable()
+                    .scaledToFit()
+                    .opacity(0.18)
+                    .frame(maxWidth: .infinity, maxHeight: 120)
+
+                Text(q.text)
+                    .font(.cairo(.bold, size: AppSizes.Font.title3))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, AppSizes.Spacing.md)
+                    .padding(.vertical, AppSizes.Spacing.md)
+            }
+            .background(
+                LinearGradient(
+                    colors: [Color.white.opacity(0.06), Color.white.opacity(0.02)],
+                    startPoint: .top, endPoint: .bottom
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.large))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppSizes.Radius.large)
+                    .stroke(AppColors.Default.goldPrimary.opacity(0.3), lineWidth: 1.5)
+            )
+
+            // 4 إجابات
+            VStack(spacing: AppSizes.Spacing.xs) {
+                ForEach(Array(q.options.enumerated()), id: \.offset) { idx, text in
+                    AnswerButton(
+                        index: idx,
+                        text: text,
+                        state: answerState(for: idx, q: q),
+                        onTap: { viewModel.selectAnswer(idx) }
+                    )
+                }
+            }
+        }
+    }
+
+    private func answerState(for index: Int, q: MatchQuestion) -> AnswerButton.AnswerState {
+        if q.disabledIndices.contains(index) { return .disabled }
+        let selected = viewModel.selectedAnswerIndex
+        guard selected != nil else { return .idle }
+
+        if viewModel.isRevealing, let correct = q.correctIndex {
+            if index == correct { return .correct }
+            if index == selected { return .wrong }
+            return .idle
+        }
+        if index == selected { return .selected }
+        return .idle
+    }
+
+    // MARK: - Waiting
+    private var waitingForQuestion: some View {
+        VStack(spacing: AppSizes.Spacing.md) {
+            ProgressView().tint(AppColors.Default.goldPrimary).scaleEffect(1.2)
+            Text("جاري إعداد المباراة...")
+                .font(.cairo(.medium, size: AppSizes.Font.body))
+                .foregroundStyle(.white.opacity(0.6))
+        }
+    }
+
+    // MARK: - Freeze Overlay
+    private var frozenOverlay: some View {
+        ZStack {
+            Color(hex: "60A5FA").opacity(0.15).ignoresSafeArea()
+            VStack {
+                Image(systemName: "snowflake")
+                    .font(.system(size: 80))
+                    .foregroundStyle(Color(hex: "93C5FD"))
+                    .shadow(color: Color(hex: "60A5FA"), radius: 20)
+                Text("مُجمَّد!")
+                    .font(.cairo(.black, size: AppSizes.Font.title1))
+                    .foregroundStyle(.white)
+            }
+        }
+        .transition(.opacity)
+    }
+
+    // MARK: - Hint Banner
+    private func hintBanner(_ text: String) -> some View {
+        VStack {
+            HStack(spacing: AppSizes.Spacing.sm) {
+                Image(systemName: "lightbulb.fill")
+                    .foregroundStyle(.yellow)
+                Text(text)
+                    .font(.cairo(.medium, size: AppSizes.Font.body))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+            }
+            .padding(AppSizes.Spacing.md)
+            .background(Color.yellow.opacity(0.15))
+            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
+                    .stroke(.yellow.opacity(0.5), lineWidth: 1.5)
+            )
+            .padding(AppSizes.Spacing.lg)
+            Spacer()
+        }
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+}

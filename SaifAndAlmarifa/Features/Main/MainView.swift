@@ -66,6 +66,10 @@ struct MainView: View {
             MatchLobbyView(mode: mode, viewModel: viewModel)
                 .withToast()
         }
+        .fullScreenCover(item: $viewModel.activeMatch) { ctx in
+            MatchView(matchId: ctx.matchId, opponent: ctx.opponent)
+                .withToast()
+        }
         .sheet(isPresented: $viewModel.showJoinRoom) {
             JoinRoomSheet { viewModel.joinRoom(code: $0) }
         }

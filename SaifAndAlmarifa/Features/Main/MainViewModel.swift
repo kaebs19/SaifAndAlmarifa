@@ -35,6 +35,7 @@ final class MainViewModel: ObservableObject {
     // MARK: - Lobby (الشاشة الموحّدة)
     @Published var activeLobby: GameMode? = nil
     @Published var matchFoundId: String? = nil
+    @Published var activeMatch: ActiveMatchContext? = nil   // MatchView يفتح عند تحديده
     @Published var roomCountdown: Int? = nil   // عدّ تنازلي قبل البدء (3, 2, 1)
     private var countdownTimer: Timer?
 
@@ -353,18 +354,27 @@ final class MainViewModel: ObservableObject {
         // تم إيجاد مباراة
         socket.onMatchFound
             .sink { [weak self] data in
-                self?.isSearching = false
-                self?.searchMode = nil
+                guard let self else { return }
+                self.isSearching = false
+                self.searchMode = nil
                 SoundManager.play(.matchFound)
                 HapticManager.success()
                 let matchId = data["matchId"] as? String ?? ""
-                self?.matchFoundId = matchId
-                self?.toast.success("تم إيجاد مباراة!")
-                self?.socket.joinMatch(matchId: matchId)
-                // الإغلاق التلقائي للّوبي بعد ثانيتين
-                Task { @MainActor [weak self] in
+                self.matchFoundId = matchId
+                self.toast.success("تم إيجاد مباراة!")
+
+                // استخراج الخصم
+                let opponentDict = (data["opponent"] as? [String: Any])
+                    ?? (data["players"] as? [[String: Any]])?.first(where: { ($0["id"] as? String) != self.user?.id })
+                    ?? [:]
+                let opponent = MatchPlayer.from(opponentDict)
+                    ?? MatchPlayer(id: "opponent", username: "الخصم", avatarUrl: nil, level: nil, hp: 100, score: 0)
+
+                // انتقال للمباراة بعد عرض ثانيتين للبانر
+                Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    self?.activeLobby = nil
+                    self.activeLobby = nil
+                    self.activeMatch = ActiveMatchContext(matchId: matchId, opponent: opponent)
                 }
             }
             .store(in: &cancellables)
