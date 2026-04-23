@@ -11,14 +11,23 @@ import SwiftUI
 
 struct MatchEndView: View {
     let result: MatchEndResult
+    var onRematch: (() -> Void)? = nil
     let onClose: () -> Void
 
     @State private var appear = false
+    @State private var showConfetti = false
 
     var body: some View {
         ZStack {
             // overlay مظلم
             Color.black.opacity(0.85).ignoresSafeArea()
+
+            // Confetti للفوز
+            if result.didIWin && showConfetti {
+                ConfettiView(count: 80)
+                    .ignoresSafeArea()
+                    .zIndex(1)
+            }
 
             VStack(spacing: AppSizes.Spacing.lg) {
                 // بانر
@@ -38,32 +47,69 @@ struct MatchEndView: View {
 
                 Spacer()
 
-                // زر الخروج
-                Button {
-                    HapticManager.light()
-                    onClose()
-                } label: {
-                    Text("العودة للصفحة الرئيسية")
-                        .font(.cairo(.bold, size: AppSizes.Font.body))
-                        .foregroundStyle(.black)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, AppSizes.Spacing.sm)
-                        .background(
-                            LinearGradient(
-                                colors: [Color(hex: "FFE55C"), Color(hex: "FFD700")],
-                                startPoint: .leading, endPoint: .trailing
-                            )
-                        )
-                        .clipShape(Capsule())
-                }
-                .opacity(appear ? 1 : 0)
+                // أزرار
+                actionButtons
+                    .offset(y: appear ? 0 : 30)
+                    .opacity(appear ? 1 : 0)
             }
             .padding(AppSizes.Spacing.lg)
             .padding(.top, AppSizes.Spacing.xxl)
+            .zIndex(2)
         }
         .onAppear {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) {
                 appear = true
+            }
+            if result.didIWin {
+                // تأخير Confetti قليلاً ليأتي بعد الـ banner animation
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    showConfetti = true
+                }
+            }
+        }
+    }
+
+    // MARK: - Actions
+    private var actionButtons: some View {
+        VStack(spacing: AppSizes.Spacing.sm) {
+            // إعادة التحدي
+            if let onRematch {
+                Button {
+                    HapticManager.medium()
+                    onRematch()
+                } label: {
+                    HStack {
+                        Image(systemName: "arrow.clockwise.circle.fill")
+                        Text("إعادة التحدّي")
+                    }
+                    .font(.cairo(.bold, size: AppSizes.Font.body))
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, AppSizes.Spacing.sm)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(hex: "FFE55C"), Color(hex: "FFD700"), Color(hex: "DAA520")],
+                            startPoint: .leading, endPoint: .trailing
+                        )
+                    )
+                    .clipShape(Capsule())
+                    .shadow(color: AppColors.Default.goldPrimary.opacity(0.5), radius: 10)
+                }
+            }
+
+            // العودة للرئيسية
+            Button {
+                HapticManager.light()
+                onClose()
+            } label: {
+                Text("العودة للرئيسية")
+                    .font(.cairo(.semiBold, size: AppSizes.Font.body))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, AppSizes.Spacing.sm)
+                    .overlay(
+                        Capsule().stroke(.white.opacity(0.2), lineWidth: 1)
+                    )
             }
         }
     }

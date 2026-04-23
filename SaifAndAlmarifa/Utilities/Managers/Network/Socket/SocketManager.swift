@@ -59,6 +59,8 @@ final class AppSocketManager: ObservableObject {
     let onRoomAllReady = PassthroughSubject<String, Never>()            // clanId
     let onRoomKicked = PassthroughSubject<String, Never>()              // أنا تم طردي
     let onRoomChatMessage = PassthroughSubject<[String: Any], Never>()  // { code, message }
+    let onRematchRequested = PassthroughSubject<[String: Any], Never>()   // { matchId, fromUserId }
+    let onRematchAccepted = PassthroughSubject<[String: Any], Never>()    // { newMatchId }
 
     // Clan Publishers
     let onClanMessage = PassthroughSubject<[String: Any], Never>()          // رسالة جديدة
@@ -203,6 +205,11 @@ final class AppSocketManager: ObservableObject {
             "matchId": matchId,
             "itemId": itemId
         ])
+    }
+
+    /// طلب إعادة تحدي (بعد انتهاء المباراة)
+    func requestRematch(matchId: String) {
+        emit("match:rematch", data: ["matchId": matchId])
     }
 
     // MARK: - ═══════════════ Clan ═══════════════
@@ -407,6 +414,18 @@ final class AppSocketManager: ObservableObject {
         socket.on("match:ended") { [weak self] data, _ in
             Task { @MainActor in
                 if let d = data.first as? [String: Any] { self?.onMatchEnded.send(d) }
+            }
+        }
+
+        socket.on("match:rematch-requested") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onRematchRequested.send(d) }
+            }
+        }
+
+        socket.on("match:rematch-accepted") { [weak self] data, _ in
+            Task { @MainActor in
+                if let d = data.first as? [String: Any] { self?.onRematchAccepted.send(d) }
             }
         }
 

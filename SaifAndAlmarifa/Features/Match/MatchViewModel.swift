@@ -34,6 +34,14 @@ final class MatchViewModel: ObservableObject {
     @Published var activePowerUps: Set<PowerUpIcon> = []  // مفعّل الآن (مؤقتاً)
     @Published var hintMessage: String? = nil             // نص التلميح
     @Published var isFrozen: Bool = false                 // حالة تجميد
+    @Published var rematchStatus: RematchStatus = .none   // حالة الإعادة
+
+    enum RematchStatus {
+        case none
+        case waitingForOpponent   // أنا طلبت — خصمي لم يرد
+        case opponentOffered      // خصمي طلب — أنا أرد
+        case accepted             // كلانا موافق — match جديد قادم
+    }
 
     // MARK: - Dependencies
     private let socket = AppSocketManager.shared
@@ -136,6 +144,45 @@ final class MatchViewModel: ObservableObject {
                 self?.handleMatchEnded(data)
             }
             .store(in: &cancellables)
+
+        // طلب إعادة من الخصم
+        socket.onRematchRequested
+            .sink { [weak self] data in
+                guard let self,
+                      (data["matchId"] as? String) == self.matchId,
+                      (data["fromUserId"] as? String) != self.myId else { return }
+
+                if self.rematchStatus == .waitingForOpponent {
+                    // كلانا طلب — سيرسل السيرفر match:rematch-accepted
+                } else {
+                    self.rematchStatus = .opponentOffered
+                    self.toast.info("\(self.opponent.username) يريد إعادة التحدي")
+                    HapticManager.success()
+                }
+            }
+            .store(in: &cancellables)
+
+        // Rematch مقبول → match جديد
+        socket.onRematchAccepted
+            .sink { [weak self] data in
+                guard let self else { return }
+                self.rematchStatus = .accepted
+                if let newMatchId = data["newMatchId"] as? String ?? data["matchId"] as? String {
+                    self.toast.success("بدء المباراة الجديدة!")
+                    GameSoundManager.shared.play(.matchStart)
+                    // سينتقل التطبيق لمباراة جديدة عبر MainViewModel.onMatchFound
+                    self.socket.joinMatch(matchId: newMatchId)
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    /// طلب إعادة تحدّي
+    func requestRematch() {
+        socket.requestRematch(matchId: matchId)
+        rematchStatus = .waitingForOpponent
+        HapticManager.medium()
+        toast.info("تم إرسال طلب الإعادة")
     }
 
     // MARK: - Handlers

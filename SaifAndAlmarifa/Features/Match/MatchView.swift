@@ -76,8 +76,23 @@ struct MatchView: View {
 
             // شاشة النهاية
             if let result = viewModel.matchResult {
-                MatchEndView(result: result) {
-                    dismiss()
+                MatchEndView(
+                    result: result,
+                    onRematch: viewModel.rematchStatus == .waitingForOpponent
+                        ? nil   // معطّل مؤقتاً بانتظار الخصم
+                        : { viewModel.requestRematch() },
+                    onClose: { dismiss() }
+                )
+                .overlay(alignment: .top) {
+                    if viewModel.rematchStatus == .waitingForOpponent {
+                        rematchWaitingBanner
+                            .padding(.top, 80)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    } else if viewModel.rematchStatus == .opponentOffered {
+                        rematchOfferedBanner
+                            .padding(.top, 80)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
                 }
                 .transition(.opacity)
                 .zIndex(10)
@@ -214,6 +229,44 @@ struct MatchView: View {
             }
         }
         .transition(.opacity)
+    }
+
+    // MARK: - Rematch Banners
+    private var rematchWaitingBanner: some View {
+        HStack(spacing: 6) {
+            ProgressView().tint(AppColors.Default.goldPrimary).scaleEffect(0.8)
+            Text("في انتظار قبول \(viewModel.opponent.username)...")
+                .font(.cairo(.medium, size: 11))
+                .foregroundStyle(.white)
+        }
+        .padding(.horizontal, AppSizes.Spacing.md).padding(.vertical, 8)
+        .background(Color.black.opacity(0.6))
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(AppColors.Default.goldPrimary.opacity(0.5), lineWidth: 1))
+    }
+
+    private var rematchOfferedBanner: some View {
+        HStack(spacing: AppSizes.Spacing.sm) {
+            Image(systemName: "arrow.clockwise.circle.fill")
+                .foregroundStyle(AppColors.Default.goldPrimary)
+            Text("\(viewModel.opponent.username) يتحداك مرة أخرى!")
+                .font(.cairo(.bold, size: 11))
+                .foregroundStyle(.white)
+            Button {
+                viewModel.requestRematch()
+            } label: {
+                Text("قبول")
+                    .font(.cairo(.bold, size: 11))
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 10).padding(.vertical, 4)
+                    .background(AppColors.Default.goldPrimary)
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(.horizontal, AppSizes.Spacing.md).padding(.vertical, 8)
+        .background(Color.black.opacity(0.8))
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(AppColors.Default.goldPrimary, lineWidth: 1.5))
     }
 
     // MARK: - Hint Banner
