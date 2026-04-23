@@ -37,6 +37,7 @@ final class MatchViewModel: ObservableObject {
     @Published var hintMessage: String? = nil             // نص التلميح
     @Published var isFrozen: Bool = false                 // حالة تجميد
     @Published var rematchStatus: RematchStatus = .none   // حالة الإعادة
+    @Published var preMatchCountdown: Int? = nil          // 3, 2, 1 قبل أول سؤال
 
     enum RematchStatus {
         case none
@@ -89,6 +90,21 @@ final class MatchViewModel: ObservableObject {
         socket.joinMatch(matchId: matchId)
         GameSoundManager.shared.play(.matchStart)
         Task { await loadInventory() }
+        startPreMatchCountdown()
+    }
+
+    /// 3-2-1 قبل أول سؤال
+    private func startPreMatchCountdown() {
+        preMatchCountdown = 3
+        Task { @MainActor in
+            for i in (1...3).reversed() {
+                preMatchCountdown = i
+                GameSoundManager.shared.play(.answerTap)
+                HapticManager.light()
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+            preMatchCountdown = nil
+        }
     }
 
     func onDisappear() {
@@ -396,6 +412,19 @@ final class MatchViewModel: ObservableObject {
         socket.useItem(matchId: matchId, itemId: powerUp.storeType)
         GameSoundManager.shared.playPowerUp(powerUp)
         HapticManager.medium()
+
+        // فعّل الـ power-up بصرياً لبعض الوقت
+        activatePowerUpVisual(powerUp)
+    }
+
+    /// تفعيل تأثير بصري للـ power-up
+    private func activatePowerUpVisual(_ powerUp: PowerUpIcon) {
+        activePowerUps.insert(powerUp)
+        let duration: UInt64 = powerUp == .shield ? 10_000_000_000 : 3_000_000_000
+        Task {
+            try? await Task.sleep(nanoseconds: duration)
+            await MainActor.run { self.activePowerUps.remove(powerUp) }
+        }
     }
 
     // MARK: - Attack Animation (بصرياً)

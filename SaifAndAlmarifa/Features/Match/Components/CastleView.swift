@@ -15,10 +15,34 @@ struct CastleView: View {
     let hpPercentage: Int
     /// هل تهتز الآن (عند التعرض لضربة)
     var isShaking: Bool = false
+    /// هل الدرع مفعّل (aura حولها)
+    var shieldActive: Bool = false
+
+    @State private var breath: Bool = false
+    @State private var auraPulse: Bool = false
 
     var body: some View {
         ZStack {
-            // القلعة الأساسية
+            // Shield aura (يدور حولها)
+            if shieldActive {
+                Circle()
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color(hex: "60A5FA"), Color(hex: "93C5FD")],
+                            startPoint: .top, endPoint: .bottom
+                        ),
+                        lineWidth: 3
+                    )
+                    .blur(radius: 2)
+                    .scaleEffect(auraPulse ? 1.15 : 1.05)
+                    .opacity(auraPulse ? 0.3 : 0.8)
+                    .animation(
+                        .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
+                        value: auraPulse
+                    )
+            }
+
+            // القلعة الأساسية (مع تنفّس)
             side.image
                 .resizable()
                 .scaledToFit()
@@ -56,6 +80,7 @@ struct CastleView: View {
         }
         .rotationEffect(.degrees(isShaking ? 2 : 0))
         .offset(x: isShaking ? -3 : 0, y: isShaking ? 2 : 0)
+        .scaleEffect(breath ? 1.025 : 1.0)   // تنفّس خفيف
         .animation(.easeInOut(duration: 0.6), value: hpPercentage)
         .animation(
             isShaking
@@ -63,6 +88,14 @@ struct CastleView: View {
                 : .default,
             value: isShaking
         )
+        .animation(
+            .easeInOut(duration: 2.0).repeatForever(autoreverses: true),
+            value: breath
+        )
+        .onAppear {
+            breath = true
+            auraPulse = true
+        }
     }
 }
 
@@ -71,6 +104,10 @@ struct CastleHPBar: View {
     /// النسبة من 0 إلى 1
     let percent: Double
     let color: Color
+
+    @State private var warningPulse: Bool = false
+
+    private var isCritical: Bool { percent <= 0.25 && percent > 0 }
 
     var body: some View {
         GeometryReader { geo in
@@ -91,10 +128,22 @@ struct CastleHPBar: View {
                     )
                     .frame(width: geo.size.width * max(0, min(1, percent)))
                     .shadow(color: color.opacity(0.6), radius: 4)
+
+                // Critical warning overlay (يومض أحمر)
+                if isCritical {
+                    Capsule()
+                        .fill(Color.red.opacity(warningPulse ? 0.5 : 0.1))
+                        .frame(width: geo.size.width * max(0, min(1, percent)))
+                }
             }
         }
         .frame(height: 8)
         .animation(.easeInOut(duration: 0.4), value: percent)
+        .animation(
+            .easeInOut(duration: 0.5).repeatForever(autoreverses: true),
+            value: warningPulse
+        )
+        .onAppear { warningPulse = true }
     }
 }
 

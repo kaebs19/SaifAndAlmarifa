@@ -9,6 +9,71 @@
 
 import SwiftUI
 
+// MARK: - Timer Chip مع pulse حرج
+struct TimerChip: View {
+    let timeRemaining: Int
+    let color: Color
+
+    @State private var pulse: Bool = false
+
+    private var isUrgent: Bool { timeRemaining <= 5 }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "clock.fill")
+                .font(.system(size: 11))
+            Text("\(timeRemaining)")
+                .font(.poppins(.black, size: 16))
+                .monospacedDigit()
+                .contentTransition(.numericText())
+        }
+        .foregroundStyle(color)
+        .padding(.horizontal, AppSizes.Spacing.sm).padding(.vertical, 4)
+        .background(color.opacity(0.15))
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(color.opacity(0.5), lineWidth: 1))
+        .scaleEffect(isUrgent && pulse ? 1.18 : 1.0)
+        .shadow(color: isUrgent ? color.opacity(0.6) : .clear, radius: isUrgent ? 8 : 0)
+        .onChange(of: timeRemaining) { _, _ in
+            // كل ثانية في الوضع الحرج، pulse
+            if isUrgent {
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) { pulse = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { pulse = false }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - ScoreBadge — يومض عند التغيير
+struct ScoreBadge: View {
+    let score: Int
+    let color: Color
+    var compact: Bool = false
+
+    @State private var lastScore: Int = 0
+    @State private var flash: Bool = false
+
+    private var size: CGFloat { compact ? 14 : 20 }
+
+    var body: some View {
+        Text("\(score)")
+            .font(.poppins(.black, size: size))
+            .foregroundStyle(flash ? Color.green : color)
+            .scaleEffect(flash ? 1.3 : 1.0)
+            .shadow(color: flash ? Color.green.opacity(0.8) : .clear, radius: 8)
+            .animation(.spring(response: 0.3, dampingFraction: 0.5), value: flash)
+            .onChange(of: score) { old, new in
+                guard new > old else { return }
+                flash = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    flash = false
+                }
+            }
+    }
+}
+
 // MARK: - زر إجابة
 struct AnswerButton: View {
     let index: Int         // 0,1,2,3
@@ -112,6 +177,7 @@ struct PlayersBattlefield: View {
     let shakingOpponentId: String?
     let attackAnimating: Bool
     let attackTargetId: String?
+    var myShieldActive: Bool = false
 
     var body: some View {
         if opponents.count == 1 {
@@ -185,23 +251,35 @@ struct PlayersBattlefield: View {
     ) -> some View {
         let castleSize: CGFloat = compact ? 58 : 90
         let nameSize: CGFloat = compact ? 10 : 11
-        let scoreSize: CGFloat = compact ? 14 : 20
 
         return VStack(spacing: compact ? 3 : 6) {
+            // الاسم + Level badge
             HStack(spacing: 4) {
                 AvatarView(imageURL: player.avatarUrl, size: compact ? 18 : 22)
                 Text(isMine ? "أنت" : player.username)
                     .font(.cairo(.bold, size: nameSize))
                     .foregroundStyle(.white)
                     .lineLimit(1)
+                if let lvl = player.level {
+                    Text("Lv.\(lvl)")
+                        .font(.poppins(.bold, size: 8))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 4).padding(.vertical, 1)
+                        .background(isMine ? AppColors.Default.goldPrimary : Color(hex: "F87171"))
+                        .clipShape(Capsule())
+                }
             }
 
-            Text("\(player.score)")
-                .font(.poppins(.black, size: scoreSize))
-                .foregroundStyle(isMine ? AppColors.Default.goldPrimary : Color(hex: "F87171"))
+            // النقاط مع flash animation
+            ScoreBadge(score: player.score, color: isMine ? AppColors.Default.goldPrimary : Color(hex: "F87171"), compact: compact)
 
-            CastleView(side: castle, hpPercentage: player.hp, isShaking: isShaking)
-                .frame(width: castleSize, height: castleSize)
+            CastleView(
+                side: castle,
+                hpPercentage: player.hp,
+                isShaking: isShaking,
+                shieldActive: isMine && myShieldActive
+            )
+            .frame(width: castleSize, height: castleSize)
 
             CastleHPBar(percent: Double(player.hp) / 100.0, color: hpColor)
                 .frame(width: castleSize)
@@ -228,7 +306,39 @@ struct PlayersBattlefield: View {
 
     @ViewBuilder
     private var vsIndicator: some View {
+        VSIndicatorView(attackAnimating: attackAnimating)
+            .frame(width: 60)
+    }
+}
+
+// MARK: - VS متحرّك مع حلقة ذهبية + لمعان
+struct VSIndicatorView: View {
+    var attackAnimating: Bool
+
+    @State private var rotation: Double = 0
+    @State private var glow: Bool = false
+
+    var body: some View {
         ZStack {
+            // حلقة ذهبية تدور
+            Circle()
+                .trim(from: 0, to: 0.7)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color(hex: "FFE55C"),
+                            Color(hex: "FFD700"),
+                            Color(hex: "DAA520").opacity(0.3)
+                        ],
+                        startPoint: .top, endPoint: .bottom
+                    ),
+                    style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                )
+                .frame(width: 46, height: 46)
+                .rotationEffect(.degrees(rotation))
+                .shadow(color: Color(hex: "FFD700").opacity(glow ? 0.6 : 0.2), radius: 8)
+
+            // النص VS
             Text("VS")
                 .font(.poppins(.black, size: 18))
                 .foregroundStyle(
@@ -237,18 +347,28 @@ struct PlayersBattlefield: View {
                         startPoint: .top, endPoint: .bottom
                     )
                 )
+                .shadow(color: Color(hex: "FFD700").opacity(0.6), radius: glow ? 8 : 3)
 
+            // أنيميشن القذيفة (من اليمين لليسار)
             if attackAnimating {
                 CombatEffect.cannonball.image
                     .resizable()
                     .scaledToFit()
                     .frame(width: 28, height: 28)
-                    .offset(x: attackAnimating ? -50 : 50, y: -20)
+                    .offset(x: attackAnimating ? -60 : 60)
+                    .rotationEffect(.degrees(attackAnimating ? -720 : 0))
                     .animation(.easeIn(duration: 0.6), value: attackAnimating)
                     .transition(.opacity)
             }
         }
-        .frame(width: 60)
+        .onAppear {
+            withAnimation(.linear(duration: 8).repeatForever(autoreverses: false)) {
+                rotation = 360
+            }
+            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                glow = true
+            }
+        }
     }
 }
 
@@ -344,21 +464,8 @@ struct MatchHeader: View {
 
                 Spacer()
 
-                // المؤقت
-                HStack(spacing: 4) {
-                    Image(systemName: "clock.fill")
-                        .font(.system(size: 11))
-                    Text("\(timeRemaining)")
-                        .font(.poppins(.black, size: 16))
-                        .monospacedDigit()
-                }
-                .foregroundStyle(timerColor)
-                .padding(.horizontal, AppSizes.Spacing.sm).padding(.vertical, 4)
-                .background(timerColor.opacity(0.15))
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(timerColor.opacity(0.5), lineWidth: 1))
-                .scaleEffect(timeRemaining <= 5 ? 1.1 : 1.0)
-                .animation(.easeInOut(duration: 0.3), value: timeRemaining <= 5)
+                // المؤقت مع pulse عند الحرج
+                TimerChip(timeRemaining: timeRemaining, color: timerColor)
             }
 
             // شريط تقدّم الوقت

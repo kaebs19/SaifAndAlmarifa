@@ -48,7 +48,8 @@ struct MatchView: View {
                     myShaking: viewModel.myCastleShaking,
                     shakingOpponentId: viewModel.shakingOpponentId,
                     attackAnimating: viewModel.attackAnimating,
-                    attackTargetId: viewModel.attackTargetId
+                    attackTargetId: viewModel.attackTargetId,
+                    myShieldActive: viewModel.activePowerUps.contains(.shield)
                 )
                 .padding(.horizontal, AppSizes.Spacing.sm)
                 .padding(.top, AppSizes.Spacing.sm)
@@ -60,7 +61,7 @@ struct MatchView: View {
                         .padding(.top, AppSizes.Spacing.md)
                 } else {
                     waitingForQuestion
-                        .frame(maxHeight: .infinity)
+                        .padding(.top, AppSizes.Spacing.md)
                 }
 
                 Spacer()
@@ -107,6 +108,12 @@ struct MatchView: View {
             if let hint = viewModel.hintMessage {
                 hintBanner(hint).zIndex(6)
             }
+
+            // Pre-match countdown (3-2-1 قبل أول سؤال)
+            if let count = viewModel.preMatchCountdown {
+                preMatchCountdownOverlay(count: count)
+                    .zIndex(11)
+            }
         }
         .task {
             viewModel.start()
@@ -143,6 +150,11 @@ struct MatchView: View {
                     .offset(x: geo.size.width * 0.4, y: -geo.size.height * 0.2)
             }
             .ignoresSafeArea()
+
+            // جزيئات ذهبية عائمة
+            FloatingEmbers()
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
         }
     }
 
@@ -204,14 +216,54 @@ struct MatchView: View {
         return .idle
     }
 
-    // MARK: - Waiting
+    // MARK: - Waiting (مع Skeleton للسؤال)
     private var waitingForQuestion: some View {
         VStack(spacing: AppSizes.Spacing.md) {
-            ProgressView().tint(AppColors.Default.goldPrimary).scaleEffect(1.2)
-            Text("جاري إعداد المباراة...")
-                .font(.cairo(.medium, size: AppSizes.Font.body))
-                .foregroundStyle(.white.opacity(0.6))
+            // Skeleton لبطاقة السؤال
+            VStack(spacing: 8) {
+                SkeletonBox(width: 240, height: 16, cornerRadius: 4)
+                SkeletonBox(width: 200, height: 16, cornerRadius: 4)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(AppSizes.Spacing.md)
+            .frame(height: 110)
+            .background(
+                LinearGradient(
+                    colors: [Color.white.opacity(0.06), Color.white.opacity(0.02)],
+                    startPoint: .top, endPoint: .bottom
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.large))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppSizes.Radius.large)
+                    .stroke(AppColors.Default.goldPrimary.opacity(0.2), lineWidth: 1)
+            )
+
+            // Skeleton لـ 4 إجابات
+            VStack(spacing: AppSizes.Spacing.xs) {
+                ForEach(0..<4, id: \.self) { _ in
+                    HStack {
+                        Circle().fill(.white.opacity(0.08)).frame(width: 36, height: 36).shimmer()
+                        SkeletonBox(width: 180, height: 14)
+                        Spacer()
+                    }
+                    .padding(AppSizes.Spacing.md)
+                    .frame(height: 64)
+                    .background(.white.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+                }
+            }
+
+            // Indicator صغير
+            HStack(spacing: 6) {
+                ProgressView().tint(AppColors.Default.goldPrimary).scaleEffect(0.8)
+                Text("في انتظار أول سؤال...")
+                    .font(.cairo(.medium, size: 11))
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+            .padding(.top, 4)
         }
+        .padding(.horizontal, AppSizes.Spacing.lg)
     }
 
     // MARK: - Freeze Overlay
@@ -229,6 +281,32 @@ struct MatchView: View {
             }
         }
         .transition(.opacity)
+    }
+
+    // MARK: - Pre-Match Countdown
+    private func preMatchCountdownOverlay(count: Int) -> some View {
+        ZStack {
+            Color.black.opacity(0.8).ignoresSafeArea()
+
+            VStack(spacing: AppSizes.Spacing.md) {
+                Text("استعد!")
+                    .font(.cairo(.black, size: AppSizes.Font.title2))
+                    .foregroundStyle(.white.opacity(0.8))
+
+                Text("\(count)")
+                    .font(.poppins(.black, size: 160))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color(hex: "FFE55C"), Color(hex: "FFD700"), Color(hex: "DAA520")],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                    )
+                    .shadow(color: AppColors.Default.goldPrimary.opacity(0.8), radius: 30)
+                    .id(count)
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.65), value: count)
     }
 
     // MARK: - Rematch Banners
