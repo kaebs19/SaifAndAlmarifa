@@ -67,7 +67,7 @@ struct MainView: View {
                 .withToast()
         }
         .fullScreenCover(item: $viewModel.activeMatch) { ctx in
-            MatchView(matchId: ctx.matchId, opponent: ctx.opponent)
+            MatchView(matchId: ctx.matchId, opponents: ctx.opponents)
                 .withToast()
         }
         .sheet(isPresented: $viewModel.showJoinRoom) {

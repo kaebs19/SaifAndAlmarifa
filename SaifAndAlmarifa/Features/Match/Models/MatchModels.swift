@@ -122,7 +122,14 @@ struct MatchEndResult: Equatable {
 struct ActiveMatchContext: Identifiable, Equatable {
     var id: String { matchId }
     let matchId: String
-    let opponent: MatchPlayer
+    /// كل الخصوم (ما عدا المستخدم الحالي) — 1 للـ 1v1، 3 للـ 4player
+    let opponents: [MatchPlayer]
+
+    /// توافق قديم — للأكواد اللي تستخدم opponent مفرد
+    var opponent: MatchPlayer {
+        opponents.first ?? MatchPlayer(id: "opponent", username: "الخصم",
+                                        avatarUrl: nil, level: nil, hp: 100, score: 0)
+    }
 }
 
 // MARK: - استخدام عنصر

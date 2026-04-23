@@ -103,75 +103,127 @@ private extension Array {
     }
 }
 
-// MARK: - بانر القلعتين (أنا ضد الخصم)
-struct CastlesBanner: View {
+// MARK: - ساحة اللاعبين (1 ضد 1 أو 4 لاعبين)
+struct PlayersBattlefield: View {
     let me: MatchPlayer
-    let opponent: MatchPlayer
+    let opponents: [MatchPlayer]
+    let eliminatedIds: Set<String>
     let myShaking: Bool
-    let opponentShaking: Bool
+    let shakingOpponentId: String?
     let attackAnimating: Bool
+    let attackTargetId: String?
 
     var body: some View {
-        HStack(spacing: AppSizes.Spacing.md) {
-            // قلعتي
-            castleSide(
-                castle: .player,
-                player: me,
-                hpColor: .green,
-                isShaking: myShaking,
-                isMine: true
-            )
-
-            // VS + أنيميشن القذيفة
-            vsIndicator
-
-            // قلعة الخصم
-            castleSide(
-                castle: .enemy,
-                player: opponent,
-                hpColor: .red,
-                isShaking: opponentShaking,
-                isMine: false
-            )
+        if opponents.count == 1 {
+            oneVsOneLayout
+        } else {
+            fourPlayerLayout
         }
-        .frame(maxWidth: .infinity)
     }
 
-    private func castleSide(
-        castle: CastleSide,
+    // MARK: - 1v1 — قلعتين كبيرتين
+    private var oneVsOneLayout: some View {
+        HStack(spacing: AppSizes.Spacing.md) {
+            castleCard(
+                player: me, castle: .player,
+                hpColor: .green, isShaking: myShaking, isMine: true,
+                isEliminated: eliminatedIds.contains(me.id),
+                compact: false
+            )
+            vsIndicator
+            castleCard(
+                player: opponents[0], castle: .enemy,
+                hpColor: .red,
+                isShaking: shakingOpponentId == opponents[0].id,
+                isMine: false,
+                isEliminated: eliminatedIds.contains(opponents[0].id),
+                compact: false
+            )
+        }
+    }
+
+    // MARK: - 4 لاعبين — Grid مدمج
+    private var fourPlayerLayout: some View {
+        VStack(spacing: AppSizes.Spacing.sm) {
+            // أنا (أعلى)
+            HStack {
+                Spacer()
+                castleCard(
+                    player: me, castle: .player,
+                    hpColor: .green, isShaking: myShaking, isMine: true,
+                    isEliminated: eliminatedIds.contains(me.id),
+                    compact: true
+                )
+                Spacer()
+            }
+
+            // الخصوم (صف أفقي)
+            HStack(spacing: AppSizes.Spacing.xs) {
+                ForEach(opponents, id: \.id) { opp in
+                    castleCard(
+                        player: opp, castle: .enemy,
+                        hpColor: .red,
+                        isShaking: shakingOpponentId == opp.id,
+                        isMine: false,
+                        isEliminated: eliminatedIds.contains(opp.id),
+                        compact: true
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - Card اللاعب
+    private func castleCard(
         player: MatchPlayer,
+        castle: CastleSide,
         hpColor: Color,
         isShaking: Bool,
-        isMine: Bool
+        isMine: Bool,
+        isEliminated: Bool,
+        compact: Bool
     ) -> some View {
-        VStack(spacing: 6) {
-            // Player info + avatar
+        let castleSize: CGFloat = compact ? 58 : 90
+        let nameSize: CGFloat = compact ? 10 : 11
+        let scoreSize: CGFloat = compact ? 14 : 20
+
+        return VStack(spacing: compact ? 3 : 6) {
             HStack(spacing: 4) {
-                AvatarView(imageURL: player.avatarUrl, size: 22)
+                AvatarView(imageURL: player.avatarUrl, size: compact ? 18 : 22)
                 Text(isMine ? "أنت" : player.username)
-                    .font(.cairo(.bold, size: 11))
+                    .font(.cairo(.bold, size: nameSize))
                     .foregroundStyle(.white)
                     .lineLimit(1)
             }
 
-            // النقاط
             Text("\(player.score)")
-                .font(.poppins(.black, size: 20))
+                .font(.poppins(.black, size: scoreSize))
                 .foregroundStyle(isMine ? AppColors.Default.goldPrimary : Color(hex: "F87171"))
 
-            // القلعة
             CastleView(side: castle, hpPercentage: player.hp, isShaking: isShaking)
-                .frame(width: 90, height: 90)
+                .frame(width: castleSize, height: castleSize)
 
-            // HP bar
             CastleHPBar(percent: Double(player.hp) / 100.0, color: hpColor)
-                .frame(width: 90)
+                .frame(width: castleSize)
 
-            Text("\(player.hp) HP")
-                .font(.poppins(.bold, size: 10))
-                .foregroundStyle(hpColor)
+            if !compact {
+                Text("\(player.hp) HP")
+                    .font(.poppins(.bold, size: 10))
+                    .foregroundStyle(hpColor)
+            }
+
+            if isEliminated {
+                Text("خرج")
+                    .font(.cairo(.bold, size: 9))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6).padding(.vertical, 1)
+                    .background(Color.red.opacity(0.7))
+                    .clipShape(Capsule())
+            }
         }
         .frame(maxWidth: .infinity)
+        .grayscale(isEliminated ? 1 : 0)
+        .opacity(isEliminated ? 0.5 : 1)
     }
 
     @ViewBuilder
@@ -186,7 +238,6 @@ struct CastlesBanner: View {
                     )
                 )
 
-            // أنيميشن القذيفة
             if attackAnimating {
                 CombatEffect.cannonball.image
                     .resizable()

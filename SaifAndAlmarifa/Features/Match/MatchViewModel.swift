@@ -14,7 +14,8 @@ final class MatchViewModel: ObservableObject {
 
     // MARK: - Inputs
     let matchId: String
-    let opponent: MatchPlayer
+    /// قائمة الخصوم (1 للـ 1v1، 3 للـ 4p)
+    let initialOpponents: [MatchPlayer]
 
     // MARK: - Published State
     @Published var currentQuestion: MatchQuestion?
@@ -22,13 +23,14 @@ final class MatchViewModel: ObservableObject {
     @Published var lastAnswerResult: AnswerResult? = nil
     @Published var isRevealing: Bool = false              // بعد الإجابة، لحظة إظهار النتيجة
     @Published var myHP: Int = 100
-    @Published var opponentHP: Int = 100
     @Published var myScore: Int = 0
-    @Published var opponentScore: Int = 0
+    @Published var opponents: [MatchPlayer] = []          // حالة الخصوم المتطوّرة
+    @Published var eliminatedIds: Set<String> = []        // اللاعبون الخارجون
     @Published var timeRemaining: Int = 15
     @Published var attackAnimating: Bool = false          // cannonball في الجو
+    @Published var attackTargetId: String? = nil          // الهدف للأنيميشن
     @Published var myCastleShaking: Bool = false
-    @Published var opponentCastleShaking: Bool = false
+    @Published var shakingOpponentId: String? = nil       // أي قلعة تهتز الآن
     @Published var matchResult: MatchEndResult? = nil
     @Published var inventory: [PowerUpIcon: Int] = [:]    // المخزون
     @Published var activePowerUps: Set<PowerUpIcon> = []  // مفعّل الآن (مؤقتاً)
@@ -68,13 +70,18 @@ final class MatchViewModel: ObservableObject {
     }
 
     // MARK: - Init
-    init(matchId: String, opponent: MatchPlayer) {
+    init(matchId: String, opponents: [MatchPlayer]) {
         self.matchId = matchId
-        self.opponent = opponent
-        self.opponentHP = opponent.hp
-        self.opponentScore = opponent.score
+        self.initialOpponents = opponents
+        self.opponents = opponents
         bindSocket()
     }
+
+    /// كم هي مباراة 1 ضد 1؟ (مفيد للـ layout)
+    var isOneVsOne: Bool { initialOpponents.count == 1 }
+
+    /// اسم الخصم الأول (للـ UI في 1v1)
+    var opponent: MatchPlayer { opponents.first ?? initialOpponents.first ?? MatchPlayer(id: "?", username: "?", avatarUrl: nil, level: nil, hp: 0, score: 0) }
 
     // MARK: - Lifecycle
     func start() {
@@ -121,6 +128,13 @@ final class MatchViewModel: ObservableObject {
         socket.onMatchAttack
             .sink { [weak self] data in
                 self?.handleAttack(data)
+            }
+            .store(in: &cancellables)
+
+        // خروج لاعب
+        socket.onMatchEliminated
+            .sink { [weak self] data in
+                self?.handleEliminated(data)
             }
             .store(in: &cancellables)
 
@@ -205,11 +219,17 @@ final class MatchViewModel: ObservableObject {
               let result = AnswerResult.from(data) else { return }
 
         // تحديث النقاط/HP
-        if let s = result.newScore, result.userId == myId { myScore = s }
-        if let h = result.newHP, result.userId == myId { myHP = h }
-        if result.userId != myId {
-            if let s = result.opponentScore ?? result.newScore { opponentScore = s }
-            if let h = result.opponentHP ?? result.newHP { opponentHP = h }
+        if result.userId == myId {
+            if let s = result.newScore { myScore = s }
+            if let h = result.newHP { myHP = h }
+        } else {
+            // حدّث الخصم الموافق
+            if let idx = opponents.firstIndex(where: { $0.id == result.userId }) {
+                var p = opponents[idx]
+                if let s = result.newScore ?? result.opponentScore { p.score = s }
+                if let h = result.newHP ?? result.opponentHP { p.hp = h }
+                opponents[idx] = p
+            }
         }
 
         // إذا الإجابة لي
@@ -217,7 +237,6 @@ final class MatchViewModel: ObservableObject {
             lastAnswerResult = result
             isRevealing = true
             if var q = currentQuestion {
-                // علّم الإجابة الصحيحة إذا رجعها السيرفر
                 if let correct = (data["correctIndex"] as? Int) {
                     q.correctIndex = correct
                     currentQuestion = q
@@ -225,7 +244,9 @@ final class MatchViewModel: ObservableObject {
             }
 
             if result.isCorrect {
-                fireAttackOnOpponent()
+                // في 1v1 اهجم على الوحيد، في 4p السيرفر يقرر الهدف
+                let targetId = data["attackTargetId"] as? String ?? opponents.first?.id
+                fireAttackOnOpponent(targetId: targetId)
                 GameSoundManager.shared.play(.answerCorrect)
                 HapticManager.success()
             } else {
@@ -238,12 +259,10 @@ final class MatchViewModel: ObservableObject {
     private func handleAttack(_ data: [String: Any]) {
         guard matchIdMatches(data) else { return }
         let attackerId = data["attackerId"] as? String
+        let targetId = data["targetId"] as? String
         let damage = data["damage"] as? Int ?? 10
 
-        if attackerId == myId {
-            // أنا الذي هاجمت — (الأنيميشن من fireAttackOnOpponent)
-            opponentHP = max(0, opponentHP - damage)
-        } else {
+        if targetId == myId {
             // تعرّضت لهجوم
             myCastleShaking = true
             myHP = max(0, myHP - damage)
@@ -253,6 +272,33 @@ final class MatchViewModel: ObservableObject {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 await MainActor.run { self.myCastleShaking = false }
             }
+        } else if let tid = targetId,
+                  let idx = opponents.firstIndex(where: { $0.id == tid }) {
+            // هجوم على أحد الخصوم (مني أو من لاعب آخر)
+            var p = opponents[idx]
+            p.hp = max(0, p.hp - damage)
+            opponents[idx] = p
+            shakingOpponentId = tid
+            GameSoundManager.shared.play(.castleHit, volumeOverride: 0.7)
+            Task {
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                await MainActor.run { self.shakingOpponentId = nil }
+            }
+        }
+
+        _ = attackerId
+    }
+
+    /// لاعب خرج من المباراة (HP = 0)
+    private func handleEliminated(_ data: [String: Any]) {
+        guard matchIdMatches(data),
+              let userId = data["userId"] as? String else { return }
+        eliminatedIds.insert(userId)
+        if userId == myId {
+            toast.error("خرجت من المباراة")
+            HapticManager.warning()
+        } else if let name = opponents.first(where: { $0.id == userId })?.username {
+            toast.info("\(name) خرج من المباراة")
         }
     }
 
@@ -353,17 +399,19 @@ final class MatchViewModel: ObservableObject {
     }
 
     // MARK: - Attack Animation (بصرياً)
-    private func fireAttackOnOpponent() {
+    private func fireAttackOnOpponent(targetId: String? = nil) {
         Task { @MainActor in
+            attackTargetId = targetId ?? opponents.first?.id
             attackAnimating = true
             GameSoundManager.shared.play(.cannonFire)
             try? await Task.sleep(nanoseconds: 700_000_000)
             attackAnimating = false
-            opponentCastleShaking = true
+            shakingOpponentId = attackTargetId
             GameSoundManager.shared.play(.castleHit, volumeOverride: 0.7)
             HapticManager.heavy()
             try? await Task.sleep(nanoseconds: 600_000_000)
-            opponentCastleShaking = false
+            shakingOpponentId = nil
+            attackTargetId = nil
         }
     }
 

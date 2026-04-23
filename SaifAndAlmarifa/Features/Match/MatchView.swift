@@ -16,8 +16,13 @@ struct MatchView: View {
 
     @State private var showExitConfirm = false
 
+    init(matchId: String, opponents: [MatchPlayer]) {
+        _viewModel = StateObject(wrappedValue: MatchViewModel(matchId: matchId, opponents: opponents))
+    }
+
+    /// Convenience للتوافق مع 1v1
     init(matchId: String, opponent: MatchPlayer) {
-        _viewModel = StateObject(wrappedValue: MatchViewModel(matchId: matchId, opponent: opponent))
+        self.init(matchId: matchId, opponents: [opponent])
     }
 
     var body: some View {
@@ -35,20 +40,15 @@ struct MatchView: View {
                 .padding(.horizontal, AppSizes.Spacing.lg)
                 .padding(.top, AppSizes.Spacing.md)
 
-                // البانر العلوي (قلعتين + HP + نقاط)
-                CastlesBanner(
+                // البانر العلوي (قلاع + HP + نقاط) — يدعم 1v1 و 4p
+                PlayersBattlefield(
                     me: viewModel.me,
-                    opponent: MatchPlayer(
-                        id: viewModel.opponent.id,
-                        username: viewModel.opponent.username,
-                        avatarUrl: viewModel.opponent.avatarUrl,
-                        level: viewModel.opponent.level,
-                        hp: viewModel.opponentHP,
-                        score: viewModel.opponentScore
-                    ),
+                    opponents: viewModel.opponents,
+                    eliminatedIds: viewModel.eliminatedIds,
                     myShaking: viewModel.myCastleShaking,
-                    opponentShaking: viewModel.opponentCastleShaking,
-                    attackAnimating: viewModel.attackAnimating
+                    shakingOpponentId: viewModel.shakingOpponentId,
+                    attackAnimating: viewModel.attackAnimating,
+                    attackTargetId: viewModel.attackTargetId
                 )
                 .padding(.horizontal, AppSizes.Spacing.sm)
                 .padding(.top, AppSizes.Spacing.sm)

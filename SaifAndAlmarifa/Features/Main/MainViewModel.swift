@@ -363,18 +363,30 @@ final class MainViewModel: ObservableObject {
                 self.matchFoundId = matchId
                 self.toast.success("تم إيجاد مباراة!")
 
-                // استخراج الخصم
-                let opponentDict = (data["opponent"] as? [String: Any])
-                    ?? (data["players"] as? [[String: Any]])?.first(where: { ($0["id"] as? String) != self.user?.id })
-                    ?? [:]
-                let opponent = MatchPlayer.from(opponentDict)
-                    ?? MatchPlayer(id: "opponent", username: "الخصم", avatarUrl: nil, level: nil, hp: 100, score: 0)
+                // استخراج كل الخصوم (ما عدا نفسي)
+                let myId = self.user?.id
+                var opponents: [MatchPlayer] = []
+
+                if let playersArr = data["players"] as? [[String: Any]] {
+                    opponents = playersArr.compactMap(MatchPlayer.from)
+                        .filter { $0.id != myId }
+                } else if let oppDict = data["opponent"] as? [String: Any],
+                          let opp = MatchPlayer.from(oppDict) {
+                    opponents = [opp]
+                } else if let oppArr = data["opponents"] as? [[String: Any]] {
+                    opponents = oppArr.compactMap(MatchPlayer.from)
+                }
+
+                if opponents.isEmpty {
+                    opponents = [MatchPlayer(id: "opponent", username: "الخصم",
+                                              avatarUrl: nil, level: nil, hp: 100, score: 0)]
+                }
 
                 // انتقال للمباراة بعد عرض ثانيتين للبانر
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 2_000_000_000)
                     self.activeLobby = nil
-                    self.activeMatch = ActiveMatchContext(matchId: matchId, opponent: opponent)
+                    self.activeMatch = ActiveMatchContext(matchId: matchId, opponents: opponents)
                 }
             }
             .store(in: &cancellables)
