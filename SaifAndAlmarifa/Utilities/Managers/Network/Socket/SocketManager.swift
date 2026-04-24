@@ -364,6 +364,13 @@ final class AppSocketManager: ObservableObject {
         // ── Match ──
         socket.on("match:found") { [weak self] data, _ in
             Task { @MainActor in
+                #if DEBUG
+                if let d = data.first as? [String: Any] {
+                    let matchId = d["matchId"] as? String ?? "?"
+                    let playerCount = (d["players"] as? [Any])?.count ?? 0
+                    print("⬇️ [Socket] match:found — matchId=\(matchId), players=\(playerCount)")
+                }
+                #endif
                 if let d = data.first as? [String: Any] { self?.onMatchFound.send(d) }
             }
         }
@@ -371,12 +378,22 @@ final class AppSocketManager: ObservableObject {
         socket.on("match:started") { [weak self] data, _ in
             Task { @MainActor in
                 let matchId = (data.first as? [String: Any])?["matchId"] as? String ?? ""
+                #if DEBUG
+                print("⬇️ [Socket] match:started — matchId=\(matchId)")
+                #endif
                 self?.onMatchStarted.send(matchId)
             }
         }
 
         socket.on("match:question") { [weak self] data, _ in
             Task { @MainActor in
+                #if DEBUG
+                if let d = data.first as? [String: Any] {
+                    let text = (d["text"] as? String)?.prefix(50) ?? "?"
+                    let idx = d["index"] as? Int ?? 0
+                    print("⬇️ [Socket] match:question [\(idx)] — \(text)")
+                }
+                #endif
                 if let d = data.first as? [String: Any] { self?.onMatchQuestion.send(d) }
             }
         }
