@@ -190,12 +190,12 @@ final class AppSocketManager: ObservableObject {
         emit("match:join", data: ["matchId": matchId])
     }
 
-    /// إرسال إجابة
-    func submitAnswer(matchId: String, questionId: String, answer: String) {
+    /// إرسال إجابة — مع زمن الإجابة بالميلي ثانية
+    func submitAnswer(matchId: String, answer: String, timeMs: Int) {
         emit("match:answer", data: [
             "matchId": matchId,
-            "questionId": questionId,
-            "answer": answer
+            "answer": answer,
+            "timeMs": timeMs
         ])
     }
 

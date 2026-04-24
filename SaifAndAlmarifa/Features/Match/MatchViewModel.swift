@@ -56,6 +56,7 @@ final class MatchViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var timer: Timer?
     private var heartbeatStarted = false
+    private var questionStartTime: Date?
 
     // MARK: - Derived
     var myId: String { authManager.currentUser?.id ?? "" }
@@ -126,6 +127,17 @@ final class MatchViewModel: ObservableObject {
 
     // MARK: - Socket
     private func bindSocket() {
+        // بداية المباراة
+        socket.onMatchStarted
+            .sink { [weak self] matchId in
+                guard let self, matchId == self.matchId else { return }
+                // أوقف countdown لو ما انتهى
+                if self.preMatchCountdown != nil {
+                    self.preMatchCountdown = nil
+                }
+            }
+            .store(in: &cancellables)
+
         // سؤال جديد
         socket.onMatchQuestion
             .sink { [weak self] data in
@@ -226,6 +238,7 @@ final class MatchViewModel: ObservableObject {
         isRevealing = false
         hintMessage = nil
         timeRemaining = q.timeLimit
+        questionStartTime = Date()   // ← بداية العد للـ timeMs
         startTimer()
         GameSoundManager.shared.play(.questionAppear)
     }
@@ -277,11 +290,13 @@ final class MatchViewModel: ObservableObject {
         let attackerId = data["attackerId"] as? String
         let targetId = data["targetId"] as? String
         let damage = data["damage"] as? Int ?? 10
+        // السيرفر يرسل HP الجديد مباشرة
+        let serverTargetHp = data["targetHp"] as? Int
 
         if targetId == myId {
             // تعرّضت لهجوم
             myCastleShaking = true
-            myHP = max(0, myHP - damage)
+            myHP = serverTargetHp ?? max(0, myHP - damage)
             GameSoundManager.shared.play(.castleHit)
             HapticManager.heavy()
             Task {
@@ -292,7 +307,7 @@ final class MatchViewModel: ObservableObject {
                   let idx = opponents.firstIndex(where: { $0.id == tid }) {
             // هجوم على أحد الخصوم (مني أو من لاعب آخر)
             var p = opponents[idx]
-            p.hp = max(0, p.hp - damage)
+            p.hp = serverTargetHp ?? max(0, p.hp - damage)
             opponents[idx] = p
             shakingOpponentId = tid
             GameSoundManager.shared.play(.castleHit, volumeOverride: 0.7)
@@ -393,11 +408,15 @@ final class MatchViewModel: ObservableObject {
         HapticManager.medium()
         timer?.invalidate()
 
+        // احسب زمن الإجابة بالميلي ثانية
+        let elapsedMs = Int((Date().timeIntervalSince(questionStartTime ?? Date())) * 1000)
+
         socket.submitAnswer(
             matchId: matchId,
-            questionId: q.id,
-            answer: String(index)
+            answer: String(index),
+            timeMs: elapsedMs
         )
+        _ = q  // silence warning
     }
 
     /// استخدام عنصر
@@ -469,10 +488,12 @@ final class MatchViewModel: ObservableObject {
 
     private func timeUp() {
         guard let q = currentQuestion, selectedAnswerIndex == nil, !isRevealing else { return }
-        // عدم اختيار إجابة — أرسل -1
+        // عدم اختيار إجابة — أرسل -1 مع الوقت الكامل
         selectedAnswerIndex = -1
-        socket.submitAnswer(matchId: matchId, questionId: q.id, answer: "-1")
+        let elapsedMs = Int((Date().timeIntervalSince(questionStartTime ?? Date())) * 1000)
+        socket.submitAnswer(matchId: matchId, answer: "-1", timeMs: elapsedMs)
         GameSoundManager.shared.play(.answerWrong)
         HapticManager.warning()
+        _ = q
     }
 }
