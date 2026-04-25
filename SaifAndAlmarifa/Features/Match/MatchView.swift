@@ -54,6 +54,11 @@ struct MatchView: View {
                 .padding(.horizontal, AppSizes.Spacing.sm)
                 .padding(.top, AppSizes.Spacing.sm)
 
+                // مؤشر المرحلة
+                phaseIndicator
+                    .padding(.horizontal, AppSizes.Spacing.lg)
+                    .padding(.top, AppSizes.Spacing.sm)
+
                 // بطاقة السؤال + الإجابات
                 if let q = viewModel.currentQuestion {
                     questionAndAnswers(q)
@@ -73,6 +78,17 @@ struct MatchView: View {
                     disabled: viewModel.selectedAnswerIndex != nil || viewModel.isRevealing
                 )
                 .padding(AppSizes.Spacing.lg)
+            }
+
+            // شاشة Phase Transition (بين المراحل)
+            if viewModel.showPhaseTransition, let result = viewModel.phaseResult {
+                PhaseTransitionView(
+                    me: viewModel.me,
+                    opponents: viewModel.opponents,
+                    powers: result.powers
+                )
+                .transition(.opacity)
+                .zIndex(8)
             }
 
             // شاشة النهاية
@@ -158,6 +174,58 @@ struct MatchView: View {
         }
     }
 
+    // MARK: - مؤشّر المرحلة
+    private var phaseIndicator: some View {
+        Group {
+            switch viewModel.currentPhase {
+            case .collection:
+                phaseChip(
+                    icon: "shield.lefthalf.filled",
+                    title: "المرحلة 1: تجميع القوة",
+                    subtitle: "أجب الأسرع والأقرب لتربح قوة",
+                    color: Color(hex: "60A5FA")
+                )
+            case .battle:
+                phaseChip(
+                    icon: "swords.fill",
+                    title: "المرحلة 2: المواجهة",
+                    subtitle: "كل إجابة صحيحة تهدم قلعة الخصم",
+                    color: AppColors.Default.error
+                )
+            case .transition, .ended:
+                EmptyView()
+            }
+        }
+    }
+
+    private func phaseChip(icon: String, title: String, subtitle: String, color: Color) -> some View {
+        HStack(spacing: AppSizes.Spacing.sm) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(color)
+                .frame(width: 36, height: 36)
+                .background(color.opacity(0.15))
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.cairo(.bold, size: AppSizes.Font.body))
+                    .foregroundStyle(.white)
+                Text(subtitle)
+                    .font(.cairo(.regular, size: 10))
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+            Spacer()
+        }
+        .padding(AppSizes.Spacing.sm)
+        .background(color.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
+                .stroke(color.opacity(0.2), lineWidth: 1)
+        )
+    }
+
     // MARK: - السؤال + الإجابات
     private func questionAndAnswers(_ q: MatchQuestion) -> some View {
         VStack(spacing: AppSizes.Spacing.md) {
@@ -188,15 +256,26 @@ struct MatchView: View {
                     .stroke(AppColors.Default.goldPrimary.opacity(0.3), lineWidth: 1.5)
             )
 
-            // 4 إجابات
-            VStack(spacing: AppSizes.Spacing.xs) {
-                ForEach(Array(q.options.enumerated()), id: \.offset) { idx, text in
-                    AnswerButton(
-                        index: idx,
-                        text: text,
-                        state: answerState(for: idx, q: q),
-                        onTap: { viewModel.selectAnswer(idx) }
-                    )
+            // إجابة input أو 4 خيارات
+            if q.isInput {
+                InputAnswerView(
+                    question: q,
+                    answer: $viewModel.inputAnswer,
+                    isSubmitted: viewModel.hasSubmitted,
+                    isRevealing: viewModel.isRevealing,
+                    result: viewModel.lastAnswerResult,
+                    onSubmit: { viewModel.submitAnswer() }
+                )
+            } else {
+                VStack(spacing: AppSizes.Spacing.xs) {
+                    ForEach(Array(q.options.enumerated()), id: \.offset) { idx, text in
+                        AnswerButton(
+                            index: idx,
+                            text: text,
+                            state: answerState(for: idx, q: q),
+                            onTap: { viewModel.selectAnswer(idx) }
+                        )
+                    }
                 }
             }
         }

@@ -20,6 +20,11 @@ final class MatchViewModel: ObservableObject {
     // MARK: - Published State
     @Published var currentQuestion: MatchQuestion?
     @Published var selectedAnswerIndex: Int? = nil
+    @Published var inputAnswer: String = ""               // ✨ للـ input
+    @Published var hasSubmitted: Bool = false             // تم إرسال إجابتي
+    @Published var currentPhase: MatchPhase = .collection // ✨ المرحلة الحالية
+    @Published var phaseResult: PhaseResult? = nil        // ✨ نتيجة المرحلة 1
+    @Published var showPhaseTransition: Bool = false      // عرض شاشة الانتقال
     @Published var lastAnswerResult: AnswerResult? = nil
     @Published var isRevealing: Bool = false              // بعد الإجابة، لحظة إظهار النتيجة
     @Published var myHP: Int = 100
@@ -187,6 +192,50 @@ final class MatchViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
+        // تغيّر مرحلة
+        socket.onMatchPhase
+            .sink { [weak self] data in
+                guard let self, self.matchIdMatches(data) else { return }
+                if let str = data["phase"] as? String,
+                   let phase = MatchPhase(rawValue: str) {
+                    self.currentPhase = phase
+                    if phase == .battle {
+                        // أخفِ شاشة الـ transition بعد لحظات
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 100_000_000)
+                            self.showPhaseTransition = false
+                        }
+                    }
+                }
+            }
+            .store(in: &cancellables)
+
+        // نتائج المرحلة 1
+        socket.onMatchPhaseResult
+            .sink { [weak self] data in
+                guard let self, self.matchIdMatches(data),
+                      let result = PhaseResult.from(data) else { return }
+                self.phaseResult = result
+                self.currentPhase = .transition
+                self.showPhaseTransition = true
+
+                // طبّق power على HP — قلعتي + الخصوم
+                if let myPower = result.powers[self.myId] {
+                    self.myHP = myPower
+                }
+                for (idx, opp) in self.opponents.enumerated() {
+                    if let p = result.powers[opp.id] {
+                        var updated = opp
+                        updated.hp = p
+                        self.opponents[idx] = updated
+                    }
+                }
+
+                GameSoundManager.shared.play(.matchStart, volumeOverride: 0.5)
+                HapticManager.success()
+            }
+            .store(in: &cancellables)
+
         // طلب إعادة من الخصم
         socket.onRematchRequested
             .sink { [weak self] data in
@@ -233,12 +282,16 @@ final class MatchViewModel: ObservableObject {
         guard matchIdMatches(data),
               let q = MatchQuestion.from(data) else { return }
         currentQuestion = q
+        currentPhase = q.phase
         selectedAnswerIndex = nil
+        inputAnswer = ""
+        hasSubmitted = false
         lastAnswerResult = nil
         isRevealing = false
+        showPhaseTransition = false
         hintMessage = nil
         timeRemaining = q.timeLimit
-        questionStartTime = Date()   // ← بداية العد للـ timeMs
+        questionStartTime = Date()
         startTimer()
         GameSoundManager.shared.play(.questionAppear)
     }
@@ -398,25 +451,31 @@ final class MatchViewModel: ObservableObject {
 
     // MARK: - Actions
 
-    /// اختيار إجابة
-    func selectAnswer(_ index: Int) {
-        guard let q = currentQuestion, selectedAnswerIndex == nil, !isRevealing else { return }
-        guard !q.disabledIndices.contains(index) else { return }
+    /// إرسال إجابة (نص أو index) — موحّد
+    func submitAnswer() {
+        guard !hasSubmitted, !isRevealing else { return }
+        guard currentQuestion != nil else { return }
 
-        selectedAnswerIndex = index
+        let trimmed = inputAnswer.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+
+        hasSubmitted = true
         GameSoundManager.shared.play(.answerTap)
         HapticManager.medium()
-        timer?.invalidate()
+        // ما نوقف الـ timer — الخصم قد يجاوب أيضاً، السيرفر يقفل لما الكل يجاوب
 
-        // احسب زمن الإجابة بالميلي ثانية
         let elapsedMs = Int((Date().timeIntervalSince(questionStartTime ?? Date())) * 1000)
+        socket.submitAnswer(matchId: matchId, answer: trimmed, timeMs: elapsedMs)
+    }
 
-        socket.submitAnswer(
-            matchId: matchId,
-            answer: String(index),
-            timeMs: elapsedMs
-        )
-        _ = q  // silence warning
+    /// (احتياط للـ MC القديم)
+    func selectAnswer(_ index: Int) {
+        guard let q = currentQuestion, !hasSubmitted, !isRevealing else { return }
+        guard !q.disabledIndices.contains(index) else { return }
+        selectedAnswerIndex = index
+        inputAnswer = String(index)
+        submitAnswer()
+        _ = q
     }
 
     /// استخدام عنصر
@@ -487,13 +546,12 @@ final class MatchViewModel: ObservableObject {
     }
 
     private func timeUp() {
-        guard let q = currentQuestion, selectedAnswerIndex == nil, !isRevealing else { return }
-        // عدم اختيار إجابة — أرسل -1 مع الوقت الكامل
-        selectedAnswerIndex = -1
+        guard !hasSubmitted, !isRevealing else { return }
+        hasSubmitted = true
         let elapsedMs = Int((Date().timeIntervalSince(questionStartTime ?? Date())) * 1000)
-        socket.submitAnswer(matchId: matchId, answer: "-1", timeMs: elapsedMs)
+        // إرسال إجابة فارغة عند انتهاء الوقت
+        socket.submitAnswer(matchId: matchId, answer: "", timeMs: elapsedMs)
         GameSoundManager.shared.play(.answerWrong)
         HapticManager.warning()
-        _ = q
     }
 }

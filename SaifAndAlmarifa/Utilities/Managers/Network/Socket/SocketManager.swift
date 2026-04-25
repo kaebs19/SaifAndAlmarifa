@@ -47,6 +47,8 @@ final class AppSocketManager: ObservableObject {
     let onMatchItemUsed = PassthroughSubject<[String: Any], Never>()
     let onMatchItemEffect = PassthroughSubject<[String: Any], Never>()
     let onMatchEnded = PassthroughSubject<[String: Any], Never>()
+    let onMatchPhase = PassthroughSubject<[String: Any], Never>()  // تغيّر phase
+    let onMatchPhaseResult = PassthroughSubject<[String: Any], Never>()  // نتائج المرحلة 1
 
     // Room Publishers
     let onRoomCreated = PassthroughSubject<[String: Any], Never>()
@@ -191,6 +193,7 @@ final class AppSocketManager: ObservableObject {
     }
 
     /// إرسال إجابة — مع زمن الإجابة بالميلي ثانية
+    /// answer = النص المُدخل (للـ input) أو "0/1/2/3" للـ MC
     func submitAnswer(matchId: String, answer: String, timeMs: Int) {
         emit("match:answer", data: [
             "matchId": matchId,
@@ -431,6 +434,28 @@ final class AppSocketManager: ObservableObject {
         socket.on("match:ended") { [weak self] data, _ in
             Task { @MainActor in
                 if let d = data.first as? [String: Any] { self?.onMatchEnded.send(d) }
+            }
+        }
+
+        socket.on("match:phase") { [weak self] data, _ in
+            Task { @MainActor in
+                #if DEBUG
+                if let d = data.first as? [String: Any] {
+                    print("⬇️ [Socket] match:phase → \(d["phase"] ?? "?")")
+                }
+                #endif
+                if let d = data.first as? [String: Any] { self?.onMatchPhase.send(d) }
+            }
+        }
+
+        socket.on("match:phase-result") { [weak self] data, _ in
+            Task { @MainActor in
+                #if DEBUG
+                if let d = data.first as? [String: Any] {
+                    print("⬇️ [Socket] match:phase-result → \(d)")
+                }
+                #endif
+                if let d = data.first as? [String: Any] { self?.onMatchPhaseResult.send(d) }
             }
         }
 
