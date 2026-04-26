@@ -46,11 +46,18 @@ struct InputAnswerView: View {
                     .foregroundStyle(.white)
                     .tint(AppColors.Default.goldPrimary)
                     .keyboardType(keyboardType)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
                     .focused($isFocused)
                     .submitLabel(.send)
                     .onSubmit { if !isSubmitted { onSubmit() } }
                     .disabled(isSubmitted || isRevealing)
                     .multilineTextAlignment(.center)
+                    .onChange(of: answer) { _, new in
+                        // حوّل أي أرقام عربية/فارسية إلى إنجليزية تلقائياً
+                        let normalized = DigitNormalizer.toEnglish(new)
+                        if normalized != new { answer = normalized }
+                    }
 
                 if !answer.isEmpty && !isSubmitted {
                     Button { answer = "" } label: {

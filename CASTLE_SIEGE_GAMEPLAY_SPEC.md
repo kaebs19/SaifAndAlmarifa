@@ -8,17 +8,17 @@
 
 ### مرحلتان لكل مباراة 1v1:
 
-**المرحلة 1 — تجميع القوة (Collection)**
-- 4 أسئلة من نوع **إدخال نصي/رقمي**
-- المثال: "متى كانت الحرب العالمية الأولى؟" → اللاعب يكتب الإجابة
-- الفائز: **الأقرب للإجابة الصحيحة + الأسرع**
-- كل لاعب يحصل على "قوة" تتراكم
+**المرحلة 1 — تجميع القوة (Collection)** — فردية
+- **6 أسئلة** من نوع **إدخال نصي/رقمي فقط** (`numericInput` / `textInput`)
+- اللاعب يكتب الإجابة (مثال: "متى كانت الحرب العالمية الأولى؟" → "1914")
+- كل لاعب يجمع قوة بشكل مستقل (لا تنافس مباشر هنا)
+- القوة المتراكمة = HP قلعته في المرحلة 2
 
-**المرحلة 2 — المواجهة (Battle)**
-- N سؤال (مثلاً 10)
-- نفس النوع — إدخال
+**المرحلة 2 — المواجهة (Battle)** — تنافسية
+- 10 أسئلة **متنوّعة**: input + multipleChoice + غيرها
+- iOS يعرض UI مناسب لكل سؤال حسب `answerType`
 - كل إجابة صحيحة = ضربة على قلعة الخصم (-1 HP)
-- HP لكل لاعب = القوة المتجمّعة في المرحلة 1
+- HP لكل لاعب = القوة من المرحلة 1
 - **الفائز: من يهدم قلعة الخصم أولاً**
 - إذا انتهت الأسئلة: أعلى HP متبقي يفوز
 
@@ -68,15 +68,18 @@
   "matchId": "uuid",
   "questionId": "uuid",
   "phase": "collection",        // أو "battle"
-  "answerType": "numericInput", // أو "textInput"
+  "answerType": "numericInput", // "numericInput" | "textInput" | "multipleChoice"
   "text": "متى كانت الحرب العالمية الأولى؟",
+  "options": [],                 // فارغة للـ input، 4 خيارات للـ multipleChoice
   "index": 1,
-  "total": 4,                    // 4 للـ collection، 10 للـ battle
+  "total": 6,                    // 6 للـ collection، 10 للـ battle
   "timeLimit": 15
 }
 ```
 
-**ملاحظة:** `options` غير موجودة (لأنه input).
+**ملاحظة:**
+- المرحلة 1: `answerType` فقط `numericInput` أو `textInput` (لا MCQ).
+- المرحلة 2: مختلطة — قد يكون `multipleChoice` (مع `options`) أو `numericInput` / `textInput`.
 
 ### `match:answer` (Client → Server)
 
@@ -95,8 +98,8 @@
   "matchId": "uuid",
   "questionId": "uuid",
   "userId": "u1",
-  "value": "1913",                  // ما أدخل
-  "correct": false,                 // لو exact match (عادة المرحلة 2)
+  "value": "1913",                  // ما أدخل (نص للـ input، أو index كنص للـ MCQ)
+  "correct": false,                 // لو exact match
   "closest": true,                  // الأقرب (المرحلة 1)
   "fastest": false,                 // الأسرع
   "pointsAwarded": 1,               // قوة محصّلة (المرحلة 1) أو ضرر (المرحلة 2)
@@ -139,24 +142,24 @@ iOS يستقبل هذا → يعرض شاشة Phase Transition (3-4 ثواني) 
 2. match:join (×2)
 3. match:started
 
-═══ المرحلة 1: COLLECTION ═══
+═══ المرحلة 1: COLLECTION (6 أسئلة input فقط) ═══
 4. match:phase { phase: "collection" }
-5. match:question [1] { phase: "collection", answerType: "numericInput" }
+5. match:question [1] { phase: "collection", answerType: "numericInput" | "textInput" }
 6. (كل اللاعبين يرسلوا match:answer أو 15 ثانية)
 7. match:answer-submitted (للكل)
    - تحدّد closest + fastest + pointsAwarded
-8. (انتظر 2 ثانية لعرض النتيجة)
+8. (انتظر 2.5 ثانية لعرض النتيجة)
 9. match:question [2]
-10. ... (4 أسئلة كاملة)
+10. ... (6 أسئلة كاملة)
 
 ═══ TRANSITION ═══
 11. match:phase-result { powers: {u1:6, u2:4} }
     → iOS يعرض PhaseTransitionView لـ ~3 ثوان
 12. match:phase { phase: "battle" }
 
-═══ المرحلة 2: BATTLE ═══
+═══ المرحلة 2: BATTLE (10 أسئلة متنوّعة) ═══
 13. ابدأ HP لكل لاعب من powers
-14. match:question [1] { phase: "battle", answerType: "numericInput" }
+14. match:question [1] { phase: "battle", answerType: "numericInput" | "textInput" | "multipleChoice", options?: [...] }
 15. match:answer من اللاعبين
 16. match:answer-submitted
     - exact match = correct
@@ -195,8 +198,14 @@ class CastleSiegeMatch {
   }
 
   async start() {
-    this.collectionQuestions = await Question.findRandom(4, { type: 'input' })
-    this.battleQuestions = await Question.findRandom(10, { type: 'input' })
+    // المرحلة 1: 6 أسئلة input فقط
+    this.collectionQuestions = await Question.findRandom(6, {
+      answerType: { $in: ['numericInput', 'textInput'] }
+    })
+    // المرحلة 2: 10 أسئلة متنوّعة (input + MCQ)
+    this.battleQuestions = await Question.findRandom(10, {
+      answerType: { $in: ['numericInput', 'textInput', 'multipleChoice'] }
+    })
 
     io.emit('match:started', { matchId: this.matchId })
     setTimeout(() => this.startCollectionPhase(), 1000)
@@ -225,10 +234,11 @@ class CastleSiegeMatch {
       matchId: this.matchId,
       questionId: q.id,
       phase: this.phase,
-      answerType: q.answerType,  // "numericInput" | "textInput"
+      answerType: q.answerType,  // "numericInput" | "textInput" | "multipleChoice"
       text: q.text,
+      options: q.answerType === 'multipleChoice' ? q.options : [],
       index: this.currentIdx + 1,
-      total: list.length,
+      total: list.length,         // 6 للـ collection، 10 للـ battle
       timeLimit: 15
     })
 
@@ -261,12 +271,18 @@ class CastleSiegeMatch {
       let isExact = false
 
       if (q.answerType === 'numericInput') {
+        // iOS يبعث الأرقام إنجليزية دائماً (يحوّل عربي/فارسي تلقائياً)
         const num = parseFloat(ans)
         const correctNum = parseFloat(correct)
         if (!isNaN(num)) {
           diff = Math.abs(num - correctNum)
           isExact = (num === correctNum)
         }
+      } else if (q.answerType === 'multipleChoice') {
+        // ans = index كنص ("0".."3")
+        const selectedIdx = parseInt(ans)
+        isExact = selectedIdx === q.correctIndex
+        diff = isExact ? 0 : 999
       } else {
         isExact = ans.trim().toLowerCase() === correct.trim().toLowerCase()
         diff = isExact ? 0 : 999
@@ -444,8 +460,8 @@ ALTER TABLE Questions MODIFY COLUMN options JSONB;
 ```
 
 **توصية:**
-- **المرحلة 1:** أسئلة رقمية تسمح بالـ "أقرب" (سنوات، أعداد، إلخ)
-- **المرحلة 2:** خليط — رقم + نص (للسرعة)
+- **المرحلة 1:** أسئلة input فقط — رقمية تسمح بالـ "أقرب" (سنوات، أعداد) أو نصية قصيرة (اسم/مكان)
+- **المرحلة 2:** خليط — `multipleChoice` + `numericInput` + `textInput` للتنويع وقياس السرعة
 
 ---
 
@@ -465,12 +481,17 @@ ALTER TABLE Questions MODIFY COLUMN options JSONB;
 ## ✅ iOS Side — جاهز
 
 كل الـ events المذكورة مربوطة في iOS:
-- ✅ `match:question` بـ `answerType` + `phase`
+- ✅ `match:question` بـ `answerType` + `phase` + `options`
 - ✅ `match:answer` يرسل `answer` كنص + `timeMs`
 - ✅ `match:answer-submitted` يقرأ `closest`, `fastest`, `pointsAwarded`, `correctAnswer`
 - ✅ `match:phase-result` يعرض PhaseTransitionView (4 ثوان)
 - ✅ `match:phase` يحدّد UI الحالي
 - ✅ `match:attack` بـ `targetHp` للـ battle phase
 - ✅ `match:ended` بنفس الشكل القديم
+
+### تحسينات iOS للإدخال
+- لوحة مفاتيح **`.numberPad`** للـ `numericInput` (أرقام إنجليزية فقط)
+- تحويل تلقائي عربي/فارسي → إنجليزي (٠-٩ / ۰-۹ → 0-9) قبل الإرسال
+- المرحلة 2 المختلطة: `MatchView` يبدّل تلقائياً بين `InputAnswerView` و `AnswerButton` حسب `answerType`
 
 iOS سيعمل تلقائياً بمجرد ما الـ backend يطبّق هذي الـ logic الجديدة.

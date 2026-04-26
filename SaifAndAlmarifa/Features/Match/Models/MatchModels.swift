@@ -31,13 +31,26 @@ enum MatchPhase: String, Decodable {
 enum QuestionAnswerType: String, Decodable {
     case numericInput   // رقم
     case textInput      // نص
-    case multipleChoice // (احتياط للقديم)
+    case multipleChoice // اختيارات
 
     var keyboardHint: UIKeyboardType {
         switch self {
-        case .numericInput: return .numbersAndPunctuation
+        case .numericInput: return .numberPad   // أرقام إنجليزية فقط
         case .textInput, .multipleChoice: return .default
         }
+    }
+}
+
+// MARK: - تطبيع الأرقام (عربي/فارسي → إنجليزي)
+enum DigitNormalizer {
+    private static let map: [Character: Character] = [
+        "٠": "0", "١": "1", "٢": "2", "٣": "3", "٤": "4",
+        "٥": "5", "٦": "6", "٧": "7", "٨": "8", "٩": "9",
+        "۰": "0", "۱": "1", "۲": "2", "۳": "3", "۴": "4",
+        "۵": "5", "۶": "6", "۷": "7", "۸": "8", "۹": "9"
+    ]
+    static func toEnglish(_ s: String) -> String {
+        String(s.map { map[$0] ?? $0 })
     }
 }
 
@@ -74,7 +87,7 @@ struct MatchQuestion: Identifiable, Equatable {
             phase: phase,
             options: dict["options"] as? [String] ?? [],
             index: dict["index"] as? Int ?? 1,
-            total: dict["total"] as? Int ?? 4,
+            total: dict["total"] as? Int ?? 6,
             timeLimit: dict["timeLimit"] as? Int ?? 15,
             correctAnswer: dict["correctAnswer"] as? String,
             correctIndex: dict["correctIndex"] as? Int
