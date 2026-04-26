@@ -119,6 +119,14 @@ struct MatchView: View {
                 .zIndex(10)
             }
 
+            // ✨ Banner كشف الإجابة (overlay واضح أعلى الشاشة)
+            if viewModel.isRevealing,
+               let r = viewModel.lastAnswerResult,
+               let q = viewModel.currentQuestion {
+                answerRevealBanner(result: r, correct: q.correctAnswer ?? "")
+                    .zIndex(7)
+            }
+
             // تأثير التجميد
             if viewModel.isFrozen {
                 frozenOverlay.zIndex(5)
@@ -472,6 +480,90 @@ struct MatchView: View {
         .background(Color.black.opacity(0.8))
         .clipShape(Capsule())
         .overlay(Capsule().stroke(AppColors.Default.goldPrimary, lineWidth: 1.5))
+    }
+
+    // MARK: - Answer Reveal Banner (يظهر بعد كل إجابة)
+    private func answerRevealBanner(result: AnswerResult, correct: String) -> some View {
+        let isCorrect = result.isCorrect
+        let isClosest = result.isClosest
+        let pts = result.pointsAwarded
+        let isFastest = result.isFastest
+
+        let accent: Color = isCorrect
+            ? AppColors.Default.success
+            : (isClosest ? Color(hex: "F59E0B") : AppColors.Default.error)
+
+        let title: String = isCorrect
+            ? (isFastest ? "✓ صحيح + الأسرع!" : "✓ صحيح!")
+            : (isClosest ? "🎯 الأقرب" : "❌ خطأ")
+
+        return VStack {
+            VStack(spacing: 8) {
+                HStack(spacing: 10) {
+                    Image(systemName: isCorrect ? "checkmark.seal.fill"
+                                      : (isClosest ? "scope" : "xmark.octagon.fill"))
+                        .font(.system(size: 26, weight: .black))
+                        .foregroundStyle(accent)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .font(.cairo(.black, size: AppSizes.Font.body))
+                            .foregroundStyle(.white)
+                        if !correct.isEmpty {
+                            HStack(spacing: 4) {
+                                Text("الإجابة:")
+                                    .font(.cairo(.medium, size: 11))
+                                    .foregroundStyle(.white.opacity(0.6))
+                                Text(correct)
+                                    .font(.poppins(.black, size: 14))
+                                    .foregroundStyle(AppColors.Default.success)
+                                    .monospacedDigit()
+                            }
+                        }
+                    }
+                    Spacer()
+
+                    if pts > 0 {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bolt.fill")
+                                .font(.system(size: 12, weight: .bold))
+                            Text("+\(pts)")
+                                .font(.poppins(.black, size: 18))
+                                .monospacedDigit()
+                        }
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(
+                            LinearGradient(
+                                colors: [Color(hex: "FFE55C"), Color(hex: "FFB800")],
+                                startPoint: .leading, endPoint: .trailing
+                            )
+                        )
+                        .clipShape(Capsule())
+                        .shadow(color: Color(hex: "FFD700").opacity(0.5), radius: 6)
+                    }
+                }
+            }
+            .padding(AppSizes.Spacing.md)
+            .background(
+                LinearGradient(
+                    colors: [accent.opacity(0.18), accent.opacity(0.08)],
+                    startPoint: .leading, endPoint: .trailing
+                )
+            )
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
+                    .stroke(accent.opacity(0.6), lineWidth: 1.5)
+            )
+            .shadow(color: accent.opacity(0.4), radius: 12)
+            .padding(.horizontal, AppSizes.Spacing.lg)
+            .padding(.top, 4)
+            Spacer()
+        }
+        .transition(.move(edge: .top).combined(with: .opacity))
+        .animation(.spring(response: 0.45, dampingFraction: 0.75), value: result.questionId)
     }
 
     // MARK: - Range Hint Banner (العصفور)

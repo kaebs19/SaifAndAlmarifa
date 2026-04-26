@@ -104,15 +104,20 @@ final class MatchViewModel: ObservableObject {
         startPreMatchCountdown()
     }
 
-    /// 3-2-1 قبل أول سؤال
+    /// 2-1 قبل أول سؤال — قصير حتى لا يتعارض مع وصول Q1 من backend (~1.5s)
     private func startPreMatchCountdown() {
-        preMatchCountdown = 3
         Task { @MainActor in
-            for i in (1...3).reversed() {
+            for i in (1...2).reversed() {
+                guard preMatchCountdown != nil || i == 2 else { return }
                 preMatchCountdown = i
                 GameSoundManager.shared.play(.answerTap)
                 HapticManager.light()
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                try? await Task.sleep(nanoseconds: 800_000_000)
+                // إذا أول سؤال وصل خلال الـ countdown، توقّف فوراً
+                if currentQuestion != nil {
+                    preMatchCountdown = nil
+                    return
+                }
             }
             preMatchCountdown = nil
         }
@@ -289,6 +294,11 @@ final class MatchViewModel: ObservableObject {
         guard matchIdMatches(data),
               let q = MatchQuestion.from(data) else { return }
 
+        // ألغِ الـ countdown إذا أول سؤال وصل قبل ما يخلص
+        if preMatchCountdown != nil {
+            preMatchCountdown = nil
+        }
+
         // كشف الأسئلة المتسارعة (Backend timing issue)
         let now = Date()
         if let last = lastQuestionArrivedAt {
@@ -348,10 +358,14 @@ final class MatchViewModel: ObservableObject {
             lastAnswerResult = result
             isRevealing = true
             if var q = currentQuestion {
-                if let correct = (data["correctIndex"] as? Int) {
-                    q.correctIndex = correct
-                    currentQuestion = q
+                if let correctIdx = data["correctIndex"] as? Int {
+                    q.correctIndex = correctIdx
                 }
+                // ✨ التقط correctAnswer للأسئلة input (numeric/text)
+                if let correctStr = data["correctAnswer"] as? String {
+                    q.correctAnswer = correctStr
+                }
+                currentQuestion = q
             }
 
             if result.isCorrect {
