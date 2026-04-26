@@ -72,13 +72,16 @@ struct MatchView: View {
 
                 Spacer()
 
-                // شريط العناصر
-                InventoryBar(
-                    inventory: viewModel.inventory,
-                    onUse: { viewModel.usePowerUp($0) },
-                    disabled: viewModel.selectedAnswerIndex != nil || viewModel.isRevealing
-                )
-                .padding(AppSizes.Spacing.lg)
+                // شريط العناصر — متاح فقط في 4-player MCQ (مخفي في Castle Siege 1v1)
+                if !viewModel.isOneVsOne {
+                    InventoryBar(
+                        inventory: viewModel.inventory,
+                        onUse: { viewModel.usePowerUp($0) },
+                        disabled: viewModel.hasSubmitted || viewModel.isRevealing
+                    )
+                    .padding(AppSizes.Spacing.lg)
+                    .transition(.opacity)
+                }
             }
 
             // شاشة Phase Transition (بين المراحل)
@@ -124,6 +127,11 @@ struct MatchView: View {
             // تلميح
             if let hint = viewModel.hintMessage {
                 hintBanner(hint).zIndex(6)
+            }
+
+            // 🐦 banner العصفور (مدى رقمي)
+            if let range = viewModel.rangeHint {
+                rangeHintBanner(min: range.min, max: range.max).zIndex(6)
             }
 
             // Pre-match countdown (3-2-1 قبل أول سؤال)
@@ -201,29 +209,63 @@ struct MatchView: View {
 
     private func phaseChip(icon: String, title: String, subtitle: String, color: Color) -> some View {
         HStack(spacing: AppSizes.Spacing.sm) {
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(color)
-                .frame(width: 36, height: 36)
-                .background(color.opacity(0.15))
-                .clipShape(Circle())
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [color.opacity(0.35), color.opacity(0.15)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        )
+                    )
+                Circle()
+                    .stroke(color.opacity(0.6), lineWidth: 1.5)
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(.white)
+            }
+            .frame(width: 36, height: 36)
+            .shadow(color: color.opacity(0.5), radius: 6)
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.cairo(.bold, size: AppSizes.Font.body))
                     .foregroundStyle(.white)
                 Text(subtitle)
                     .font(.cairo(.regular, size: 10))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(.white.opacity(0.55))
             }
             Spacer()
+
+            // شارة المرحلة
+            Text(title.contains("1") ? "I" : "II")
+                .font(.poppins(.black, size: 12))
+                .foregroundStyle(color)
+                .frame(width: 26, height: 26)
+                .background(color.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(color.opacity(0.4), lineWidth: 1)
+                )
         }
-        .padding(AppSizes.Spacing.sm)
-        .background(color.opacity(0.06))
+        .padding(.horizontal, AppSizes.Spacing.sm)
+        .padding(.vertical, AppSizes.Spacing.xs)
+        .background(
+            LinearGradient(
+                colors: [color.opacity(0.12), color.opacity(0.04)],
+                startPoint: .leading, endPoint: .trailing
+            )
+        )
         .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
         .overlay(
             RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
-                .stroke(color.opacity(0.2), lineWidth: 1)
+                .stroke(
+                    LinearGradient(
+                        colors: [color.opacity(0.45), color.opacity(0.15)],
+                        startPoint: .leading, endPoint: .trailing
+                    ),
+                    lineWidth: 1
+                )
         )
     }
 
@@ -346,18 +388,23 @@ struct MatchView: View {
         .padding(.horizontal, AppSizes.Spacing.lg)
     }
 
-    // MARK: - Freeze Overlay
+    // MARK: - Freeze Overlay (يظهر عند تفعيل تجميد الوقت)
     private var frozenOverlay: some View {
         ZStack {
-            Color(hex: "60A5FA").opacity(0.15).ignoresSafeArea()
-            VStack {
+            Color(hex: "60A5FA").opacity(0.12).ignoresSafeArea()
+            VStack(spacing: 8) {
                 Image(systemName: "snowflake")
-                    .font(.system(size: 80))
+                    .font(.system(size: 70, weight: .bold))
                     .foregroundStyle(Color(hex: "93C5FD"))
                     .shadow(color: Color(hex: "60A5FA"), radius: 20)
-                Text("مُجمَّد!")
-                    .font(.cairo(.black, size: AppSizes.Font.title1))
+                    .symbolEffect(.pulse, options: .repeating)
+                Text("تجميد الوقت")
+                    .font(.cairo(.black, size: AppSizes.Font.title2))
                     .foregroundStyle(.white)
+                Text("+5 ثوانٍ")
+                    .font(.poppins(.black, size: 24))
+                    .foregroundStyle(Color(hex: "93C5FD"))
+                    .monospacedDigit()
             }
         }
         .transition(.opacity)
@@ -425,6 +472,54 @@ struct MatchView: View {
         .background(Color.black.opacity(0.8))
         .clipShape(Capsule())
         .overlay(Capsule().stroke(AppColors.Default.goldPrimary, lineWidth: 1.5))
+    }
+
+    // MARK: - Range Hint Banner (العصفور)
+    private func rangeHintBanner(min: Int, max: Int) -> some View {
+        VStack {
+            HStack(spacing: AppSizes.Spacing.sm) {
+                Image(systemName: "bird.fill")
+                    .font(.system(size: 22, weight: .bold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(Color(hex: "FFD700"))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("🐦 العصفور يهمس...")
+                        .font(.cairo(.bold, size: 11))
+                        .foregroundStyle(.white.opacity(0.7))
+                    HStack(spacing: 6) {
+                        Text("\(min)")
+                            .font(.poppins(.black, size: 18))
+                            .foregroundStyle(.white)
+                            .monospacedDigit()
+                        Image(systemName: "arrow.left.and.right")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color(hex: "FFD700").opacity(0.7))
+                        Text("\(max)")
+                            .font(.poppins(.black, size: 18))
+                            .foregroundStyle(.white)
+                            .monospacedDigit()
+                    }
+                }
+            }
+            .padding(AppSizes.Spacing.md)
+            .background(
+                LinearGradient(
+                    colors: [Color(hex: "FFD700").opacity(0.18),
+                             Color(hex: "FFB800").opacity(0.10)],
+                    startPoint: .leading, endPoint: .trailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
+                    .stroke(Color(hex: "FFD700").opacity(0.5), lineWidth: 1.5)
+            )
+            .shadow(color: Color(hex: "FFD700").opacity(0.4), radius: 12)
+            .padding(AppSizes.Spacing.lg)
+            Spacer()
+        }
+        .transition(.move(edge: .top).combined(with: .opacity))
     }
 
     // MARK: - Hint Banner

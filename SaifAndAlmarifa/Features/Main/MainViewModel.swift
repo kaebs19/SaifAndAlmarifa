@@ -379,7 +379,7 @@ final class MainViewModel: ObservableObject {
 
                 if opponents.isEmpty {
                     opponents = [MatchPlayer(id: "opponent", username: "الخصم",
-                                              avatarUrl: nil, level: nil, hp: 100, score: 0)]
+                                              avatarUrl: nil, level: nil, hp: 0, maxHp: 0, score: 0)]
                 }
 
                 // انتقال للمباراة بعد عرض ثانيتين للبانر

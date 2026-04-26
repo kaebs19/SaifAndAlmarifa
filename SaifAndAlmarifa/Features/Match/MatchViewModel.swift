@@ -28,6 +28,7 @@ final class MatchViewModel: ObservableObject {
     @Published var lastAnswerResult: AnswerResult? = nil
     @Published var isRevealing: Bool = false              // بعد الإجابة، لحظة إظهار النتيجة
     @Published var myHP: Int = 0
+    @Published var myMaxHP: Int = 0       // ✨ القوة المتراكمة من المرحلة 1
     @Published var myScore: Int = 0
     @Published var opponents: [MatchPlayer] = []          // حالة الخصوم المتطوّرة
     @Published var eliminatedIds: Set<String> = []        // اللاعبون الخارجون
@@ -41,6 +42,7 @@ final class MatchViewModel: ObservableObject {
     @Published var activePowerUps: Set<PowerUpIcon> = []  // مفعّل الآن (مؤقتاً)
     @Published var hintMessage: String? = nil             // نص التلميح
     @Published var isFrozen: Bool = false                 // حالة تجميد
+    @Published var rangeHint: (min: Int, max: Int)? = nil // ✨ تلميح مدى رقمي (العصفور)
     @Published var rematchStatus: RematchStatus = .none   // حالة الإعادة
     @Published var preMatchCountdown: Int? = nil          // 3, 2, 1 قبل أول سؤال
 
@@ -72,6 +74,7 @@ final class MatchViewModel: ObservableObject {
             avatarUrl: authManager.currentUser?.avatarUrl,
             level: authManager.currentUser?.level,
             hp: myHP,
+            maxHp: myMaxHP,
             score: myScore
         )
     }
@@ -88,7 +91,7 @@ final class MatchViewModel: ObservableObject {
     var isOneVsOne: Bool { initialOpponents.count == 1 }
 
     /// اسم الخصم الأول (للـ UI في 1v1)
-    var opponent: MatchPlayer { opponents.first ?? initialOpponents.first ?? MatchPlayer(id: "?", username: "?", avatarUrl: nil, level: nil, hp: 0, score: 0) }
+    var opponent: MatchPlayer { opponents.first ?? initialOpponents.first ?? MatchPlayer(id: "?", username: "?", avatarUrl: nil, level: nil, hp: 0, maxHp: 0, score: 0) }
 
     // MARK: - Lifecycle
     func start() {
@@ -219,14 +222,16 @@ final class MatchViewModel: ObservableObject {
                 self.currentPhase = .transition
                 self.showPhaseTransition = true
 
-                // طبّق power على HP — قلعتي + الخصوم
+                // طبّق power على HP — قلعتي + الخصوم (يحفظ maxHp للنسبة)
                 if let myPower = result.powers[self.myId] {
                     self.myHP = myPower
+                    self.myMaxHP = myPower
                 }
                 for (idx, opp) in self.opponents.enumerated() {
                     if let p = result.powers[opp.id] {
                         var updated = opp
                         updated.hp = p
+                        updated.maxHp = p
                         self.opponents[idx] = updated
                     }
                 }
@@ -290,6 +295,7 @@ final class MatchViewModel: ObservableObject {
         isRevealing = false
         showPhaseTransition = false
         hintMessage = nil
+        rangeHint = nil
         timeRemaining = q.timeLimit
         questionStartTime = Date()
         startTimer()
@@ -434,6 +440,18 @@ final class MatchViewModel: ObservableObject {
                 await MainActor.run { self.isFrozen = false }
             }
         }
+
+        // 🐦 العصفور: مدى رقمي { rangeHint: { min, max } }
+        if let range = data["rangeHint"] as? [String: Any],
+           let lo = range["min"] as? Int,
+           let hi = range["max"] as? Int {
+            rangeHint = (min: lo, max: hi)
+            GameSoundManager.shared.playPowerUp(.bird)
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 8_000_000_000)
+                self.rangeHint = nil
+            }
+        }
     }
 
     private func handleMatchEnded(_ data: [String: Any]) {
@@ -491,6 +509,12 @@ final class MatchViewModel: ObservableObject {
             toast.warning("لا تملك \(powerUp.titleAr)")
             return
         }
+        // لا تستخدم بعد الإجابة أو خلال الكشف
+        guard !hasSubmitted, !isRevealing else {
+            toast.warning("استخدمه قبل الإجابة")
+            return
+        }
+
         // نقص الكمية محلياً (optimistic)
         inventory[powerUp] = max(0, (inventory[powerUp] ?? 0) - 1)
 
@@ -500,6 +524,71 @@ final class MatchViewModel: ObservableObject {
 
         // فعّل الـ power-up بصرياً لبعض الوقت
         activatePowerUpVisual(powerUp)
+
+        // تأثير محلي فوري (بدون انتظار backend)
+        applyLocalEffect(powerUp)
+    }
+
+    /// تطبيق تأثير محلي للـ power-up (يعمل بدون backend)
+    private func applyLocalEffect(_ powerUp: PowerUpIcon) {
+        switch powerUp {
+        case .freeze:
+            // أضف 5 ثوانٍ لوقتي + visual ice
+            timeRemaining += 5
+            // أوقف heartbeat لو رجع الوقت فوق المنطقة الحرجة
+            if timeRemaining > 5 {
+                heartbeatStarted = false
+                GameSoundManager.shared.stop(.heartbeat)
+            }
+            isFrozen = true
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                self.isFrozen = false
+            }
+
+        case .skip:
+            // إنهاء السؤال الحالي بإجابة فارغة (ينتظر السؤال التالي)
+            if !hasSubmitted {
+                hasSubmitted = true
+                let elapsedMs = Int((Date().timeIntervalSince(questionStartTime ?? Date())) * 1000)
+                socket.submitAnswer(matchId: matchId, answer: "", timeMs: elapsedMs)
+                toast.info("⏭ تم تخطّي السؤال")
+            }
+
+        case .hint:
+            // تلميح محلي بسيط (لا يكشف الإجابة الكاملة)
+            if let q = currentQuestion {
+                if q.answerType == .multipleChoice && !q.options.isEmpty {
+                    hintMessage = "💡 الإجابة من بين \(q.options.count) خيارات"
+                } else {
+                    hintMessage = "💡 خذ نفساً عميقاً وفكّر"
+                }
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 4_000_000_000)
+                    self.hintMessage = nil
+                }
+            }
+
+        case .fiftyFifty:
+            // لا يعمل محلياً (نحتاج correctIndex من backend)
+            if let q = currentQuestion, q.answerType == .multipleChoice {
+                toast.info("🎯 50/50 — في انتظار backend")
+            } else {
+                toast.warning("غير متاح لهذا السؤال")
+            }
+
+        case .bird:
+            // العصفور: يضيّق المدى الرقمي — يحتاج backend ليرسل rangeHint
+            if let q = currentQuestion, q.answerType == .numericInput {
+                toast.info("🐦 العصفور يبحث... — في انتظار backend")
+            } else {
+                toast.warning("العصفور للأسئلة الرقمية فقط")
+            }
+
+        case .shield, .thunder, .double, .revive:
+            // visual فقط — تأثيرها يطبّق عبر backend
+            break
+        }
     }
 
     /// تفعيل تأثير بصري للـ power-up

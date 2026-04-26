@@ -8,14 +8,15 @@
 
 ### مرحلتان لكل مباراة 1v1:
 
-**المرحلة 1 — تجميع القوة (Collection)** — فردية
-- **6 أسئلة** من نوع **إدخال نصي/رقمي فقط** (`numericInput` / `textInput`)
+**المرحلة 1 — تجميع القوة (Collection)**
+- **4 أسئلة** من نوع `numericInput` أو `textInput`
 - اللاعب يكتب الإجابة (مثال: "متى كانت الحرب العالمية الأولى؟" → "1914")
-- كل لاعب يجمع قوة بشكل مستقل (لا تنافس مباشر هنا)
+- Scoring: **صحيح + الأسرع + الأقرب**
 - القوة المتراكمة = HP قلعته في المرحلة 2
 
 **المرحلة 2 — المواجهة (Battle)** — تنافسية
-- 10 أسئلة **متنوّعة**: input + multipleChoice + غيرها
+- 10 أسئلة **متنوّعة**: `multipleChoice` (4 خيارات) أو `numericInput` (إدخال رقم)
+- ⚠️ لا `textInput` في المرحلة 2 (للسرعة)
 - iOS يعرض UI مناسب لكل سؤال حسب `answerType`
 - كل إجابة صحيحة = ضربة على قلعة الخصم (-1 HP)
 - HP لكل لاعب = القوة من المرحلة 1
@@ -72,14 +73,14 @@
   "text": "متى كانت الحرب العالمية الأولى؟",
   "options": [],                 // فارغة للـ input، 4 خيارات للـ multipleChoice
   "index": 1,
-  "total": 6,                    // 6 للـ collection، 10 للـ battle
+  "total": 4,                    // 4 للـ collection، 10 للـ battle
   "timeLimit": 15
 }
 ```
 
 **ملاحظة:**
-- المرحلة 1: `answerType` فقط `numericInput` أو `textInput` (لا MCQ).
-- المرحلة 2: مختلطة — قد يكون `multipleChoice` (مع `options`) أو `numericInput` / `textInput`.
+- المرحلة 1: `numericInput` أو `textInput` (4 أسئلة).
+- المرحلة 2: مختلطة — `multipleChoice` (مع `options`) أو `numericInput` (10 أسئلة).
 
 ### `match:answer` (Client → Server)
 
@@ -142,7 +143,7 @@ iOS يستقبل هذا → يعرض شاشة Phase Transition (3-4 ثواني) 
 2. match:join (×2)
 3. match:started
 
-═══ المرحلة 1: COLLECTION (6 أسئلة input فقط) ═══
+═══ المرحلة 1: COLLECTION (4 أسئلة input) ═══
 4. match:phase { phase: "collection" }
 5. match:question [1] { phase: "collection", answerType: "numericInput" | "textInput" }
 6. (كل اللاعبين يرسلوا match:answer أو 15 ثانية)
@@ -150,7 +151,7 @@ iOS يستقبل هذا → يعرض شاشة Phase Transition (3-4 ثواني) 
    - تحدّد closest + fastest + pointsAwarded
 8. (انتظر 2.5 ثانية لعرض النتيجة)
 9. match:question [2]
-10. ... (6 أسئلة كاملة)
+10. ... (4 أسئلة كاملة)
 
 ═══ TRANSITION ═══
 11. match:phase-result { powers: {u1:6, u2:4} }
@@ -198,13 +199,13 @@ class CastleSiegeMatch {
   }
 
   async start() {
-    // المرحلة 1: 6 أسئلة input فقط
-    this.collectionQuestions = await Question.findRandom(6, {
+    // المرحلة 1: 4 أسئلة input (numericInput أو textInput)
+    this.collectionQuestions = await Question.findRandom(4, {
       answerType: { $in: ['numericInput', 'textInput'] }
     })
-    // المرحلة 2: 10 أسئلة متنوّعة (input + MCQ)
+    // المرحلة 2: 10 أسئلة — MCQ + numericInput فقط (لا textInput للسرعة)
     this.battleQuestions = await Question.findRandom(10, {
-      answerType: { $in: ['numericInput', 'textInput', 'multipleChoice'] }
+      answerType: { $in: ['numericInput', 'multipleChoice'] }
     })
 
     io.emit('match:started', { matchId: this.matchId })
@@ -238,7 +239,7 @@ class CastleSiegeMatch {
       text: q.text,
       options: q.answerType === 'multipleChoice' ? q.options : [],
       index: this.currentIdx + 1,
-      total: list.length,         // 6 للـ collection، 10 للـ battle
+      total: list.length,         // 4 للـ collection، 10 للـ battle
       timeLimit: 15
     })
 
@@ -460,8 +461,70 @@ ALTER TABLE Questions MODIFY COLUMN options JSONB;
 ```
 
 **توصية:**
-- **المرحلة 1:** أسئلة input فقط — رقمية تسمح بالـ "أقرب" (سنوات، أعداد) أو نصية قصيرة (اسم/مكان)
-- **المرحلة 2:** خليط — `multipleChoice` + `numericInput` + `textInput` للتنويع وقياس السرعة
+- **المرحلة 1:** `numericInput` (سنوات، أعداد) أو `textInput` قصير (اسم/مكان) — مع closeness scoring
+- **المرحلة 2:** `multipleChoice` + `numericInput` (لا `textInput` للسرعة)
+
+---
+
+## 🎮 الأوضاع والأيتمز
+
+| Mode | النظام | الأيتمز |
+|------|--------|---------|
+| **1v1** (random / private / challenge) | Castle Siege (input, 2 phases) | ❌ **معطّلة** |
+| **4-player** (random / friends) | MCQ classic | ✅ متاحة |
+
+⚠️ **iOS يخفي InventoryBar كلياً في 1v1** — لا حاجة لإرسال `match:item-error` من backend لمنع الاستخدام، لكن الـ backend يجب يرفض أي `match:use-item` يصل خلال match مود 1v1 (دفاعياً).
+
+---
+
+## 🐦 Power-up: العصفور (narrow_range)
+
+يضيّق المدى الرقمي للسؤال — يعمل فقط في `numericInput`.
+
+### Client → Server
+```json
+event: match:use-item
+payload: { "matchId": "...", "itemId": "narrow_range" }
+```
+
+### Server → Client (للاستخدام نفسه)
+```json
+event: match:item-effect
+payload: {
+  "matchId": "...",
+  "userId": "u1",
+  "itemType": "narrow_range",
+  "rangeHint": { "min": 1900, "max": 1925 }
+}
+```
+
+### Backend Logic
+```js
+case 'narrow_range': {
+  const q = currentQuestion
+  if (q.answerType !== 'numericInput') {
+    return socket.emit('match:item-error', { reason: 'numeric_only' })
+  }
+  const correct = parseFloat(q.correctAnswer)
+  // مدى ±10% أو ±5 وحدات (أيهما أوسع) — مع noise بسيط
+  const tolerance = Math.max(Math.abs(correct) * 0.10, 5)
+  const offsetLo = Math.random() * tolerance * 0.5
+  const offsetHi = Math.random() * tolerance * 0.5
+  const min = Math.floor(correct - tolerance + offsetLo)
+  const max = Math.ceil(correct + tolerance - offsetHi)
+
+  io.to(userId).emit('match:item-effect', {
+    matchId,
+    userId,
+    itemType: 'narrow_range',
+    rangeHint: { min, max }
+  })
+}
+```
+
+### iOS Behavior
+- يعرض banner ذهبي `🐦 العصفور يهمس... [min ↔ max]` لمدّة 8 ثوانٍ
+- يختفي تلقائياً عند سؤال جديد
 
 ---
 

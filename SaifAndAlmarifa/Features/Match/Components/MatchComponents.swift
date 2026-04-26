@@ -93,23 +93,44 @@ struct AnswerButton: View {
         ["A", "B", "C", "D"][safe: index] ?? "?"
     }
 
-    private var bgColor: Color {
+    private var accentColor: Color {
         switch state {
-        case .idle:     return Color.white.opacity(0.06)
-        case .selected: return AppColors.Default.goldPrimary.opacity(0.25)
-        case .correct:  return AppColors.Default.success.opacity(0.35)
-        case .wrong:    return AppColors.Default.error.opacity(0.35)
-        case .disabled: return Color.white.opacity(0.02)
-        }
-    }
-
-    private var borderColor: Color {
-        switch state {
-        case .idle:     return .white.opacity(0.12)
+        case .idle:     return .white.opacity(0.18)
         case .selected: return AppColors.Default.goldPrimary
         case .correct:  return AppColors.Default.success
         case .wrong:    return AppColors.Default.error
         case .disabled: return .white.opacity(0.05)
+        }
+    }
+
+    @ViewBuilder
+    private var backgroundFill: some View {
+        switch state {
+        case .idle:
+            LinearGradient(
+                colors: [.white.opacity(0.08), .white.opacity(0.03)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+        case .selected:
+            LinearGradient(
+                colors: [AppColors.Default.goldPrimary.opacity(0.30),
+                         AppColors.Default.goldPrimary.opacity(0.12)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+        case .correct:
+            LinearGradient(
+                colors: [AppColors.Default.success.opacity(0.40),
+                         AppColors.Default.success.opacity(0.15)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+        case .wrong:
+            LinearGradient(
+                colors: [AppColors.Default.error.opacity(0.40),
+                         AppColors.Default.error.opacity(0.15)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+        case .disabled:
+            Color.white.opacity(0.02)
         }
     }
 
@@ -120,13 +141,23 @@ struct AnswerButton: View {
         }) {
             HStack(spacing: AppSizes.Spacing.sm) {
                 // الحرف
-                Text(letter)
-                    .font(.poppins(.black, size: 18))
-                    .foregroundStyle(state == .disabled ? .white.opacity(0.2) : .white)
-                    .frame(width: 36, height: 36)
-                    .background(borderColor.opacity(0.3))
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(borderColor, lineWidth: 1.5))
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [accentColor.opacity(0.55), accentColor.opacity(0.25)],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        )
+                    Circle()
+                        .stroke(accentColor.opacity(0.7), lineWidth: 1.5)
+                    Text(letter)
+                        .font(.poppins(.black, size: 18))
+                        .foregroundStyle(state == .disabled ? .white.opacity(0.2) : .white)
+                }
+                .frame(width: 38, height: 38)
+                .shadow(color: state == .selected || state == .correct
+                        ? accentColor.opacity(0.5) : .clear, radius: 6)
 
                 // النص
                 Text(text)
@@ -138,27 +169,31 @@ struct AnswerButton: View {
                 // علامة النتيجة
                 Group {
                     switch state {
-                    case .correct: Image(systemName: "checkmark.circle.fill").foregroundStyle(AppColors.Default.success)
-                    case .wrong:   Image(systemName: "xmark.circle.fill").foregroundStyle(AppColors.Default.error)
+                    case .correct: Image(systemName: "checkmark.seal.fill")
+                            .foregroundStyle(AppColors.Default.success)
+                    case .wrong:   Image(systemName: "xmark.octagon.fill")
+                            .foregroundStyle(AppColors.Default.error)
                     default: EmptyView()
                     }
                 }
                 .font(.system(size: 22))
+                .transition(.scale.combined(with: .opacity))
             }
             .padding(AppSizes.Spacing.md)
             .frame(maxWidth: .infinity)
-            .background(bgColor)
+            .background(backgroundFill)
             .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
             .overlay(
                 RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
-                    .stroke(borderColor, lineWidth: state == .idle ? 1 : 2)
+                    .stroke(accentColor, lineWidth: state == .idle ? 1 : 2)
             )
-            .opacity(state == .disabled ? 0.5 : 1)
+            .shadow(color: state == .correct ? AppColors.Default.success.opacity(0.4) : .clear, radius: 10)
+            .opacity(state == .disabled ? 0.45 : 1)
             .scaleEffect(state == .correct ? 1.03 : 1.0)
         }
         .disabled(state != .idle)
         .buttonStyle(ScaleButtonStyle())
-        .animation(.easeInOut(duration: 0.2), value: state)
+        .animation(.spring(response: 0.35, dampingFraction: 0.75), value: state)
     }
 }
 
@@ -276,36 +311,29 @@ struct PlayersBattlefield: View {
             // النقاط مع flash animation
             ScoreBadge(score: player.score, color: isMine ? AppColors.Default.goldPrimary : Color(hex: "F87171"), compact: compact)
 
+            // hpPercentage 0-100 (للطبقات): نسبة hp/maxHp ×100
+            let hpRatio: Double = (player.maxHp > 0) ? Double(player.hp) / Double(player.maxHp) : 1.0
+            let hpStage: Int = isCollectionPhase ? 100 : Int(hpRatio * 100)
+
             CastleView(
                 side: castle,
-                hpPercentage: isCollectionPhase ? 100 : player.hp,  // قلعة كاملة في Phase 1
+                hpPercentage: hpStage,
                 isShaking: isShaking,
                 shieldActive: isMine && myShieldActive
             )
             .frame(width: castleSize, height: castleSize)
 
             if isCollectionPhase {
-                // المرحلة 1: نعرض "قوة" بدل HP
-                HStack(spacing: 4) {
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(Color(hex: "60A5FA"))
-                    Text("\(player.score) قوة")
-                        .font(.cairo(.bold, size: 10))
-                        .foregroundStyle(.white.opacity(0.8))
-                }
-                .padding(.horizontal, 8).padding(.vertical, 3)
-                .background(Color(hex: "60A5FA").opacity(0.12))
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(Color(hex: "60A5FA").opacity(0.4), lineWidth: 1))
+                powerCapsule(score: player.score, isMine: isMine, compact: compact)
             } else {
-                CastleHPBar(percent: Double(player.hp) / 100.0, color: hpColor)
+                CastleHPBar(percent: hpRatio, color: hpColor)
                     .frame(width: castleSize)
 
                 if !compact {
-                    Text("\(player.hp) HP")
+                    Text("\(player.hp)/\(max(player.maxHp, 1)) HP")
                         .font(.poppins(.bold, size: 10))
                         .foregroundStyle(hpColor)
+                        .monospacedDigit()
                 }
             }
 
@@ -321,6 +349,35 @@ struct PlayersBattlefield: View {
         .frame(maxWidth: .infinity)
         .grayscale(isEliminated ? 1 : 0)
         .opacity(isEliminated ? 0.5 : 1)
+    }
+
+    // MARK: - Power capsule (Phase 1)
+    @ViewBuilder
+    private func powerCapsule(score: Int, isMine: Bool, compact: Bool) -> some View {
+        let accent = isMine ? Color(hex: "60A5FA") : Color(hex: "F87171")
+        HStack(spacing: 4) {
+            Image(systemName: "bolt.fill")
+                .font(.system(size: compact ? 8 : 10, weight: .black))
+                .foregroundStyle(accent)
+            Text("\(score)")
+                .font(.poppins(.black, size: compact ? 11 : 13))
+                .foregroundStyle(.white)
+                .monospacedDigit()
+                .contentTransition(.numericText())
+            Text("قوة")
+                .font(.cairo(.bold, size: compact ? 9 : 10))
+                .foregroundStyle(.white.opacity(0.7))
+        }
+        .padding(.horizontal, compact ? 8 : 10).padding(.vertical, compact ? 3 : 4)
+        .background(
+            LinearGradient(
+                colors: [accent.opacity(0.20), accent.opacity(0.08)],
+                startPoint: .top, endPoint: .bottom
+            )
+        )
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(accent.opacity(0.5), lineWidth: 1))
+        .shadow(color: accent.opacity(0.3), radius: 4)
     }
 
     @ViewBuilder
@@ -398,7 +455,7 @@ struct InventoryBar: View {
     let disabled: Bool
 
     // الترتيب المفضّل
-    private let order: [PowerUpIcon] = [.shield, .hint, .fiftyFifty, .freeze, .skip, .thunder]
+    private let order: [PowerUpIcon] = [.shield, .bird, .hint, .fiftyFifty, .freeze, .skip, .thunder]
 
     var body: some View {
         HStack(spacing: AppSizes.Spacing.xs) {
@@ -422,12 +479,27 @@ struct InventoryBar: View {
             onUse(power)
         } label: {
             ZStack(alignment: .topLeading) {
-                power.image
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 42, height: 42)
-                    .opacity(count > 0 && !disabled ? 1 : 0.3)
-                    .grayscale(count > 0 && !disabled ? 0 : 1)
+                Group {
+                    if power.sfSymbol != nil {
+                        // SF Symbol fallback (للعصفور وغيره)
+                        power.iconView
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [Color(hex: "FFE55C"), Color(hex: "FFB800")],
+                                    startPoint: .top, endPoint: .bottom
+                                )
+                            )
+                            .frame(width: 42, height: 42)
+                    } else {
+                        power.image
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 42, height: 42)
+                    }
+                }
+                .opacity(count > 0 && !disabled ? 1 : 0.3)
+                .grayscale(count > 0 && !disabled ? 0 : 1)
 
                 if count > 0 {
                     Text("\(count)")

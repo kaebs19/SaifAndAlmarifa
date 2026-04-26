@@ -33,15 +33,32 @@ struct InputAnswerView: View {
         return .white.opacity(0.2)
     }
 
+    private var iconName: String {
+        switch question.answerType {
+        case .numericInput: return "number"
+        case .textInput:    return "character.cursor.ibeam"
+        default:            return "pencil.tip"
+        }
+    }
+
+    private var placeholder: String {
+        switch question.answerType {
+        case .numericInput: return "اكتب الرقم..."
+        case .textInput:    return "اكتب إجابتك..."
+        default:            return "اكتب إجابتك..."
+        }
+    }
+
     var body: some View {
         VStack(spacing: AppSizes.Spacing.md) {
             // حقل الإدخال
             HStack(spacing: AppSizes.Spacing.sm) {
-                Image(systemName: "pencil.tip")
-                    .font(.system(size: 18))
-                    .foregroundStyle(stateColor.opacity(0.6))
+                Image(systemName: iconName)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(stateColor.opacity(0.7))
+                    .frame(width: 24)
 
-                TextField("اكتب إجابتك...", text: $answer)
+                TextField(placeholder, text: $answer)
                     .font(.cairo(.bold, size: AppSizes.Font.title3))
                     .foregroundStyle(.white)
                     .tint(AppColors.Default.goldPrimary)
@@ -67,12 +84,24 @@ struct InputAnswerView: View {
                 }
             }
             .padding(AppSizes.Spacing.md)
-            .background(.white.opacity(0.06))
+            .background(
+                LinearGradient(
+                    colors: [.white.opacity(0.10), .white.opacity(0.04)],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                )
+            )
             .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
             .overlay(
                 RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
-                    .stroke(stateColor, lineWidth: 2)
+                    .stroke(
+                        LinearGradient(
+                            colors: [stateColor, stateColor.opacity(0.5)],
+                            startPoint: .leading, endPoint: .trailing
+                        ),
+                        lineWidth: 2
+                    )
             )
+            .shadow(color: stateColor.opacity(isFocused ? 0.35 : 0), radius: 8)
 
             // عرض الإجابة الصحيحة (بعد الكشف)
             if isRevealing, let correct = question.correctAnswer {

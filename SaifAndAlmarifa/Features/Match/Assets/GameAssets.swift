@@ -19,6 +19,7 @@ enum PowerUpIcon: String, CaseIterable, Identifiable {
     case double     = "powerup_double"
     case revive     = "powerup_revive"
     case fiftyFifty = "powerup_5050"
+    case bird       = "powerup_bird"   // 🆕 عصفور — يضيّق المدى الرقمي
 
     var id: String { rawValue }
 
@@ -33,6 +34,7 @@ enum PowerUpIcon: String, CaseIterable, Identifiable {
         case .double:     return "ضعف"
         case .revive:     return "إحياء"
         case .fiftyFifty: return "حذف إجابتين"
+        case .bird:       return "عصفور"
         }
     }
 
@@ -47,10 +49,31 @@ enum PowerUpIcon: String, CaseIterable, Identifiable {
         case .double:     return "double_damage"
         case .revive:     return "steal"
         case .fiftyFifty: return "eliminate_two"
+        case .bird:       return "narrow_range"
         }
     }
 
-    /// الصورة من Assets
+    /// SF Symbol fallback لو ما عندنا asset
+    var sfSymbol: String? {
+        switch self {
+        case .bird: return "bird.fill"
+        default:    return nil
+        }
+    }
+
+    /// الصورة — يفضّل asset، fallback لـ SF Symbol
+    @ViewBuilder
+    var iconView: some View {
+        if let symbol = sfSymbol {
+            Image(systemName: symbol)
+                .symbolRenderingMode(.hierarchical)
+        } else {
+            Image(rawValue)
+                .resizable()
+        }
+    }
+
+    /// الصورة من Assets (للحالات اللي عندها asset)
     var image: Image { Image(rawValue) }
 
     /// اسم ملف صوت التفعيل

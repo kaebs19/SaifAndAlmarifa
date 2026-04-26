@@ -87,7 +87,7 @@ struct MatchQuestion: Identifiable, Equatable {
             phase: phase,
             options: dict["options"] as? [String] ?? [],
             index: dict["index"] as? Int ?? 1,
-            total: dict["total"] as? Int ?? 6,
+            total: dict["total"] as? Int ?? 4,
             timeLimit: dict["timeLimit"] as? Int ?? 15,
             correctAnswer: dict["correctAnswer"] as? String,
             correctIndex: dict["correctIndex"] as? Int
@@ -117,7 +117,8 @@ struct MatchPlayer: Equatable {
     let username: String
     let avatarUrl: String?
     let level: Int?
-    var hp: Int          // 0..100
+    var hp: Int          // الحالي
+    var maxHp: Int       // المرجع (= power من المرحلة 1)
     var score: Int
 
     static func from(_ dict: [String: Any]) -> MatchPlayer? {
@@ -128,7 +129,8 @@ struct MatchPlayer: Equatable {
             username: username,
             avatarUrl: dict["avatarUrl"] as? String,
             level: dict["level"] as? Int,
-            hp: dict["hp"] as? Int ?? 0,    // 0 حتى تبدأ المرحلة 2
+            hp: dict["hp"] as? Int ?? 0,
+            maxHp: dict["maxHp"] as? Int ?? 0,
             score: dict["score"] as? Int ?? 0
         )
     }
@@ -219,7 +221,7 @@ struct ActiveMatchContext: Identifiable, Equatable {
     /// توافق قديم — للأكواد اللي تستخدم opponent مفرد
     var opponent: MatchPlayer {
         opponents.first ?? MatchPlayer(id: "opponent", username: "الخصم",
-                                        avatarUrl: nil, level: nil, hp: 100, score: 0)
+                                        avatarUrl: nil, level: nil, hp: 0, maxHp: 0, score: 0)
     }
 }
 
