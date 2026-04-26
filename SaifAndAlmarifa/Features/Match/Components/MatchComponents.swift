@@ -178,6 +178,9 @@ struct PlayersBattlefield: View {
     let attackAnimating: Bool
     let attackTargetId: String?
     var myShieldActive: Bool = false
+    var phase: MatchPhase = .battle      // ✨ يحدّد عرض HP أو "قوة"
+
+    private var isCollectionPhase: Bool { phase == .collection }
 
     var body: some View {
         if opponents.count == 1 {
@@ -275,19 +278,35 @@ struct PlayersBattlefield: View {
 
             CastleView(
                 side: castle,
-                hpPercentage: player.hp,
+                hpPercentage: isCollectionPhase ? 100 : player.hp,  // قلعة كاملة في Phase 1
                 isShaking: isShaking,
                 shieldActive: isMine && myShieldActive
             )
             .frame(width: castleSize, height: castleSize)
 
-            CastleHPBar(percent: Double(player.hp) / 100.0, color: hpColor)
-                .frame(width: castleSize)
+            if isCollectionPhase {
+                // المرحلة 1: نعرض "قوة" بدل HP
+                HStack(spacing: 4) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(Color(hex: "60A5FA"))
+                    Text("\(player.score) قوة")
+                        .font(.cairo(.bold, size: 10))
+                        .foregroundStyle(.white.opacity(0.8))
+                }
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background(Color(hex: "60A5FA").opacity(0.12))
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(Color(hex: "60A5FA").opacity(0.4), lineWidth: 1))
+            } else {
+                CastleHPBar(percent: Double(player.hp) / 100.0, color: hpColor)
+                    .frame(width: castleSize)
 
-            if !compact {
-                Text("\(player.hp) HP")
-                    .font(.poppins(.bold, size: 10))
-                    .foregroundStyle(hpColor)
+                if !compact {
+                    Text("\(player.hp) HP")
+                        .font(.poppins(.bold, size: 10))
+                        .foregroundStyle(hpColor)
+                }
             }
 
             if isEliminated {

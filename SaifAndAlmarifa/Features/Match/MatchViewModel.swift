@@ -27,7 +27,7 @@ final class MatchViewModel: ObservableObject {
     @Published var showPhaseTransition: Bool = false      // عرض شاشة الانتقال
     @Published var lastAnswerResult: AnswerResult? = nil
     @Published var isRevealing: Bool = false              // بعد الإجابة، لحظة إظهار النتيجة
-    @Published var myHP: Int = 100
+    @Published var myHP: Int = 0
     @Published var myScore: Int = 0
     @Published var opponents: [MatchPlayer] = []          // حالة الخصوم المتطوّرة
     @Published var eliminatedIds: Set<String> = []        // اللاعبون الخارجون
@@ -300,16 +300,19 @@ final class MatchViewModel: ObservableObject {
         guard matchIdMatches(data),
               let result = AnswerResult.from(data) else { return }
 
+        // HP لا يُحدَّث إلا في المرحلة 2 (battle) — حماية من backend بيرسلها بالغلط
+        let allowHpUpdate = currentPhase == .battle
+
         // تحديث النقاط/HP
         if result.userId == myId {
             if let s = result.newScore { myScore = s }
-            if let h = result.newHP { myHP = h }
+            if allowHpUpdate, let h = result.newHP { myHP = h }
         } else {
             // حدّث الخصم الموافق
             if let idx = opponents.firstIndex(where: { $0.id == result.userId }) {
                 var p = opponents[idx]
                 if let s = result.newScore ?? result.opponentScore { p.score = s }
-                if let h = result.newHP ?? result.opponentHP { p.hp = h }
+                if allowHpUpdate, let h = result.newHP ?? result.opponentHP { p.hp = h }
                 opponents[idx] = p
             }
         }
@@ -340,6 +343,8 @@ final class MatchViewModel: ObservableObject {
 
     private func handleAttack(_ data: [String: Any]) {
         guard matchIdMatches(data) else { return }
+        // الهجوم فقط في مرحلة المعركة
+        guard currentPhase == .battle else { return }
         let attackerId = data["attackerId"] as? String
         let targetId = data["targetId"] as? String
         let damage = data["damage"] as? Int ?? 10
@@ -377,6 +382,8 @@ final class MatchViewModel: ObservableObject {
     private func handleEliminated(_ data: [String: Any]) {
         guard matchIdMatches(data),
               let userId = data["userId"] as? String else { return }
+        // الإقصاء فقط في مرحلة المعركة
+        guard currentPhase == .battle else { return }
         eliminatedIds.insert(userId)
         if userId == myId {
             toast.error("خرجت من المباراة")

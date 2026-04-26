@@ -49,7 +49,8 @@ struct MatchView: View {
                     shakingOpponentId: viewModel.shakingOpponentId,
                     attackAnimating: viewModel.attackAnimating,
                     attackTargetId: viewModel.attackTargetId,
-                    myShieldActive: viewModel.activePowerUps.contains(.shield)
+                    myShieldActive: viewModel.activePowerUps.contains(.shield),
+                    phase: viewModel.currentPhase
                 )
                 .padding(.horizontal, AppSizes.Spacing.sm)
                 .padding(.top, AppSizes.Spacing.sm)

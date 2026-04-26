@@ -128,7 +128,7 @@ struct MatchPlayer: Equatable {
             username: username,
             avatarUrl: dict["avatarUrl"] as? String,
             level: dict["level"] as? Int,
-            hp: dict["hp"] as? Int ?? 100,
+            hp: dict["hp"] as? Int ?? 0,    // 0 حتى تبدأ المرحلة 2
             score: dict["score"] as? Int ?? 0
         )
     }
