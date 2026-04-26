@@ -64,6 +64,8 @@ final class MatchViewModel: ObservableObject {
     private var timer: Timer?
     private var heartbeatStarted = false
     private var questionStartTime: Date?
+    private var lastQuestionArrivedAt: Date?
+    private var questionsTooFastCount: Int = 0
 
     // MARK: - Derived
     var myId: String { authManager.currentUser?.id ?? "" }
@@ -286,6 +288,24 @@ final class MatchViewModel: ObservableObject {
     private func handleIncomingQuestion(_ data: [String: Any]) {
         guard matchIdMatches(data),
               let q = MatchQuestion.from(data) else { return }
+
+        // كشف الأسئلة المتسارعة (Backend timing issue)
+        let now = Date()
+        if let last = lastQuestionArrivedAt {
+            let gap = now.timeIntervalSince(last)
+            if gap < 2.0 {
+                questionsTooFastCount += 1
+                #if DEBUG
+                print("⚠️ [Match] Question arrived too fast — gap=\(String(format: "%.2f", gap))s (count=\(questionsTooFastCount))")
+                #endif
+                // عرّف المستخدم بالمشكلة بعد 3 حالات
+                if questionsTooFastCount == 3 {
+                    toast.warning("⚠️ الأسئلة تمر بسرعة")
+                }
+            }
+        }
+        lastQuestionArrivedAt = now
+
         currentQuestion = q
         currentPhase = q.phase
         selectedAnswerIndex = nil

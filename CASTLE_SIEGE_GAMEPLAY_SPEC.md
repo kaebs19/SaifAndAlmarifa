@@ -9,8 +9,8 @@
 ### مرحلتان لكل مباراة 1v1:
 
 **المرحلة 1 — تجميع القوة (Collection)**
-- **4 أسئلة** من نوع `numericInput` أو `textInput`
-- اللاعب يكتب الإجابة (مثال: "متى كانت الحرب العالمية الأولى؟" → "1914")
+- **4 أسئلة** من نوع `numericInput` **فقط** (أرقام/أعداد)
+- اللاعب يكتب الرقم (مثال: "في أي عام تأسست Apple؟" → "1976")
 - Scoring: **صحيح + الأسرع + الأقرب**
 - القوة المتراكمة = HP قلعته في المرحلة 2
 
@@ -79,8 +79,8 @@
 ```
 
 **ملاحظة:**
-- المرحلة 1: `numericInput` أو `textInput` (4 أسئلة).
-- المرحلة 2: مختلطة — `multipleChoice` (مع `options`) أو `numericInput` (10 أسئلة).
+- المرحلة 1: `numericInput` **فقط** (4 أسئلة) — iOS يعرض لوحة مفاتيح رقمية مخصّصة.
+- المرحلة 2: `multipleChoice` (مع `options`) أو `numericInput` (10 أسئلة).
 
 ### `match:answer` (Client → Server)
 
@@ -199,9 +199,9 @@ class CastleSiegeMatch {
   }
 
   async start() {
-    // المرحلة 1: 4 أسئلة input (numericInput أو textInput)
+    // المرحلة 1: 4 أسئلة numericInput فقط
     this.collectionQuestions = await Question.findRandom(4, {
-      answerType: { $in: ['numericInput', 'textInput'] }
+      answerType: 'numericInput'
     })
     // المرحلة 2: 10 أسئلة — MCQ + numericInput فقط (لا textInput للسرعة)
     this.battleQuestions = await Question.findRandom(10, {

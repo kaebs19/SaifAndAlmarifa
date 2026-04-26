@@ -6,6 +6,9 @@
 //
 //  Path: SaifAndAlmarifa/Features/Match/Components/InputAnswerView.swift
 //  حقل إدخال إجابة — للأسئلة من نوع input
+//  numericInput  → لوحة مفاتيح رقمية مخصّصة (NumericKeypadView)
+//  textInput     → TextField + لوحة النظام
+//
 
 import SwiftUI
 
@@ -19,115 +22,34 @@ struct InputAnswerView: View {
 
     @FocusState private var isFocused: Bool
 
-    private var keyboardType: UIKeyboardType {
-        question.answerType.keyboardHint
-    }
+    private var isNumeric: Bool { question.answerType == .numericInput }
 
     private var stateColor: Color {
         if isRevealing, let r = result {
             if r.isCorrect { return AppColors.Default.success }
-            if r.isClosest { return Color(hex: "F59E0B") }   // الأقرب لكن مش صحيح بالضبط
+            if r.isClosest { return Color(hex: "F59E0B") }
             return AppColors.Default.error
         }
         if isSubmitted { return AppColors.Default.goldPrimary }
         return .white.opacity(0.2)
     }
 
-    private var iconName: String {
-        switch question.answerType {
-        case .numericInput: return "number"
-        case .textInput:    return "character.cursor.ibeam"
-        default:            return "pencil.tip"
-        }
-    }
-
-    private var placeholder: String {
-        switch question.answerType {
-        case .numericInput: return "اكتب الرقم..."
-        case .textInput:    return "اكتب إجابتك..."
-        default:            return "اكتب إجابتك..."
-        }
-    }
-
     var body: some View {
         VStack(spacing: AppSizes.Spacing.md) {
-            // حقل الإدخال
-            HStack(spacing: AppSizes.Spacing.sm) {
-                Image(systemName: iconName)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(stateColor.opacity(0.7))
-                    .frame(width: 24)
-
-                TextField(placeholder, text: $answer)
-                    .font(.cairo(.bold, size: AppSizes.Font.title3))
-                    .foregroundStyle(.white)
-                    .tint(AppColors.Default.goldPrimary)
-                    .keyboardType(keyboardType)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled(true)
-                    .focused($isFocused)
-                    .submitLabel(.send)
-                    .onSubmit { if !isSubmitted { onSubmit() } }
-                    .disabled(isSubmitted || isRevealing)
-                    .multilineTextAlignment(.center)
-                    .onChange(of: answer) { _, new in
-                        // حوّل أي أرقام عربية/فارسية إلى إنجليزية تلقائياً
-                        let normalized = DigitNormalizer.toEnglish(new)
-                        if normalized != new { answer = normalized }
-                    }
-
-                if !answer.isEmpty && !isSubmitted {
-                    Button { answer = "" } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.white.opacity(0.4))
-                    }
-                }
+            if isNumeric {
+                numericModeBody
+            } else {
+                textModeBody
             }
-            .padding(AppSizes.Spacing.md)
-            .background(
-                LinearGradient(
-                    colors: [.white.opacity(0.10), .white.opacity(0.04)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
-            .overlay(
-                RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
-                    .stroke(
-                        LinearGradient(
-                            colors: [stateColor, stateColor.opacity(0.5)],
-                            startPoint: .leading, endPoint: .trailing
-                        ),
-                        lineWidth: 2
-                    )
-            )
-            .shadow(color: stateColor.opacity(isFocused ? 0.35 : 0), radius: 8)
 
-            // عرض الإجابة الصحيحة (بعد الكشف)
+            // Reveal card
             if isRevealing, let correct = question.correctAnswer {
                 revealCard(correct: correct)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
 
-            // زر الإرسال
-            if !isSubmitted && !isRevealing {
-                Button {
-                    HapticManager.light()
-                    onSubmit()
-                } label: {
-                    HStack {
-                        Image(systemName: "paperplane.fill")
-                        Text("إرسال الإجابة")
-                    }
-                    .font(.cairo(.bold, size: AppSizes.Font.body))
-                    .foregroundStyle(answer.isEmpty ? .white.opacity(0.4) : .black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, AppSizes.Spacing.sm)
-                    .background(submitBackground)
-                    .clipShape(Capsule())
-                }
-                .disabled(answer.isEmpty)
-            } else if isSubmitted && !isRevealing {
+            // حالة "تم الإرسال" (مشتركة)
+            if isSubmitted && !isRevealing {
                 HStack(spacing: 6) {
                     ProgressView().tint(AppColors.Default.goldPrimary).scaleEffect(0.7)
                     Text("تم الإرسال — في انتظار الخصم...")
@@ -137,12 +59,146 @@ struct InputAnswerView: View {
             }
         }
         .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                if !isSubmitted { isFocused = true }
+            if !isNumeric {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    if !isSubmitted { isFocused = true }
+                }
             }
         }
         .onChange(of: isSubmitted) { _, new in
             if new { isFocused = false }
+        }
+    }
+
+    // MARK: - Numeric mode (keypad)
+    @ViewBuilder
+    private var numericModeBody: some View {
+        VStack(spacing: AppSizes.Spacing.sm) {
+            // شاشة العرض
+            numericDisplay
+
+            // لوحة المفاتيح
+            NumericKeypadView(
+                value: $answer,
+                isDisabled: isSubmitted || isRevealing,
+                canSubmit: !answer.isEmpty,
+                onSubmit: onSubmit
+            )
+        }
+    }
+
+    private var numericDisplay: some View {
+        ZStack {
+            // خلفية
+            RoundedRectangle(cornerRadius: AppSizes.Radius.medium, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [.white.opacity(0.10), .white.opacity(0.04)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    )
+                )
+            RoundedRectangle(cornerRadius: AppSizes.Radius.medium, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [stateColor, stateColor.opacity(0.4)],
+                        startPoint: .leading, endPoint: .trailing
+                    ),
+                    lineWidth: 2
+                )
+
+            HStack(spacing: 12) {
+                Image(systemName: "number")
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(stateColor.opacity(0.6))
+
+                if answer.isEmpty {
+                    Text("اكتب الرقم")
+                        .font(.cairo(.medium, size: 14))
+                        .foregroundStyle(.white.opacity(0.35))
+                } else {
+                    Text(answer)
+                        .font(.poppins(.black, size: 32))
+                        .foregroundStyle(.white)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .lineLimit(1)
+                }
+            }
+            .padding(.horizontal, AppSizes.Spacing.md)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(height: 64)
+        .shadow(color: stateColor.opacity(0.25), radius: 6)
+    }
+
+    // MARK: - Text mode (system keyboard)
+    @ViewBuilder
+    private var textModeBody: some View {
+        HStack(spacing: AppSizes.Spacing.sm) {
+            Image(systemName: "character.cursor.ibeam")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(stateColor.opacity(0.7))
+                .frame(width: 24)
+
+            TextField("اكتب إجابتك...", text: $answer)
+                .font(.cairo(.bold, size: AppSizes.Font.title3))
+                .foregroundStyle(.white)
+                .tint(AppColors.Default.goldPrimary)
+                .keyboardType(.default)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled(true)
+                .focused($isFocused)
+                .submitLabel(.send)
+                .onSubmit { if !isSubmitted { onSubmit() } }
+                .disabled(isSubmitted || isRevealing)
+                .multilineTextAlignment(.center)
+
+            if !answer.isEmpty && !isSubmitted {
+                Button { answer = "" } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+            }
+        }
+        .padding(AppSizes.Spacing.md)
+        .background(
+            LinearGradient(
+                colors: [.white.opacity(0.10), .white.opacity(0.04)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
+                .stroke(
+                    LinearGradient(
+                        colors: [stateColor, stateColor.opacity(0.5)],
+                        startPoint: .leading, endPoint: .trailing
+                    ),
+                    lineWidth: 2
+                )
+        )
+        .shadow(color: stateColor.opacity(isFocused ? 0.35 : 0), radius: 8)
+
+        // زر الإرسال (للوضع النصي فقط)
+        if !isSubmitted && !isRevealing {
+            Button {
+                HapticManager.light()
+                onSubmit()
+            } label: {
+                HStack {
+                    Image(systemName: "paperplane.fill")
+                    Text("إرسال الإجابة")
+                }
+                .font(.cairo(.bold, size: AppSizes.Font.body))
+                .foregroundStyle(answer.isEmpty ? .white.opacity(0.4) : .black)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, AppSizes.Spacing.sm)
+                .background(submitBackground)
+                .clipShape(Capsule())
+            }
+            .disabled(answer.isEmpty)
         }
     }
 

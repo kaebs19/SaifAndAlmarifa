@@ -403,18 +403,44 @@ final class AppSocketManager: ObservableObject {
 
         socket.on("match:answer-submitted") { [weak self] data, _ in
             Task { @MainActor in
+                #if DEBUG
+                if let d = data.first as? [String: Any] {
+                    let uid = (d["userId"] as? String)?.suffix(6) ?? "?"
+                    let val = d["value"] as? String ?? "?"
+                    let correct = d["correct"] as? Bool ?? false
+                    let pts = d["pointsAwarded"] as? Int ?? 0
+                    let closest = d["closest"] as? Bool ?? false
+                    let fastest = d["fastest"] as? Bool ?? false
+                    print("⬇️ [Socket] match:answer-submitted user=\(uid) value=\(val) correct=\(correct) closest=\(closest) fastest=\(fastest) pts=\(pts)")
+                }
+                #endif
                 if let d = data.first as? [String: Any] { self?.onMatchAnswerSubmitted.send(d) }
             }
         }
 
         socket.on("match:attack") { [weak self] data, _ in
             Task { @MainActor in
+                #if DEBUG
+                if let d = data.first as? [String: Any] {
+                    let attacker = (d["attackerId"] as? String)?.suffix(6) ?? "?"
+                    let target = (d["targetId"] as? String)?.suffix(6) ?? "?"
+                    let dmg = d["damage"] as? Int ?? 0
+                    let hp = d["targetHp"] as? Int ?? -1
+                    print("⬇️ [Socket] match:attack attacker=\(attacker) → target=\(target) dmg=\(dmg) targetHp=\(hp)")
+                }
+                #endif
                 if let d = data.first as? [String: Any] { self?.onMatchAttack.send(d) }
             }
         }
 
         socket.on("match:eliminated") { [weak self] data, _ in
             Task { @MainActor in
+                #if DEBUG
+                if let d = data.first as? [String: Any] {
+                    let uid = (d["userId"] as? String)?.suffix(6) ?? "?"
+                    print("⬇️ [Socket] match:eliminated user=\(uid)")
+                }
+                #endif
                 if let d = data.first as? [String: Any] { self?.onMatchEliminated.send(d) }
             }
         }
@@ -433,6 +459,12 @@ final class AppSocketManager: ObservableObject {
 
         socket.on("match:ended") { [weak self] data, _ in
             Task { @MainActor in
+                #if DEBUG
+                if let d = data.first as? [String: Any] {
+                    let winner = (d["winnerId"] as? String)?.suffix(6) ?? "?"
+                    print("⬇️ [Socket] match:ended winner=\(winner)")
+                }
+                #endif
                 if let d = data.first as? [String: Any] { self?.onMatchEnded.send(d) }
             }
         }
