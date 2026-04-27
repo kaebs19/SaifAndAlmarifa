@@ -165,36 +165,71 @@ struct MatchView: View {
         .animation(.easeInOut(duration: 0.3), value: viewModel.matchResult)
     }
 
-    // MARK: - Background
+    // MARK: - Background (ديناميكية حسب المرحلة)
     private var background: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(hex: "08091E"), Color(hex: "12103B"), Color(hex: "0B0A24")],
-                startPoint: .top, endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            // الخلفية الأساسية تتغيّر حسب المرحلة
+            backgroundGradient
+                .ignoresSafeArea()
+                .animation(.easeInOut(duration: 1.2), value: viewModel.currentPhase)
 
             // هالات خلف القلعتين
             GeometryReader { geo in
                 Circle()
-                    .fill(AppColors.Default.goldPrimary.opacity(0.08))
-                    .frame(width: 240, height: 240)
-                    .blur(radius: 80)
+                    .fill(myCastleAura.opacity(0.10))
+                    .frame(width: 280, height: 280)
+                    .blur(radius: 90)
                     .offset(x: -geo.size.width * 0.4, y: -geo.size.height * 0.2)
 
                 Circle()
-                    .fill(Color.red.opacity(0.08))
-                    .frame(width: 240, height: 240)
-                    .blur(radius: 80)
+                    .fill(enemyCastleAura.opacity(0.10))
+                    .frame(width: 280, height: 280)
+                    .blur(radius: 90)
                     .offset(x: geo.size.width * 0.4, y: -geo.size.height * 0.2)
             }
             .ignoresSafeArea()
+            .animation(.easeInOut(duration: 1.2), value: viewModel.currentPhase)
 
             // جزيئات ذهبية عائمة
             FloatingEmbers()
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
         }
+    }
+
+    @ViewBuilder
+    private var backgroundGradient: some View {
+        switch viewModel.currentPhase {
+        case .collection:
+            // أزرق هادئ — مرحلة بناء القوة
+            LinearGradient(
+                colors: [Color(hex: "0A1230"), Color(hex: "10204B"), Color(hex: "0B1024")],
+                startPoint: .top, endPoint: .bottom
+            )
+        case .battle:
+            // أحمر داكن — مرحلة المعركة
+            LinearGradient(
+                colors: [Color(hex: "1A0810"), Color(hex: "2D0815"), Color(hex: "0E0610")],
+                startPoint: .top, endPoint: .bottom
+            )
+        case .transition, .ended:
+            LinearGradient(
+                colors: [Color(hex: "08091E"), Color(hex: "12103B"), Color(hex: "0B0A24")],
+                startPoint: .top, endPoint: .bottom
+            )
+        }
+    }
+
+    private var myCastleAura: Color {
+        viewModel.currentPhase == .battle
+            ? Color(hex: "10B981")     // أخضر — قوّتي
+            : AppColors.Default.goldPrimary
+    }
+
+    private var enemyCastleAura: Color {
+        viewModel.currentPhase == .battle
+            ? Color(hex: "EF4444")     // أحمر — الخطر
+            : Color(hex: "60A5FA")
     }
 
     // MARK: - مؤشّر المرحلة

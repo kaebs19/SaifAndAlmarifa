@@ -317,6 +317,11 @@ struct PlayersBattlefield: View {
             let hpRatio: Double = (player.maxHp > 0) ? Double(player.hp) / Double(player.maxHp) : 1.0
             let hpStage: Int = isCollectionPhase ? 100 : Int(hpRatio * 100)
 
+            // ✨ القلعة تنمو في Phase 1 مع تجميع القوة (1.0 → 1.15 على مدى 0..10 power)
+            let growthScale: CGFloat = isCollectionPhase
+                ? 1.0 + min(CGFloat(player.score) * 0.012, 0.15)
+                : 1.0
+
             CastleView(
                 side: castle,
                 hpPercentage: hpStage,
@@ -324,6 +329,8 @@ struct PlayersBattlefield: View {
                 shieldActive: isMine && myShieldActive
             )
             .frame(width: castleSize, height: castleSize)
+            .scaleEffect(growthScale)
+            .animation(.spring(response: 0.5, dampingFraction: 0.65), value: player.score)
 
             if isCollectionPhase {
                 powerCapsule(score: player.score, isMine: isMine, compact: compact)
