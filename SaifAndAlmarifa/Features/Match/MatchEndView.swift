@@ -26,11 +26,25 @@ struct MatchEndView: View {
             // خلفية كاملة opaque
             backgroundGradient.ignoresSafeArea()
 
-            // Confetti للفوز
+            // ✨ Victory Beam للفوز (Stage E)
             if result.didIWin && showConfetti {
-                ConfettiView(count: 100)
-                    .ignoresSafeArea()
+                VictoryBeam()
+                    .zIndex(0)
+            }
+
+            // Confetti محسّن (Stage E)
+            if result.didIWin && showConfetti {
+                EnhancedConfetti(count: 80)
                     .zIndex(1)
+            }
+
+            // 🏰 Castle Crumble للخسارة (Stage E)
+            if !result.didIWin && showConfetti {
+                CastleCrumble()
+                    .frame(width: 200, height: 200)
+                    .position(x: UIScreen.main.bounds.width / 2,
+                              y: UIScreen.main.bounds.height * 0.35)
+                    .zIndex(0)
             }
 
             // المحتوى — قابل للتمرير
@@ -105,11 +119,9 @@ struct MatchEndView: View {
                 pulse = true
             }
         }
-        // Confetti
-        if result.didIWin {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                showConfetti = true
-            }
+        // Confetti / Crumble (يستخدم نفس الـ flag)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            showConfetti = true
         }
     }
 
