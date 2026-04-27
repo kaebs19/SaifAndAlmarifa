@@ -180,10 +180,11 @@ struct PhaseTransitionView: View {
         withAnimation(.spring(response: 0.55, dampingFraction: 0.7).delay(0.5)) {
             cardAppear = true
         }
-        // 3. انفجار السيوف
+        // 3. انفجار السيوف — phaseShift (heavy + medium)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             swordsBoom = true
-            HapticManager.heavy()
+            HapticManager.phaseShift()
+            GameSoundManager.shared.play(.matchStart, volumeOverride: 0.6)
         }
         // 4. ابدأ المعركة
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {

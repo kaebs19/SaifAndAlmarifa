@@ -50,6 +50,7 @@ final class MatchViewModel: ObservableObject {
     @Published var showCombo: Bool = false                // banner combo
     @Published var wrongShakeNonce: Int = 0               // trigger لاهتزاز الإجابة الخاطئة
     @Published var pointsBurstNonce: Int = 0              // trigger للاحتفال بالنقاط
+    private var wasCriticalHP: Bool = false               // لمنع تكرار haptic critical
     @Published var rematchStatus: RematchStatus = .none   // حالة الإعادة
     @Published var preMatchCountdown: Int? = nil          // 3, 2, 1 قبل أول سؤال
 
@@ -398,7 +399,7 @@ final class MatchViewModel: ObservableObject {
                 streak += 1
                 if streak >= 2 {
                     showCombo = true
-                    HapticManager.medium()
+                    HapticManager.comboTick(count: streak)   // تكّات متتابعة
                     Task { @MainActor in
                         try? await Task.sleep(nanoseconds: 2_500_000_000)
                         self.showCombo = false
@@ -418,6 +419,20 @@ final class MatchViewModel: ObservableObject {
         }
     }
 
+    /// ✨ كشف دخول حالة HP حرجة (يستدعى بعد كل تحديث HP)
+    private func checkCriticalHPTransition() {
+        let nowCritical = isCriticalHP
+        if nowCritical && !wasCriticalHP {
+            // أول مرة دخلت critical
+            HapticManager.warning()
+            GameSoundManager.shared.play(.heartbeat, loop: true, volumeOverride: 0.7)
+        } else if !nowCritical && wasCriticalHP {
+            // خرجت من critical (مثلاً ربح أو HP زاد)
+            GameSoundManager.shared.stop(.heartbeat)
+        }
+        wasCriticalHP = nowCritical
+    }
+
     private func handleAttack(_ data: [String: Any]) {
         guard matchIdMatches(data) else { return }
         // الهجوم فقط في مرحلة المعركة
@@ -434,6 +449,7 @@ final class MatchViewModel: ObservableObject {
             myHP = serverTargetHp ?? max(0, myHP - damage)
             GameSoundManager.shared.play(.castleHit)
             HapticManager.heavy()
+            checkCriticalHPTransition()
             Task {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 await MainActor.run { self.myCastleShaking = false }
@@ -464,9 +480,11 @@ final class MatchViewModel: ObservableObject {
         eliminatedIds.insert(userId)
         if userId == myId {
             toast.error("خرجت من المباراة")
-            HapticManager.warning()
+            HapticManager.criticalHit()                    // ✨ ضربة قاضية درامية
+            GameSoundManager.shared.play(.castleCollapse, volumeOverride: 0.9)
         } else if let name = opponents.first(where: { $0.id == userId })?.username {
             toast.info("\(name) خرج من المباراة")
+            HapticManager.success()                        // ✨ خصم خرج = نجاح
         }
     }
 
@@ -529,6 +547,7 @@ final class MatchViewModel: ObservableObject {
         guard matchIdMatches(data) else { return }
         timer?.invalidate()
         GameSoundManager.shared.stop(.heartbeat)
+        wasCriticalHP = false
 
         if let result = MatchEndResult.from(data, myId: myId) {
             matchResult = result

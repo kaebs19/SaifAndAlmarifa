@@ -46,4 +46,31 @@ enum HapticManager {
     static func selection() {
         UISelectionFeedbackGenerator().selectionChanged()
     }
+
+    // MARK: - اضطراب درامي (3 ضربات ثقيلة متتابعة) — للضربة القاضية
+    static func criticalHit() {
+        let gen = UIImpactFeedbackGenerator(style: .heavy)
+        gen.impactOccurred()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { gen.impactOccurred() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) { gen.impactOccurred() }
+    }
+
+    // MARK: - تكّات combo (متتابعة ناعمة) — للسلسلة
+    static func comboTick(count: Int) {
+        let gen = UIImpactFeedbackGenerator(style: .light)
+        let n = max(1, min(count, 5))
+        for i in 0..<n {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.08) {
+                gen.impactOccurred(intensity: 0.5 + Double(i) * 0.1)
+            }
+        }
+    }
+
+    // MARK: - دفعة قوية موجزة — لمراحل الانتقال
+    static func phaseShift() {
+        let heavy = UIImpactFeedbackGenerator(style: .heavy)
+        let medium = UIImpactFeedbackGenerator(style: .medium)
+        heavy.impactOccurred()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { medium.impactOccurred() }
+    }
 }
