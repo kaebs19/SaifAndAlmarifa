@@ -97,7 +97,8 @@ struct MatchView: View {
                         InventoryBar(
                             inventory: viewModel.inventory,
                             onUse: { viewModel.usePowerUp($0) },
-                            disabled: viewModel.hasSubmitted || viewModel.isRevealing
+                            disabled: viewModel.hasSubmitted || viewModel.isRevealing,
+                            currentAnswerType: viewModel.currentQuestion?.answerType
                         )
                         // 💎 Power-up activation burst (Stage B)
                         PowerUpActivationBurst(
@@ -230,6 +231,20 @@ struct MatchView: View {
             backgroundGradient
                 .ignoresSafeArea()
                 .animation(.easeInOut(duration: 1.2), value: viewModel.currentPhase)
+
+            // ✨ Vignette ناعم — يخفّف إجهاد العين بإظلام الأطراف
+            RadialGradient(
+                colors: [
+                    .clear,
+                    Color.black.opacity(0.18),
+                    Color.black.opacity(0.45)
+                ],
+                center: .center,
+                startRadius: 200,
+                endRadius: 600
+            )
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
 
             // 🌙 قمر/شمس في الزاوية (Stage D)
             CelestialBody(phase: viewModel.currentPhase)

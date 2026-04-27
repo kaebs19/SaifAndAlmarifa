@@ -57,31 +57,47 @@ struct FloatingPoints: View {
     }
 }
 
-// MARK: - Crown (تاج فوق القائد)
+// MARK: - Crown (تاج فوق القائد — يطفو + يميل + glow نابض)
 struct LeaderCrown: View {
     let isLeader: Bool
 
     @State private var bob: Bool = false
+    @State private var tilt: Bool = false
+    @State private var glowPulse: Bool = false
 
     var body: some View {
         Image(systemName: "crown.fill")
-            .font(.system(size: 14, weight: .black))
+            .font(.system(size: 16, weight: .black))
             .foregroundStyle(
                 LinearGradient(
                     colors: [Color(hex: "FFE55C"), Color(hex: "FFD700"), Color(hex: "B8860B")],
                     startPoint: .top, endPoint: .bottom
                 )
             )
-            .shadow(color: Color(hex: "FFD700").opacity(0.7), radius: 6)
-            .offset(y: bob ? -2 : 2)
+            .shadow(color: Color(hex: "FFD700").opacity(glowPulse ? 0.9 : 0.5),
+                    radius: glowPulse ? 10 : 5)
+            .offset(y: bob ? -3 : 3)
+            .rotationEffect(.degrees(tilt ? 6 : -6))
             .opacity(isLeader ? 1 : 0)
             .scaleEffect(isLeader ? 1 : 0.5)
             .animation(.spring(response: 0.4, dampingFraction: 0.6), value: isLeader)
             .animation(
-                .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
+                .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
                 value: bob
             )
-            .onAppear { bob = true }
+            .animation(
+                .easeInOut(duration: 1.8).repeatForever(autoreverses: true),
+                value: tilt
+            )
+            .animation(
+                .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
+                value: glowPulse
+            )
+            .onAppear {
+                bob = true
+                tilt = true
+                glowPulse = true
+            }
     }
 }
 

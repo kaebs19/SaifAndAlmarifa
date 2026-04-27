@@ -529,11 +529,35 @@ struct InventoryBar: View {
     let inventory: [PowerUpIcon: Int]
     let onUse: (PowerUpIcon) -> Void
     let disabled: Bool
+    var currentAnswerType: QuestionAnswerType? = nil   // 🆕 لـ smart filter
 
     @State private var tooltipFor: PowerUpIcon? = nil
 
-    // الترتيب المفضّل
-    private let order: [PowerUpIcon] = [.shield, .revealAnswer, .bird, .hint, .fiftyFifty, .freeze, .skip, .thunder]
+    // الترتيب الافتراضي
+    private let baseOrder: [PowerUpIcon] = [.shield, .revealAnswer, .bird, .hint, .fiftyFifty, .freeze, .skip, .thunder]
+
+    /// 🎯 Smart filter: ما يناسب نوع السؤال + ما يملكه اللاعب
+    private var visibleItems: [PowerUpIcon] {
+        baseOrder.filter { item in
+            let count = inventory[item] ?? 0
+            guard count > 0 else { return false }   // اخفِ ما لا أملكه
+
+            // فلترة حسب نوع السؤال (لو معروف)
+            if let type = currentAnswerType {
+                switch item {
+                case .fiftyFifty:
+                    // 50/50 لـ MCQ فقط
+                    return type == .multipleChoice
+                case .bird:
+                    // العصفور لـ numeric فقط
+                    return type == .numericInput
+                default:
+                    return true
+                }
+            }
+            return true
+        }
+    }
 
     var body: some View {
         VStack(spacing: 6) {
@@ -563,21 +587,46 @@ struct InventoryBar: View {
                 .transition(.scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
             }
 
-            HStack(spacing: AppSizes.Spacing.xs) {
-                ForEach(order) { power in
-                    let count = inventory[power] ?? 0
-                    powerUpButton(power: power, count: count)
+            // 🎯 Smart toolbar — يظهر فقط ما يملك المستخدم وما يناسب السؤال
+            if visibleItems.isEmpty {
+                emptyInventoryHint
+            } else {
+                HStack(spacing: AppSizes.Spacing.xs) {
+                    ForEach(visibleItems) { power in
+                        let count = inventory[power] ?? 0
+                        powerUpButton(power: power, count: count)
+                    }
                 }
+                .padding(AppSizes.Spacing.sm)
+                .background(Color.white.opacity(0.04))
+                .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
+                        .stroke(.white.opacity(0.08), lineWidth: 1)
+                )
+                .transition(.opacity)
             }
-            .padding(AppSizes.Spacing.sm)
-            .background(Color.white.opacity(0.04))
-            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
-            .overlay(
-                RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
-                    .stroke(.white.opacity(0.08), lineWidth: 1)
-            )
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.75), value: tooltipFor)
+        .animation(.easeInOut(duration: 0.25), value: visibleItems)
+    }
+
+    // عرض بديل خفيف لمّا الـ toolbar فارغ
+    @ViewBuilder
+    private var emptyInventoryHint: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "bag")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white.opacity(0.35))
+            Text("لا أدوات متاحة لهذا السؤال")
+                .font(.cairo(.medium, size: 10))
+                .foregroundStyle(.white.opacity(0.4))
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(.white.opacity(0.03))
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(.white.opacity(0.06), lineWidth: 1))
+        .frame(maxWidth: .infinity)
     }
 
     private func powerUpButton(power: PowerUpIcon, count: Int) -> some View {
