@@ -76,15 +76,15 @@ struct MatchView: View {
 
                 Spacer()
 
-                // شريط العناصر — متاح فقط في 4-player MCQ (مخفي في Castle Siege 1v1)
-                if !viewModel.isOneVsOne {
+                // شريط العناصر — يظهر في 4p دائماً، وفي 1v1 خلال Phase 2 فقط
+                if !viewModel.isOneVsOne || viewModel.currentPhase == .battle {
                     InventoryBar(
                         inventory: viewModel.inventory,
                         onUse: { viewModel.usePowerUp($0) },
                         disabled: viewModel.hasSubmitted || viewModel.isRevealing
                     )
                     .padding(AppSizes.Spacing.lg)
-                    .transition(.opacity)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
 
@@ -137,6 +137,11 @@ struct MatchView: View {
             // ✨ Combo banner
             if viewModel.showCombo && viewModel.streak >= 2 {
                 ComboBanner(count: viewModel.streak).zIndex(7)
+            }
+
+            // ⚔️ Battle Intro Banner — "ابدأ الهجوم!"
+            if viewModel.showBattleIntro {
+                battleIntroBanner.zIndex(9)
             }
 
             // تلميح
@@ -242,23 +247,26 @@ struct MatchView: View {
                     icon: "shield.lefthalf.filled",
                     title: "المرحلة 1: تجميع القوة",
                     subtitle: "أجب الأسرع والأقرب لتربح قوة",
-                    color: Color(hex: "60A5FA")
+                    color: Color(hex: "60A5FA"),
+                    compact: viewModel.phaseChipCompact
                 )
             case .battle:
                 phaseChip(
                     icon: "swords.fill",
                     title: "المرحلة 2: المواجهة",
                     subtitle: "كل إجابة صحيحة تهدم قلعة الخصم",
-                    color: AppColors.Default.error
+                    color: AppColors.Default.error,
+                    compact: viewModel.phaseChipCompact
                 )
             case .transition, .ended:
                 EmptyView()
             }
         }
+        .animation(.spring(response: 0.45, dampingFraction: 0.75), value: viewModel.phaseChipCompact)
     }
 
-    private func phaseChip(icon: String, title: String, subtitle: String, color: Color) -> some View {
-        HStack(spacing: AppSizes.Spacing.sm) {
+    private func phaseChip(icon: String, title: String, subtitle: String, color: Color, compact: Bool = false) -> some View {
+        HStack(spacing: compact ? 6 : AppSizes.Spacing.sm) {
             ZStack {
                 Circle()
                     .fill(
@@ -270,36 +278,38 @@ struct MatchView: View {
                 Circle()
                     .stroke(color.opacity(0.6), lineWidth: 1.5)
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .black))
+                    .font(.system(size: compact ? 12 : 16, weight: .black))
                     .foregroundStyle(.white)
             }
-            .frame(width: 36, height: 36)
-            .shadow(color: color.opacity(0.5), radius: 6)
+            .frame(width: compact ? 26 : 36, height: compact ? 26 : 36)
+            .shadow(color: color.opacity(compact ? 0.3 : 0.5), radius: compact ? 3 : 6)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.cairo(.bold, size: AppSizes.Font.body))
+                    .font(.cairo(.bold, size: compact ? 12 : AppSizes.Font.body))
                     .foregroundStyle(.white)
-                Text(subtitle)
-                    .font(.cairo(.regular, size: 10))
-                    .foregroundStyle(.white.opacity(0.55))
+                if !compact {
+                    Text(subtitle)
+                        .font(.cairo(.regular, size: 10))
+                        .foregroundStyle(.white.opacity(0.55))
+                }
             }
             Spacer()
 
             // شارة المرحلة
             Text(title.contains("1") ? "I" : "II")
-                .font(.poppins(.black, size: 12))
+                .font(.poppins(.black, size: compact ? 10 : 12))
                 .foregroundStyle(color)
-                .frame(width: 26, height: 26)
+                .frame(width: compact ? 20 : 26, height: compact ? 20 : 26)
                 .background(color.opacity(0.15))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: compact ? 6 : 8))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: compact ? 6 : 8)
                         .stroke(color.opacity(0.4), lineWidth: 1)
                 )
         }
-        .padding(.horizontal, AppSizes.Spacing.sm)
-        .padding(.vertical, AppSizes.Spacing.xs)
+        .padding(.horizontal, compact ? 8 : AppSizes.Spacing.sm)
+        .padding(.vertical, compact ? 4 : AppSizes.Spacing.xs)
         .background(
             LinearGradient(
                 colors: [color.opacity(0.12), color.opacity(0.04)],
@@ -556,6 +566,78 @@ struct MatchView: View {
         .background(Color.black.opacity(0.8))
         .clipShape(Capsule())
         .overlay(Capsule().stroke(AppColors.Default.goldPrimary, lineWidth: 1.5))
+    }
+
+    // MARK: - Battle Intro Banner (⚔️ ابدأ الهجوم)
+    private var battleIntroBanner: some View {
+        VStack {
+            Spacer()
+            VStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color(hex: "EF4444").opacity(0.5),
+                                    Color(hex: "EF4444").opacity(0.1),
+                                    .clear
+                                ],
+                                center: .center, startRadius: 30, endRadius: 120
+                            )
+                        )
+                        .frame(width: 200, height: 200)
+                        .blur(radius: 4)
+
+                    Image(systemName: "swords.fill")
+                        .font(.system(size: 70, weight: .black))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color(hex: "FFE55C"), Color(hex: "FF6B35")],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        )
+                        .shadow(color: Color(hex: "EF4444").opacity(0.6), radius: 18)
+                        .symbolEffect(.bounce, options: .nonRepeating)
+                }
+                .frame(height: 140)
+
+                Text("⚔️ ابدأ الهجوم!")
+                    .font(.cairo(.black, size: AppSizes.Font.title1))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color(hex: "FFE55C"), Color(hex: "FFD700")],
+                            startPoint: .leading, endPoint: .trailing
+                        )
+                    )
+                    .shadow(color: Color(hex: "FFD700").opacity(0.6), radius: 10)
+
+                Text("دمّر قلعة الخصم — احمِ قلعتك")
+                    .font(.cairo(.bold, size: AppSizes.Font.body))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, AppSizes.Spacing.lg)
+            .padding(.vertical, AppSizes.Spacing.xl)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.large))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppSizes.Radius.large)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color(hex: "FFD700"), Color(hex: "EF4444")],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 2
+                    )
+            )
+            .shadow(color: Color(hex: "EF4444").opacity(0.4), radius: 20)
+            .padding(.horizontal, AppSizes.Spacing.lg)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.opacity(0.6).ignoresSafeArea())
+        .transition(.opacity.combined(with: .scale(scale: 0.9)))
+        .animation(.spring(response: 0.5, dampingFraction: 0.65), value: viewModel.showBattleIntro)
     }
 
     // MARK: - Tiebreaker Banner (سؤال حاسم)

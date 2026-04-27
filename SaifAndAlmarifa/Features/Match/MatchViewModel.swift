@@ -51,6 +51,8 @@ final class MatchViewModel: ObservableObject {
     @Published var wrongShakeNonce: Int = 0               // trigger لاهتزاز الإجابة الخاطئة
     @Published var pointsBurstNonce: Int = 0              // trigger للاحتفال بالنقاط
     @Published var questionHistory: [QuestionStat] = []   // ✨ سجل أداء كل سؤال
+    @Published var showBattleIntro: Bool = false          // 🆕 banner "ابدأ الهجوم"
+    @Published var phaseChipCompact: Bool = false         // 🆕 phase chip مختصر بعد 5 ثوانٍ
     private var wasCriticalHP: Bool = false               // لمنع تكرار haptic critical
     @Published var rematchStatus: RematchStatus = .none   // حالة الإعادة
     @Published var preMatchCountdown: Int? = nil          // 3, 2, 1 قبل أول سؤال
@@ -227,6 +229,18 @@ final class MatchViewModel: ObservableObject {
                         Task { @MainActor in
                             try? await Task.sleep(nanoseconds: 100_000_000)
                             self.showPhaseTransition = false
+                        }
+                        // 🆕 banner "ابدأ الهجوم!" + auto-compact للـ chip
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 300_000_000)
+                            self.showBattleIntro = true
+                            self.phaseChipCompact = false
+                            HapticManager.phaseShift()
+                            try? await Task.sleep(nanoseconds: 2_500_000_000)
+                            self.showBattleIntro = false
+                            // بعد إخفاء الـ banner، اضغط الـ phase chip
+                            try? await Task.sleep(nanoseconds: 800_000_000)
+                            self.phaseChipCompact = true
                         }
                     }
                 }
