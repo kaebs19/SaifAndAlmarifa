@@ -115,8 +115,8 @@ struct InputAnswerView: View {
 
                 if answer.isEmpty {
                     Text("اكتب الرقم")
-                        .font(.cairo(.medium, size: 14))
-                        .foregroundStyle(.white.opacity(0.35))
+                        .font(.cairo(.bold, size: 16))
+                        .foregroundStyle(.white.opacity(0.55))
                 } else {
                     Text(answer)
                         .font(.poppins(.black, size: 32))

@@ -43,7 +43,7 @@ struct MatchView: View {
                     onClose: { showExitConfirm = true }
                 )
                 .padding(.horizontal, AppSizes.Spacing.lg)
-                .padding(.top, AppSizes.Spacing.md)
+                .padding(.top, AppSizes.Spacing.lg)   // 📏 مسافة آمنة من status bar
 
                 // البانر العلوي (قلاع + HP + نقاط) — يدعم 1v1 و 4p
                 PlayersBattlefield(
@@ -272,15 +272,15 @@ struct MatchView: View {
     private var backgroundGradient: some View {
         switch viewModel.currentPhase {
         case .collection:
-            // أزرق هادئ — مرحلة بناء القوة
+            // أزرق ليلي هادئ — مرحلة بناء القوة
             LinearGradient(
-                colors: [Color(hex: "0A1230"), Color(hex: "10204B"), Color(hex: "0B1024")],
+                colors: [Color(hex: "0E1530"), Color(hex: "152042"), Color(hex: "0A1024")],
                 startPoint: .top, endPoint: .bottom
             )
         case .battle:
-            // أحمر داكن — مرحلة المعركة
+            // wine/maroon ناعم — مرحلة المعركة (أقل إجهاداً للعين)
             LinearGradient(
-                colors: [Color(hex: "1A0810"), Color(hex: "2D0815"), Color(hex: "0E0610")],
+                colors: [Color(hex: "1B0F1A"), Color(hex: "241221"), Color(hex: "0F0814")],
                 startPoint: .top, endPoint: .bottom
             )
         case .transition, .ended:
@@ -299,7 +299,7 @@ struct MatchView: View {
 
     private var enemyCastleAura: Color {
         viewModel.currentPhase == .battle
-            ? Color(hex: "EF4444")     // أحمر — الخطر
+            ? Color(hex: "F87171")     // أحمر هادئ بدل EF4444 الفاقع
             : Color(hex: "60A5FA")
     }
 
@@ -320,7 +320,7 @@ struct MatchView: View {
                     icon: "swords.fill",
                     title: "المرحلة 2: المواجهة",
                     subtitle: "كل إجابة صحيحة تهدم قلعة الخصم",
-                    color: AppColors.Default.error,
+                    color: Color(hex: "F87171"),   // أحمر هادئ بدل error الفاقع
                     compact: viewModel.phaseChipCompact
                 )
             case .transition, .ended:

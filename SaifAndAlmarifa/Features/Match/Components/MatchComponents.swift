@@ -149,8 +149,8 @@ struct AnswerButton: View {
             )
         case .selected:
             LinearGradient(
-                colors: [AppColors.Default.goldPrimary.opacity(0.30),
-                         AppColors.Default.goldPrimary.opacity(0.12)],
+                colors: [AppColors.Default.goldPrimary.opacity(0.22),
+                         AppColors.Default.goldPrimary.opacity(0.08)],
                 startPoint: .topLeading, endPoint: .bottomTrailing
             )
         case .correct:
@@ -624,8 +624,8 @@ struct InventoryBar: View {
                             .frame(width: 42, height: 42)
                     }
                 }
-                .opacity(count > 0 && !disabled ? 1 : 0.3)
-                .grayscale(count > 0 && !disabled ? 0 : 1)
+                .opacity(count > 0 && !disabled ? 1 : 0.45)
+                .grayscale(count > 0 && !disabled ? 0 : 0.6)
 
                 if count > 0 {
                     Text("\(count)")
