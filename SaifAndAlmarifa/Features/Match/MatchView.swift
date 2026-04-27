@@ -322,6 +322,12 @@ struct MatchView: View {
     // MARK: - السؤال + الإجابات
     private func questionAndAnswers(_ q: MatchQuestion) -> some View {
         VStack(spacing: AppSizes.Spacing.md) {
+            // 🎯 banner سؤال حاسم
+            if q.isTiebreaker {
+                tiebreakerBanner
+                    .transition(.scale.combined(with: .opacity))
+            }
+
             // بطاقة السؤال (مع parchment background)
             ZStack {
                 UIBanner.scroll.image
@@ -550,6 +556,40 @@ struct MatchView: View {
         .background(Color.black.opacity(0.8))
         .clipShape(Capsule())
         .overlay(Capsule().stroke(AppColors.Default.goldPrimary, lineWidth: 1.5))
+    }
+
+    // MARK: - Tiebreaker Banner (سؤال حاسم)
+    private var tiebreakerBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "scope")
+                .font(.system(size: 16, weight: .black))
+                .symbolEffect(.pulse, options: .repeating)
+                .foregroundStyle(.black)
+
+            Text("🎯 سؤال حاسم")
+                .font(.cairo(.black, size: AppSizes.Font.body))
+                .foregroundStyle(.black)
+
+            Spacer()
+
+            Text("الأقرب يضرب")
+                .font(.cairo(.medium, size: 11))
+                .foregroundStyle(.black.opacity(0.6))
+        }
+        .padding(.horizontal, AppSizes.Spacing.md)
+        .padding(.vertical, 10)
+        .background(
+            LinearGradient(
+                colors: [Color(hex: "FFE55C"), Color(hex: "FFB800")],
+                startPoint: .leading, endPoint: .trailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
+                .stroke(Color(hex: "FFD700"), lineWidth: 1.5)
+        )
+        .shadow(color: Color(hex: "FFD700").opacity(0.5), radius: 12)
     }
 
     // MARK: - Range Hint Banner (العصفور)

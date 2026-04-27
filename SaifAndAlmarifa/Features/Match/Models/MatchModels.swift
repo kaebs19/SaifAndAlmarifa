@@ -64,6 +64,7 @@ struct MatchQuestion: Identifiable, Equatable {
     let index: Int               // 1..total per phase
     let total: Int
     let timeLimit: Int
+    let isTiebreaker: Bool       // 🎯 سؤال حاسم بعد MCQ tie
     var correctAnswer: String?   // النص الصحيح بعد الإرسال
     var correctIndex: Int?       // (احتياط للـ MC)
     var disabledIndices: Set<Int> = []
@@ -89,6 +90,7 @@ struct MatchQuestion: Identifiable, Equatable {
             index: dict["index"] as? Int ?? 1,
             total: dict["total"] as? Int ?? 4,
             timeLimit: dict["timeLimit"] as? Int ?? 15,
+            isTiebreaker: dict["tiebreaker"] as? Bool ?? false,
             correctAnswer: dict["correctAnswer"] as? String,
             correctIndex: dict["correctIndex"] as? Int
         )

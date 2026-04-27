@@ -15,13 +15,15 @@
 - القوة المتراكمة = HP قلعته في المرحلة 2
 
 **المرحلة 2 — المواجهة (Battle)** — تنافسية
-- 10 أسئلة: **`multipleChoice` (4 خيارات)** أو **`numericInput`** فقط
-- ❌ **ممنوع `textInput` كلياً** في المرحلة 2 (تجربة المستخدم تفشل بدون keyboard)
-- iOS يعرض UI مناسب لكل سؤال حسب `answerType`
-- كل إجابة صحيحة = ضربة على قلعة الخصم (-1 HP)
+- **6 أسئلة**: `multipleChoice` (4 خيارات) أو `numericInput`
+- ❌ ممنوع `textInput` كلياً
 - HP لكل لاعب = القوة من المرحلة 1
-- **الفائز: من يهدم قلعة الخصم أولاً**
-- إذا انتهت الأسئلة: أعلى HP متبقي يفوز
+- **مَن يجيب صح أولاً يضرب الخصم -1 HP** (race standard)
+- 🆕 **Tiebreaker rule (MCQ):** إذا الاثنين جاوبوا صح على سؤال multipleChoice:
+  - **لا ضرر يحصل** على أيّ قلعة
+  - **السؤال التالي يُجبَر `numericInput`** (يحسم بالأقرب/الأسرع)
+  - Backend يضيف `tiebreaker: true` لذلك السؤال
+- **الفائز:** من يهدم قلعة الخصم أولاً، أو الأعلى HP بعد 6 أسئلة
 
 ---
 
@@ -82,14 +84,14 @@
   "text": "متى كانت الحرب العالمية الأولى؟",
   "options": [],                 // فارغة للـ input، 4 خيارات للـ multipleChoice
   "index": 1,
-  "total": 4,                    // 4 للـ collection، 10 للـ battle
+  "total": 4,                    // 4 للـ collection، 6 للـ battle
   "timeLimit": 15
 }
 ```
 
 **ملاحظة:**
 - المرحلة 1: `numericInput` **فقط** (4 أسئلة) — iOS يعرض لوحة مفاتيح رقمية مخصّصة.
-- المرحلة 2: `multipleChoice` (مع `options`) أو `numericInput` (10 أسئلة).
+- المرحلة 2: `multipleChoice` (مع `options`) أو `numericInput` (**6 أسئلة**).
 
 ### `match:answer` (Client → Server)
 
@@ -167,7 +169,7 @@ iOS يستقبل هذا → يعرض شاشة Phase Transition (3-4 ثواني) 
     → iOS يعرض PhaseTransitionView لـ ~3 ثوان
 12. match:phase { phase: "battle" }
 
-═══ المرحلة 2: BATTLE (10 أسئلة متنوّعة) ═══
+═══ المرحلة 2: BATTLE (6 أسئلة متنوّعة + tiebreaker) ═══
 13. ابدأ HP لكل لاعب من powers
 14. match:question [1] { phase: "battle", answerType: "numericInput" | "textInput" | "multipleChoice", options?: [...] }
 15. match:answer من اللاعبين
@@ -177,7 +179,7 @@ iOS يستقبل هذا → يعرض شاشة Phase Transition (3-4 ثواني) 
 17. match:attack { attackerId, targetId, damage:1, targetHp: X }
 18. إذا targetHp = 0 → match:eliminated → match:ended (فوز فوري)
 19. وإلا، match:question [2] ...
-20. بعد 10 أسئلة (أو هدم قلعة):
+20. بعد 6 أسئلة (أو هدم قلعة):
     match:ended { winnerId, scores, hp, rewards }
 ```
 
@@ -203,7 +205,7 @@ class CastleSiegeMatch {
       }
     }
     this.collectionQuestions = []  // 4
-    this.battleQuestions = []      // 10
+    this.battleQuestions = []      // 6 + (نزيد tiebreaker numeric لو ثَبتَت ضرورته)
     this.currentIdx = 0
   }
 
@@ -212,9 +214,13 @@ class CastleSiegeMatch {
     this.collectionQuestions = await Question.findRandom(4, {
       answerType: 'numericInput'
     })
-    // المرحلة 2: 10 أسئلة — MCQ + numericInput فقط (textInput ممنوع كلياً)
-    this.battleQuestions = await Question.findRandom(10, {
+    // المرحلة 2: 6 أسئلة — MCQ + numericInput فقط (textInput ممنوع كلياً)
+    // + احتفظ بـ pool إضافي لـ tiebreakers (numericInput فقط)
+    this.battleQuestions = await Question.findRandom(6, {
       answerType: { $in: ['multipleChoice', 'numericInput'] }
+    })
+    this.tiebreakerPool = await Question.findRandom(3, {
+      answerType: 'numericInput'    // tiebreakers always numeric
     })
     // ⚠️ تأكّد أن أسئلة العواصم/الأسماء تكون multipleChoice — لا textInput
 
@@ -249,7 +255,7 @@ class CastleSiegeMatch {
       text: q.text,
       options: q.answerType === 'multipleChoice' ? q.options : [],
       index: this.currentIdx + 1,
-      total: list.length,         // 4 للـ collection، 10 للـ battle
+      total: list.length,         // 4 للـ collection، 6 للـ battle
       timeLimit: 15
     })
 
@@ -485,6 +491,67 @@ ALTER TABLE Questions MODIFY COLUMN options JSONB;
 | **4-player** (random / friends) | MCQ classic | ✅ متاحة |
 
 ⚠️ **iOS يخفي InventoryBar كلياً في 1v1** — لا حاجة لإرسال `match:item-error` من backend لمنع الاستخدام، لكن الـ backend يجب يرفض أي `match:use-item` يصل خلال match مود 1v1 (دفاعياً).
+
+---
+
+## 🎯 Tiebreaker Mechanic (المحتسم)
+
+في Phase 2 على أسئلة `multipleChoice`، إذا الاثنين جاوبوا صح:
+1. **لا ضرر** على أي قلعة (كلاهما عرف الإجابة)
+2. Backend يضيف سؤال `numericInput` إضافي بعدها مباشرة من `tiebreakerPool`
+3. هذا السؤال يحوي `tiebreaker: true` flag
+
+### `match:question` payload للـ tiebreaker
+```json
+{
+  "matchId": "...",
+  "questionId": "...",
+  "phase": "battle",
+  "answerType": "numericInput",
+  "text": "كم يساوي 12 × 8؟",
+  "index": 4,
+  "total": 6,
+  "timeLimit": 15,
+  "tiebreaker": true,
+  "previousQuestionId": "..."   // مرجع للسؤال المحتسم
+}
+```
+
+### Scoring في tiebreaker
+- **الأقرب + الأسرع** يضرب الخصم -1 HP
+- المساواة في الإجابة الصحيحة (كلاهما صحيح بالضبط) → الأسرع يفوز
+- إذا الاثنين خطأ → لا ضرر (مثل أي سؤال عادي)
+
+### Backend Logic
+```js
+async resolveBattleQuestion(q, results) {
+  if (q.answerType === 'multipleChoice') {
+    const corrects = results.filter(r => r.isExact)
+    if (corrects.length === 2) {
+      // 🎯 tiebreaker — لا ضرر، أرسل numericInput إضافي
+      this.pendingTiebreaker = true
+      io.emit('match:answer-submitted', {
+        ...,
+        feedback: 'الاثنين أجابا صح! سؤال حاسم قادم...',
+        tieDetected: true
+      })
+      // سؤال إضافي (لا يُحسَب من الـ 6)
+      setTimeout(() => this.sendTiebreaker(q.id), REVEAL_MS)
+      return
+    }
+  }
+  // ... normal damage logic
+}
+
+sendTiebreaker(prevQuestionId) {
+  const q = this.tiebreakerPool.shift()
+  io.emit('match:question', {
+    ..., tiebreaker: true, previousQuestionId: prevQuestionId
+  })
+}
+```
+
+iOS سيعرض banner خاص "🎯 سؤال حاسم" فوق السؤال إذا `tiebreaker: true`.
 
 ---
 

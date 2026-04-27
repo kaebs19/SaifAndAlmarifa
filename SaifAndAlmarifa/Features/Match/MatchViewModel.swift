@@ -349,6 +349,12 @@ final class MatchViewModel: ObservableObject {
         questionStartTime = Date()
         startTimer()
         GameSoundManager.shared.play(.questionAppear)
+
+        // 🎯 سؤال حاسم — تنبيه قوي
+        if q.isTiebreaker {
+            HapticManager.warning()
+            toast.warning("🎯 سؤال حاسم!")
+        }
     }
 
     private func handleAnswerSubmitted(_ data: [String: Any]) {
