@@ -106,7 +106,9 @@ struct MatchView: View {
                             color: viewModel.powerUpFXColor
                         )
                     }
-                    .padding(AppSizes.Spacing.lg)
+                    .padding(.horizontal, AppSizes.Spacing.lg)
+                    .padding(.top, AppSizes.Spacing.sm)
+                    .padding(.bottom, AppSizes.Spacing.sm)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
@@ -423,15 +425,15 @@ struct MatchView: View {
                 UIBanner.scroll.image
                     .resizable()
                     .scaledToFit()
-                    .opacity(0.18)
-                    .frame(maxWidth: .infinity, maxHeight: 120)
+                    .opacity(0.15)
+                    .frame(maxWidth: .infinity, maxHeight: 90)
 
                 Text(q.text)
-                    .font(.cairo(.bold, size: AppSizes.Font.title3))
+                    .font(.cairo(.bold, size: AppSizes.Font.body))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, AppSizes.Spacing.md)
-                    .padding(.vertical, AppSizes.Spacing.md)
+                    .padding(.vertical, AppSizes.Spacing.sm)
             }
             .background(
                 LinearGradient(

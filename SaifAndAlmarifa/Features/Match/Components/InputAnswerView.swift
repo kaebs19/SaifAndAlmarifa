@@ -37,7 +37,7 @@ struct InputAnswerView: View {
     }
 
     var body: some View {
-        VStack(spacing: AppSizes.Spacing.md) {
+        VStack(spacing: AppSizes.Spacing.sm) {   // أنعم — أقل ارتفاع
             if isRevealing, let r = result {
                 // 🎯 الكشف الكبير — يستبدل الـ keypad/textfield
                 bigRevealCard(correct: question.correctAnswer ?? "", result: r)
@@ -75,7 +75,7 @@ struct InputAnswerView: View {
     // MARK: - Numeric mode (keypad)
     @ViewBuilder
     private var numericModeBody: some View {
-        VStack(spacing: AppSizes.Spacing.sm) {
+        VStack(spacing: 8) {
             // شاشة العرض
             numericDisplay
 
@@ -108,18 +108,18 @@ struct InputAnswerView: View {
                     lineWidth: 2
                 )
 
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 Image(systemName: "number")
-                    .font(.system(size: 16, weight: .black))
+                    .font(.system(size: 14, weight: .black))
                     .foregroundStyle(stateColor.opacity(0.6))
 
                 if answer.isEmpty {
                     Text("اكتب الرقم")
-                        .font(.cairo(.bold, size: 16))
+                        .font(.cairo(.bold, size: 14))
                         .foregroundStyle(.white.opacity(0.55))
                 } else {
                     Text(answer)
-                        .font(.poppins(.black, size: 32))
+                        .font(.poppins(.black, size: 26))
                         .foregroundStyle(.white)
                         .monospacedDigit()
                         .contentTransition(.numericText())
@@ -127,10 +127,10 @@ struct InputAnswerView: View {
                 }
             }
             .padding(.horizontal, AppSizes.Spacing.md)
-            .padding(.vertical, 14)
+            .padding(.vertical, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(height: 64)
+        .frame(height: 50)
         .shadow(color: stateColor.opacity(0.25), radius: 6)
     }
 

@@ -665,12 +665,12 @@ struct InventoryBar: View {
                                     startPoint: .top, endPoint: .bottom
                                 )
                             )
-                            .frame(width: 42, height: 42)
+                            .frame(width: 36, height: 36)
                     } else {
                         power.image
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 42, height: 42)
+                            .frame(width: 36, height: 36)
                     }
                 }
                 .opacity(count > 0 && !disabled ? 1 : 0.45)

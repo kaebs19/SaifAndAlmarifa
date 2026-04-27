@@ -17,11 +17,11 @@ struct NumericKeypadView: View {
     private let maxLength: Int = 12
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             row(["1", "2", "3"])
             row(["4", "5", "6"])
             row(["7", "8", "9"])
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 deleteKey
                 digitKey("0")
                 submitKey
@@ -34,7 +34,7 @@ struct NumericKeypadView: View {
 
     // MARK: - Rows
     private func row(_ digits: [String]) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             ForEach(digits, id: \.self) { d in
                 digitKey(d)
             }
@@ -144,9 +144,9 @@ private struct KeypadButton: View {
     private var fontStyle: Font {
         switch kind {
         case .digit:
-            return .poppins(.black, size: 28)
+            return .poppins(.black, size: 24)
         case .delete, .submit, .submitDisabled:
-            return .system(size: 24, weight: .black)
+            return .system(size: 20, weight: .black)
         }
     }
 
@@ -183,8 +183,8 @@ private struct KeypadButton: View {
                     .foregroundStyle(labelColor)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 58)
-            .shadow(color: glowColor, radius: isPressed ? 4 : 10)
+            .frame(height: 48)
+            .shadow(color: glowColor, radius: isPressed ? 3 : 8)
             .scaleEffect(isPressed ? 0.94 : 1.0)
         }
         .buttonStyle(PressableStyle(isPressed: $isPressed))
