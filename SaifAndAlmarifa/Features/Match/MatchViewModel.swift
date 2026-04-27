@@ -364,6 +364,13 @@ final class MatchViewModel: ObservableObject {
         // ✨ سجّل من جاوب (لـ "الخصم جاوب" indicator)
         answeredUserIds.insert(result.userId)
 
+        // 🎯 تعادل MCQ → tiebreaker قادم (مرّة واحدة فقط، عند أول submission)
+        if result.tieDetected && result.userId == myId {
+            toast.warning("⚖️ تعادل! سؤال حاسم قادم...")
+            HapticManager.warning()
+            GameSoundManager.shared.play(.questionAppear, volumeOverride: 0.7)
+        }
+
         // HP لا يُحدَّث إلا في المرحلة 2 (battle) — حماية من backend بيرسلها بالغلط
         let allowHpUpdate = currentPhase == .battle
 

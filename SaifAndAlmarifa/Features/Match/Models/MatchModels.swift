@@ -90,7 +90,9 @@ struct MatchQuestion: Identifiable, Equatable {
             index: dict["index"] as? Int ?? 1,
             total: dict["total"] as? Int ?? 4,
             timeLimit: dict["timeLimit"] as? Int ?? 15,
-            isTiebreaker: dict["tiebreaker"] as? Bool ?? false,
+            // Backend يرسل isTiebreaker (camelCase) — احفظ tiebreaker كاحتياط
+            isTiebreaker: (dict["isTiebreaker"] as? Bool)
+                ?? (dict["tiebreaker"] as? Bool) ?? false,
             correctAnswer: dict["correctAnswer"] as? String,
             correctIndex: dict["correctIndex"] as? Int
         )
@@ -148,6 +150,7 @@ struct AnswerResult: Equatable {
     let isFastest: Bool          // ✨ الأسرع
     let pointsAwarded: Int       // نقاط محصّلة من هذا السؤال
     let feedback: String?        // ✨ نص جاهز من backend للعرض المباشر
+    let tieDetected: Bool        // 🎯 الاثنين جاوبوا صح على MCQ → tiebreaker قادم
     let timeMs: Int?             // ✨ زمن إجابتي بالميلي ثانية
     let opponentTimeMs: Int?     // ✨ زمن الخصم
     let newScore: Int?
@@ -186,6 +189,7 @@ struct AnswerResult: Equatable {
             isFastest: dict["fastest"] as? Bool ?? false,
             pointsAwarded: dict["pointsAwarded"] as? Int ?? 0,
             feedback: dict["feedback"] as? String,
+            tieDetected: dict["tieDetected"] as? Bool ?? false,
             timeMs: times[userId] ?? dict["timeMs"] as? Int,
             opponentTimeMs: oppTime,
             newScore: scores[userId] ?? dict["newScore"] as? Int,
