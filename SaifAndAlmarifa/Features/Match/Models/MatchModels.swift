@@ -145,6 +145,7 @@ struct AnswerResult: Equatable {
     let isClosest: Bool          // ✨ المرحلة 1: الأقرب
     let isFastest: Bool          // ✨ الأسرع
     let pointsAwarded: Int       // نقاط محصّلة من هذا السؤال
+    let feedback: String?        // ✨ نص جاهز من backend للعرض المباشر
     let newScore: Int?
     let newHP: Int?
     let opponentScore: Int?
@@ -175,6 +176,7 @@ struct AnswerResult: Equatable {
             isClosest: dict["closest"] as? Bool ?? false,
             isFastest: dict["fastest"] as? Bool ?? false,
             pointsAwarded: dict["pointsAwarded"] as? Int ?? 0,
+            feedback: dict["feedback"] as? String,
             newScore: scores[userId] ?? dict["newScore"] as? Int,
             newHP: hps[userId] ?? dict["newHP"] as? Int,
             opponentScore: dict["opponentScore"] as? Int,

@@ -493,9 +493,10 @@ struct MatchView: View {
             ? AppColors.Default.success
             : (isClosest ? Color(hex: "F59E0B") : AppColors.Default.error)
 
-        let title: String = isCorrect
+        // استخدم feedback من backend إذا متوفر، وإلا fallback للـ logic المحلي
+        let title: String = result.feedback ?? (isCorrect
             ? (isFastest ? "✓ صحيح + الأسرع!" : "✓ صحيح!")
-            : (isClosest ? "🎯 الأقرب" : "❌ خطأ")
+            : (isClosest ? "🎯 الأقرب" : "❌ خطأ"))
 
         return VStack {
             VStack(spacing: 8) {

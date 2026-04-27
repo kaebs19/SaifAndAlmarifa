@@ -104,20 +104,18 @@ final class MatchViewModel: ObservableObject {
         startPreMatchCountdown()
     }
 
-    /// 2-1 قبل أول سؤال — قصير حتى لا يتعارض مع وصول Q1 من backend (~1.5s)
+    /// 3-2-1 قبل أول سؤال — backend يعطي 2s قبل match:question[1]
     private func startPreMatchCountdown() {
         Task { @MainActor in
-            for i in (1...2).reversed() {
-                guard preMatchCountdown != nil || i == 2 else { return }
-                preMatchCountdown = i
-                GameSoundManager.shared.play(.answerTap)
-                HapticManager.light()
-                try? await Task.sleep(nanoseconds: 800_000_000)
-                // إذا أول سؤال وصل خلال الـ countdown، توقّف فوراً
-                if currentQuestion != nil {
+            for i in (1...3).reversed() {
+                guard currentQuestion == nil else {
                     preMatchCountdown = nil
                     return
                 }
+                preMatchCountdown = i
+                GameSoundManager.shared.play(.answerTap)
+                HapticManager.light()
+                try? await Task.sleep(nanoseconds: 700_000_000)
             }
             preMatchCountdown = nil
         }
