@@ -36,16 +36,14 @@ struct InputAnswerView: View {
 
     var body: some View {
         VStack(spacing: AppSizes.Spacing.md) {
-            if isNumeric {
+            if isRevealing, let r = result {
+                // 🎯 الكشف الكبير — يستبدل الـ keypad/textfield
+                bigRevealCard(correct: question.correctAnswer ?? "", result: r)
+                    .transition(.scale(scale: 0.92).combined(with: .opacity))
+            } else if isNumeric {
                 numericModeBody
             } else {
                 textModeBody
-            }
-
-            // Reveal card
-            if isRevealing, let correct = question.correctAnswer {
-                revealCard(correct: correct)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
 
             // حالة "تم الإرسال" (مشتركة)
@@ -58,6 +56,7 @@ struct InputAnswerView: View {
                 }
             }
         }
+        .animation(.spring(response: 0.45, dampingFraction: 0.8), value: isRevealing)
         .onAppear {
             if !isNumeric {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -202,47 +201,116 @@ struct InputAnswerView: View {
         }
     }
 
-    // MARK: - Reveal Card
-    private func revealCard(correct: String) -> some View {
-        VStack(spacing: 6) {
-            Text("الإجابة الصحيحة")
-                .font(.cairo(.medium, size: 11))
-                .foregroundStyle(.white.opacity(0.5))
-            Text(correct)
-                .font(.cairo(.black, size: 22))
-                .foregroundStyle(AppColors.Default.success)
+    // MARK: - Big Reveal Card (يستبدل الـ keypad أثناء الكشف)
+    private func bigRevealCard(correct: String, result r: AnswerResult) -> some View {
+        let isCorrect = r.isCorrect
+        let isClosest = r.isClosest
+        let isFastest = r.isFastest
+        let pts = r.pointsAwarded
 
-            if let r = result {
-                HStack(spacing: 8) {
-                    if r.isFastest {
-                        chipBadge("⚡ الأسرع", color: Color(hex: "60A5FA"))
-                    }
-                    if r.isClosest {
-                        chipBadge("🎯 الأقرب", color: Color(hex: "F59E0B"))
-                    }
-                    if r.pointsAwarded > 0 {
-                        chipBadge("+\(r.pointsAwarded) قوة", color: AppColors.Default.success)
-                    }
+        let accent: Color = isCorrect
+            ? AppColors.Default.success
+            : (isClosest ? Color(hex: "F59E0B") : AppColors.Default.error)
+
+        let iconName: String = isCorrect
+            ? "checkmark.seal.fill"
+            : (isClosest ? "scope" : "xmark.octagon.fill")
+
+        // عنوان من backend feedback أو fallback محلي
+        let title: String = r.feedback ?? (isCorrect
+            ? (isFastest ? "✓ صحيح + الأسرع!" : "✓ صحيح!")
+            : (isClosest ? "🎯 الأقرب" : "❌ خطأ"))
+
+        return VStack(spacing: 14) {
+            // الأيقونة الكبيرة
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [accent.opacity(0.4), accent.opacity(0.15)],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                    )
+                    .frame(width: 72, height: 72)
+                Circle()
+                    .stroke(accent.opacity(0.6), lineWidth: 2)
+                    .frame(width: 72, height: 72)
+                Image(systemName: iconName)
+                    .font(.system(size: 36, weight: .black))
+                    .foregroundStyle(accent)
+            }
+            .shadow(color: accent.opacity(0.5), radius: 14)
+
+            // العنوان
+            Text(title)
+                .font(.cairo(.black, size: AppSizes.Font.title3))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+
+            // إجابتي vs الصحيحة
+            HStack(spacing: AppSizes.Spacing.lg) {
+                valueColumn(label: "إجابتك", value: r.submittedValue.isEmpty ? "—" : r.submittedValue,
+                            color: isCorrect ? AppColors.Default.success : .white.opacity(0.7))
+                Image(systemName: "arrow.left.and.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.3))
+                valueColumn(label: "الصحيحة", value: correct,
+                            color: AppColors.Default.success)
+            }
+
+            // chips النقاط
+            if pts > 0 {
+                HStack(spacing: 6) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 14, weight: .black))
+                    Text("+\(pts) قوة")
+                        .font(.poppins(.black, size: 18))
+                        .monospacedDigit()
                 }
+                .foregroundStyle(.black)
+                .padding(.horizontal, 14).padding(.vertical, 6)
+                .background(
+                    LinearGradient(
+                        colors: [Color(hex: "FFE55C"), Color(hex: "FFB800")],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                )
+                .clipShape(Capsule())
+                .shadow(color: Color(hex: "FFD700").opacity(0.6), radius: 8)
             }
         }
-        .padding(AppSizes.Spacing.md)
+        .padding(.vertical, AppSizes.Spacing.lg)
+        .padding(.horizontal, AppSizes.Spacing.md)
         .frame(maxWidth: .infinity)
-        .background(AppColors.Default.success.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
-                .stroke(AppColors.Default.success.opacity(0.3), lineWidth: 1)
+        .background(
+            ZStack {
+                LinearGradient(
+                    colors: [accent.opacity(0.18), accent.opacity(0.06)],
+                    startPoint: .top, endPoint: .bottom
+                )
+                .background(.ultraThinMaterial)
+            }
         )
+        .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.large))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppSizes.Radius.large)
+                .stroke(accent.opacity(0.5), lineWidth: 1.5)
+        )
+        .shadow(color: accent.opacity(0.3), radius: 12)
     }
 
-    private func chipBadge(_ text: String, color: Color) -> some View {
-        Text(text)
-            .font(.cairo(.bold, size: 11))
-            .foregroundStyle(color)
-            .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(color.opacity(0.15))
-            .clipShape(Capsule())
+    private func valueColumn(label: String, value: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(label)
+                .font(.cairo(.medium, size: 11))
+                .foregroundStyle(.white.opacity(0.55))
+            Text(value)
+                .font(.poppins(.black, size: 24))
+                .foregroundStyle(color)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
     }
 
     @ViewBuilder
