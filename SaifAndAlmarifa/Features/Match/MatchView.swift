@@ -166,6 +166,11 @@ struct MatchView: View {
                 battleIntroBanner.zIndex(9)
             }
 
+            // ⚡ Lightning flash — يومض على الضربات الحرجة (Stage D)
+            LightningFlash(nonce: viewModel.screenShakeNonce,
+                           color: Color(hex: "FFE55C"))
+                .zIndex(8)
+
             // ⚔️ Combat layer — قذيفة + انفجار + حطام (في battle فقط)
             if viewModel.currentPhase == .battle {
                 VStack(spacing: 0) {
@@ -226,6 +231,12 @@ struct MatchView: View {
                 .ignoresSafeArea()
                 .animation(.easeInOut(duration: 1.2), value: viewModel.currentPhase)
 
+            // 🌙 قمر/شمس في الزاوية (Stage D)
+            CelestialBody(phase: viewModel.currentPhase)
+
+            // ☁️ سحاب متحرّك (Stage D)
+            DriftingClouds(phase: viewModel.currentPhase)
+
             // هالات خلف القلعتين
             GeometryReader { geo in
                 Circle()
@@ -242,6 +253,13 @@ struct MatchView: View {
             }
             .ignoresSafeArea()
             .animation(.easeInOut(duration: 1.2), value: viewModel.currentPhase)
+
+            // 🪖 جنود في الأفق (Stage D) — أعلى Phase 2 فقط
+            if viewModel.currentPhase == .battle {
+                DistantArmySilhouettes(phase: viewModel.currentPhase)
+                    .opacity(0.75)
+                    .transition(.opacity)
+            }
 
             // جزيئات ذهبية عائمة
             FloatingEmbers()
