@@ -59,7 +59,8 @@ struct MatchView: View {
                     answeredUserIds: viewModel.answeredUserIds,
                     showAnsweredStatus: viewModel.currentQuestion != nil
                                           && !viewModel.isRevealing
-                                          && viewModel.hasSubmitted
+                                          && viewModel.hasSubmitted,
+                    myStreakActive: viewModel.streak >= 3
                 )
                 .padding(.horizontal, AppSizes.Spacing.sm)
                 .padding(.top, AppSizes.Spacing.sm)
@@ -83,11 +84,18 @@ struct MatchView: View {
 
                 // شريط العناصر — يظهر في 4p دائماً، وفي 1v1 خلال Phase 2 فقط
                 if !viewModel.isOneVsOne || viewModel.currentPhase == .battle {
-                    InventoryBar(
-                        inventory: viewModel.inventory,
-                        onUse: { viewModel.usePowerUp($0) },
-                        disabled: viewModel.hasSubmitted || viewModel.isRevealing
-                    )
+                    ZStack {
+                        InventoryBar(
+                            inventory: viewModel.inventory,
+                            onUse: { viewModel.usePowerUp($0) },
+                            disabled: viewModel.hasSubmitted || viewModel.isRevealing
+                        )
+                        // 💎 Power-up activation burst (Stage B)
+                        PowerUpActivationBurst(
+                            nonce: viewModel.powerUpFXNonce,
+                            color: viewModel.powerUpFXColor
+                        )
+                    }
                     .padding(AppSizes.Spacing.lg)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }

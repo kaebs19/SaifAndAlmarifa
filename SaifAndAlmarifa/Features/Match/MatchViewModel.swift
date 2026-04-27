@@ -8,6 +8,7 @@
 
 import Foundation
 import Combine
+import SwiftUI
 
 @MainActor
 final class MatchViewModel: ObservableObject {
@@ -64,6 +65,10 @@ final class MatchViewModel: ObservableObject {
     @Published var screenShakeNonce: Int = 0              // اهتزاز الشاشة
     @Published var hpFlashNonce: Int = 0                  // وميض HP bar
     @Published var hpFlashOnMyCastle: Bool = false
+
+    // 💎 Stage B: Power-up activation FX
+    @Published var powerUpFXNonce: Int = 0                // trigger الـ burst
+    @Published var powerUpFXColor: Color = .yellow        // لون الـ burst
 
     private var wasCriticalHP: Bool = false               // لمنع تكرار haptic critical
     @Published var rematchStatus: RematchStatus = .none   // حالة الإعادة
@@ -734,11 +739,27 @@ final class MatchViewModel: ObservableObject {
         GameSoundManager.shared.playPowerUp(powerUp)
         HapticManager.medium()
 
+        // 💎 Burst FX على شريط الأدوات
+        powerUpFXColor = colorFor(powerUp)
+        powerUpFXNonce += 1
+
         // فعّل الـ power-up بصرياً لبعض الوقت
         activatePowerUpVisual(powerUp)
 
         // تأثير محلي فوري (بدون انتظار backend)
         applyLocalEffect(powerUp)
+    }
+
+    private func colorFor(_ p: PowerUpIcon) -> Color {
+        switch p {
+        case .freeze:       return Color(hex: "60A5FA")
+        case .shield:       return Color(hex: "10B981")
+        case .skip:         return Color(hex: "94A3B8")
+        case .hint:         return Color(hex: "F59E0B")
+        case .fiftyFifty:   return Color(hex: "A78BFA")
+        case .bird, .revealAnswer, .double, .thunder, .revive:
+            return Color(hex: "FFD700")
+        }
     }
 
     /// تطبيق تأثير محلي للـ power-up (يعمل بدون backend)

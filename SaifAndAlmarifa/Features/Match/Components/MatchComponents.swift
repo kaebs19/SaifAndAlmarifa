@@ -46,31 +46,51 @@ struct TimerChip: View {
     }
 }
 
-// MARK: - ScoreBadge — يومض عند التغيير
+// MARK: - ScoreBadge — يومض + يعدّ + يطفو "+N" + streak ring
 struct ScoreBadge: View {
     let score: Int
     let color: Color
     var compact: Bool = false
+    var streakActive: Bool = false   // 🆕 لو في streak ≥3
 
     @State private var lastScore: Int = 0
     @State private var flash: Bool = false
+    @State private var floatNonce: Int = 0
+    @State private var floatAmount: Int = 0
 
-    private var size: CGFloat { compact ? 14 : 20 }
+    private var size: CGFloat { compact ? 14 : 22 }
 
     var body: some View {
-        Text("\(score)")
-            .font(.poppins(.black, size: size))
-            .foregroundStyle(flash ? Color.green : color)
-            .scaleEffect(flash ? 1.3 : 1.0)
-            .shadow(color: flash ? Color.green.opacity(0.8) : .clear, radius: 8)
-            .animation(.spring(response: 0.3, dampingFraction: 0.5), value: flash)
-            .onChange(of: score) { old, new in
-                guard new > old else { return }
-                flash = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    flash = false
-                }
+        ZStack {
+            // 🔥 Streak fire ring (Stage B)
+            StreakFireRing(active: streakActive && !compact)
+
+            // الرقم
+            Text("\(score)")
+                .font(.poppins(.black, size: size))
+                .foregroundStyle(flash ? Color.green : color)
+                .monospacedDigit()
+                .contentTransition(.numericText())
+                .scaleEffect(flash ? 1.35 : 1.0)
+                .shadow(color: flash ? Color.green.opacity(0.8) : .clear, radius: 8)
+
+            // ➕N float-up (Stage B)
+            if !compact {
+                FloatingPoints(nonce: floatNonce, amount: floatAmount,
+                               color: Color(hex: "FFE55C"))
+                    .offset(y: -16)
             }
+        }
+        .animation(.spring(response: 0.3, dampingFraction: 0.5), value: flash)
+        .onChange(of: score) { old, new in
+            guard new > old else { return }
+            floatAmount = new - old
+            floatNonce += 1
+            flash = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                flash = false
+            }
+        }
     }
 }
 
@@ -216,8 +236,20 @@ struct PlayersBattlefield: View {
     var phase: MatchPhase = .battle      // ✨ يحدّد عرض HP أو "قوة"
     var answeredUserIds: Set<String> = []  // ✨ من جاوب على السؤال الحالي
     var showAnsweredStatus: Bool = false    // ✨ هل أظهر "جاوب/يكتب"؟
+    var myStreakActive: Bool = false        // 🔥 لو في streak ≥3 لي
 
     private var isCollectionPhase: Bool { phase == .collection }
+
+    /// مَن يقود السكور؟ (لـ crown)
+    private var leaderId: String? {
+        let allPlayers = [me] + opponents
+        guard let max = allPlayers.max(by: { $0.score < $1.score }) else { return nil }
+        // إذا تعادل، لا تاج
+        let topScore = max.score
+        let topCount = allPlayers.filter { $0.score == topScore }.count
+        guard topCount == 1, topScore > 0 else { return nil }
+        return max.id
+    }
 
     var body: some View {
         if opponents.count == 1 {
@@ -289,6 +321,7 @@ struct PlayersBattlefield: View {
         isEliminated: Bool,
         compact: Bool
     ) -> some View {
+        let isLeader = (leaderId == player.id)
         let castleSize: CGFloat = compact ? 58 : 90
         let nameSize: CGFloat = compact ? 10 : 11
 
@@ -310,8 +343,20 @@ struct PlayersBattlefield: View {
                 }
             }
 
-            // النقاط مع flash animation
-            ScoreBadge(score: player.score, color: isMine ? AppColors.Default.goldPrimary : Color(hex: "F87171"), compact: compact)
+            // 👑 Crown إذا هذا اللاعب هو القائد
+            if isLeader {
+                LeaderCrown(isLeader: true)
+                    .frame(height: 14)
+                    .padding(.bottom, -2)
+            }
+
+            // النقاط مع flash + streak ring
+            ScoreBadge(
+                score: player.score,
+                color: isMine ? AppColors.Default.goldPrimary : Color(hex: "F87171"),
+                compact: compact,
+                streakActive: isMine && myStreakActive   // streak فقط للاعبي
+            )
 
             // hpPercentage 0-100 (للطبقات): نسبة hp/maxHp ×100
             let hpRatio: Double = (player.maxHp > 0) ? Double(player.hp) / Double(player.maxHp) : 1.0
