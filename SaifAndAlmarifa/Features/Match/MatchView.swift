@@ -26,6 +26,11 @@ struct MatchView: View {
     }
 
     var body: some View {
+        bodyContent
+            .screenShake(triggeredBy: viewModel.screenShakeNonce, amount: 14)
+    }
+
+    private var bodyContent: some View {
         ZStack {
             background
 
@@ -142,6 +147,31 @@ struct MatchView: View {
             // ⚔️ Battle Intro Banner — "ابدأ الهجوم!"
             if viewModel.showBattleIntro {
                 battleIntroBanner.zIndex(9)
+            }
+
+            // ⚔️ Combat layer — قذيفة + انفجار + حطام (في battle فقط)
+            if viewModel.currentPhase == .battle {
+                VStack(spacing: 0) {
+                    Color.clear.frame(height: 60)   // فراغ للهيدر
+                    ZStack {
+                        CannonballLayer(
+                            isFiring: viewModel.cannonballFiring,
+                            fromMine: viewModel.cannonballFromMine
+                        )
+                        ImpactBurst(
+                            nonce: viewModel.impactNonce,
+                            onMyCastle: viewModel.impactOnMyCastle
+                        )
+                        DebrisField(
+                            nonce: viewModel.debrisNonce,
+                            onMyCastle: viewModel.debrisOnMyCastle
+                        )
+                    }
+                    .frame(height: 220)
+                    Spacer()
+                }
+                .zIndex(6)
+                .allowsHitTesting(false)
             }
 
             // تلميح

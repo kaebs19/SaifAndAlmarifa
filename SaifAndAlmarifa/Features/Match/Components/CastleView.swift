@@ -106,6 +106,8 @@ struct CastleHPBar: View {
     let color: Color
 
     @State private var warningPulse: Bool = false
+    @State private var flashOpacity: Double = 0
+    @State private var lastPercent: Double = 1.0
 
     private var isCritical: Bool { percent <= 0.25 && percent > 0 }
 
@@ -129,6 +131,11 @@ struct CastleHPBar: View {
                     .frame(width: geo.size.width * max(0, min(1, percent)))
                     .shadow(color: color.opacity(0.6), radius: 4)
 
+                // ⚔️ Flash أحمر عند النقص (Stage A)
+                Capsule()
+                    .fill(Color(hex: "FF3B30").opacity(flashOpacity))
+                    .blur(radius: 4)
+
                 // Critical warning overlay (يومض أحمر)
                 if isCritical {
                     Capsule()
@@ -138,12 +145,20 @@ struct CastleHPBar: View {
             }
         }
         .frame(height: 8)
-        .animation(.easeInOut(duration: 0.4), value: percent)
+        .animation(.easeOut(duration: 0.6), value: percent)  // drain animation
         .animation(
             .easeInOut(duration: 0.5).repeatForever(autoreverses: true),
             value: warningPulse
         )
-        .onAppear { warningPulse = true }
+        .onAppear { warningPulse = true; lastPercent = percent }
+        .onChange(of: percent) { old, new in
+            if new < old {
+                // ⚔️ نزيف أحمر — flash برضه
+                flashOpacity = 0.85
+                withAnimation(.easeOut(duration: 0.55)) { flashOpacity = 0 }
+            }
+            lastPercent = new
+        }
     }
 }
 

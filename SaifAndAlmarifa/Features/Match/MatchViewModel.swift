@@ -53,6 +53,18 @@ final class MatchViewModel: ObservableObject {
     @Published var questionHistory: [QuestionStat] = []   // ✨ سجل أداء كل سؤال
     @Published var showBattleIntro: Bool = false          // 🆕 banner "ابدأ الهجوم"
     @Published var phaseChipCompact: Bool = false         // 🆕 phase chip مختصر بعد 5 ثوانٍ
+
+    // ⚔️ Stage A: Combat animations
+    @Published var cannonballFiring: Bool = false         // قذيفة طائرة
+    @Published var cannonballFromMine: Bool = false       // من قلعتي أم من الخصم
+    @Published var impactNonce: Int = 0                   // trigger الانفجار
+    @Published var impactOnMyCastle: Bool = false         // أين الانفجار
+    @Published var debrisNonce: Int = 0                   // trigger الحطام
+    @Published var debrisOnMyCastle: Bool = false
+    @Published var screenShakeNonce: Int = 0              // اهتزاز الشاشة
+    @Published var hpFlashNonce: Int = 0                  // وميض HP bar
+    @Published var hpFlashOnMyCastle: Bool = false
+
     private var wasCriticalHP: Bool = false               // لمنع تكرار haptic critical
     @Published var rematchStatus: RematchStatus = .none   // حالة الإعادة
     @Published var preMatchCountdown: Int? = nil          // 3, 2, 1 قبل أول سؤال
@@ -474,6 +486,30 @@ final class MatchViewModel: ObservableObject {
         wasCriticalHP = nowCritical
     }
 
+    /// إطلاق sequence القذيفة + الانفجار + الحطام + الاهتزاز
+    private func runAttackCinematic(targetIsMe: Bool, isCriticalKill: Bool) {
+        // 1. أطلق القذيفة من المهاجم للمستهدف
+        cannonballFromMine = !targetIsMe
+        cannonballFiring = true
+
+        // 2. بعد 0.6s — تصل القذيفة → انفجار + حطام
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            cannonballFiring = false
+            impactOnMyCastle = targetIsMe
+            debrisOnMyCastle = targetIsMe
+            hpFlashOnMyCastle = targetIsMe
+            impactNonce += 1
+            debrisNonce += 1
+            hpFlashNonce += 1
+
+            // 3. اهتزاز الشاشة لو ضربة قاضية أو على قلعتي
+            if targetIsMe || isCriticalKill {
+                screenShakeNonce += 1
+            }
+        }
+    }
+
     private func handleAttack(_ data: [String: Any]) {
         guard matchIdMatches(data) else { return }
         // الهجوم فقط في مرحلة المعركة
@@ -491,6 +527,8 @@ final class MatchViewModel: ObservableObject {
             GameSoundManager.shared.play(.castleHit)
             HapticManager.heavy()
             checkCriticalHPTransition()
+            // ⚔️ سينمائي: قذيفة + انفجار + حطام + اهتزاز
+            runAttackCinematic(targetIsMe: true, isCriticalKill: myHP == 0)
             Task {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 await MainActor.run { self.myCastleShaking = false }
@@ -499,10 +537,13 @@ final class MatchViewModel: ObservableObject {
                   let idx = opponents.firstIndex(where: { $0.id == tid }) {
             // هجوم على أحد الخصوم (مني أو من لاعب آخر)
             var p = opponents[idx]
+            let oldHp = p.hp
             p.hp = serverTargetHp ?? max(0, p.hp - damage)
             opponents[idx] = p
             shakingOpponentId = tid
             GameSoundManager.shared.play(.castleHit, volumeOverride: 0.7)
+            // ⚔️ سينمائي: قذيفة + انفجار على قلعة الخصم
+            runAttackCinematic(targetIsMe: false, isCriticalKill: p.hp == 0 && oldHp > 0)
             Task {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 await MainActor.run { self.shakingOpponentId = nil }
