@@ -261,6 +261,12 @@ struct InputAnswerView: View {
                             color: AppColors.Default.success)
             }
 
+            // ✨ Stats row (الزمن + الفرق) — يظهر إذا أرسل backend الأوقات
+            if r.timeMs != nil || r.opponentTimeMs != nil {
+                statsRow(myMs: r.timeMs, oppMs: r.opponentTimeMs)
+                    .transition(.opacity)
+            }
+
             // chips النقاط مع Sparkle burst
             if pts > 0 {
                 ZStack {
@@ -304,6 +310,46 @@ struct InputAnswerView: View {
                 .stroke(accent.opacity(0.5), lineWidth: 1.5)
         )
         .shadow(color: accent.opacity(0.3), radius: 12)
+    }
+
+    private func statsRow(myMs: Int?, oppMs: Int?) -> some View {
+        HStack(spacing: 12) {
+            if let m = myMs {
+                statChip(label: "أنت", value: formatTime(m), tint: AppColors.Default.goldPrimary)
+            }
+            if let o = oppMs {
+                statChip(label: "الخصم", value: formatTime(o), tint: Color(hex: "F87171"))
+            }
+            if let m = myMs, let o = oppMs {
+                let diff = abs(m - o)
+                let sign = m < o ? "-" : "+"
+                statChip(label: "الفرق", value: "\(sign)\(formatTime(diff))",
+                         tint: m < o ? AppColors.Default.success : .white.opacity(0.4))
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    private func statChip(label: String, value: String, tint: Color) -> some View {
+        VStack(spacing: 2) {
+            Text(label)
+                .font(.cairo(.medium, size: 10))
+                .foregroundStyle(.white.opacity(0.55))
+            Text(value)
+                .font(.poppins(.bold, size: 13))
+                .foregroundStyle(tint)
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 5)
+        .background(.white.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func formatTime(_ ms: Int) -> String {
+        if ms >= 10_000 { return "\(ms/1000)s" }
+        let secs = Double(ms) / 1000.0
+        return String(format: "%.1fs", secs)
     }
 
     private func valueColumn(label: String, value: String, color: Color) -> some View {

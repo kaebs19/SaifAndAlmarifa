@@ -105,6 +105,7 @@ struct MatchView: View {
             if let result = viewModel.matchResult {
                 MatchEndView(
                     result: result,
+                    history: viewModel.questionHistory,
                     onRematch: viewModel.rematchStatus == .waitingForOpponent
                         ? nil   // معطّل مؤقتاً بانتظار الخصم
                         : { viewModel.requestRematch() },

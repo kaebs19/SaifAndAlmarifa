@@ -50,6 +50,7 @@ final class MatchViewModel: ObservableObject {
     @Published var showCombo: Bool = false                // banner combo
     @Published var wrongShakeNonce: Int = 0               // trigger لاهتزاز الإجابة الخاطئة
     @Published var pointsBurstNonce: Int = 0              // trigger للاحتفال بالنقاط
+    @Published var questionHistory: [QuestionStat] = []   // ✨ سجل أداء كل سؤال
     private var wasCriticalHP: Bool = false               // لمنع تكرار haptic critical
     @Published var rematchStatus: RematchStatus = .none   // حالة الإعادة
     @Published var preMatchCountdown: Int? = nil          // 3, 2, 1 قبل أول سؤال
@@ -415,6 +416,19 @@ final class MatchViewModel: ObservableObject {
             // ✨ احتفال بالنقاط (للـ correct + closest)
             if result.pointsAwarded > 0 {
                 pointsBurstNonce += 1
+            }
+
+            // ✨ سجّل في الـ history للـ summary chart
+            if let q = currentQuestion {
+                questionHistory.append(QuestionStat(
+                    index: q.index,
+                    phase: q.phase,
+                    isCorrect: result.isCorrect,
+                    isClosest: result.isClosest,
+                    isFastest: result.isFastest,
+                    pointsAwarded: result.pointsAwarded,
+                    timeMs: result.timeMs
+                ))
             }
         }
     }

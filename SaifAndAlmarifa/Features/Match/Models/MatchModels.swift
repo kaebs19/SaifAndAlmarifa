@@ -146,6 +146,8 @@ struct AnswerResult: Equatable {
     let isFastest: Bool          // ✨ الأسرع
     let pointsAwarded: Int       // نقاط محصّلة من هذا السؤال
     let feedback: String?        // ✨ نص جاهز من backend للعرض المباشر
+    let timeMs: Int?             // ✨ زمن إجابتي بالميلي ثانية
+    let opponentTimeMs: Int?     // ✨ زمن الخصم
     let newScore: Int?
     let newHP: Int?
     let opponentScore: Int?
@@ -168,6 +170,11 @@ struct AnswerResult: Equatable {
             ?? (dict["answerIndex"] as? Int).map { String($0) }
             ?? ""
 
+        // قراءة timeMs لكل لاعب من times: { userId: ms }
+        let times = dict["times"] as? [String: Int] ?? [:]
+        let oppTime = times.first(where: { $0.key != userId })?.value
+            ?? dict["opponentTimeMs"] as? Int
+
         return AnswerResult(
             questionId: questionId,
             userId: userId,
@@ -177,6 +184,8 @@ struct AnswerResult: Equatable {
             isFastest: dict["fastest"] as? Bool ?? false,
             pointsAwarded: dict["pointsAwarded"] as? Int ?? 0,
             feedback: dict["feedback"] as? String,
+            timeMs: times[userId] ?? dict["timeMs"] as? Int,
+            opponentTimeMs: oppTime,
             newScore: scores[userId] ?? dict["newScore"] as? Int,
             newHP: hps[userId] ?? dict["newHP"] as? Int,
             opponentScore: dict["opponentScore"] as? Int,
@@ -184,6 +193,18 @@ struct AnswerResult: Equatable {
             selectedIndex: dict["selectedIndex"] as? Int
         )
     }
+}
+
+// MARK: - سجل سؤال (للـ summary chart)
+struct QuestionStat: Identifiable, Equatable {
+    let id = UUID()
+    let index: Int
+    let phase: MatchPhase
+    let isCorrect: Bool
+    let isClosest: Bool
+    let isFastest: Bool
+    let pointsAwarded: Int
+    let timeMs: Int?
 }
 
 // MARK: - نهاية المباراة

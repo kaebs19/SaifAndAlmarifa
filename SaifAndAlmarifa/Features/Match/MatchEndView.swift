@@ -11,6 +11,7 @@ import SwiftUI
 
 struct MatchEndView: View {
     let result: MatchEndResult
+    var history: [QuestionStat] = []
     var onRematch: (() -> Void)? = nil
     let onClose: () -> Void
 
@@ -44,6 +45,13 @@ struct MatchEndView: View {
                 rewardsCard
                     .offset(y: appear ? 0 : 30)
                     .opacity(appear ? 1 : 0)
+
+                // ✨ ملخّص الأداء
+                if !history.isEmpty {
+                    MatchSummaryChart(history: history)
+                        .offset(y: appear ? 0 : 30)
+                        .opacity(appear ? 1 : 0)
+                }
 
                 Spacer()
 
