@@ -29,6 +29,10 @@ struct MainView: View {
     @State private var appeared = false
     @State private var pulse = false
 
+    // Castle Siege tutorial (يظهر مرّة واحدة قبل أول 1v1)
+    @State private var showCastleSiegeTutorial = false
+    @State private var pendingMode: GameMode? = nil
+
     var body: some View {
         ZStack {
             background
@@ -69,6 +73,20 @@ struct MainView: View {
         .fullScreenCover(item: $viewModel.activeMatch) { ctx in
             MatchView(matchId: ctx.matchId, opponents: ctx.opponents)
                 .withToast()
+        }
+        // ✨ Castle Siege Tutorial — قبل matchmaking، مرة واحدة فقط
+        .fullScreenCover(isPresented: $showCastleSiegeTutorial) {
+            CastleSiegeTutorialOverlay(onComplete: {
+                UserDefaults.standard.set(true, forKey: "castleSiege.tutorialSeen")
+                showCastleSiegeTutorial = false
+                if let mode = pendingMode {
+                    pendingMode = nil
+                    // أبدأ matchmaking بعد إغلاق التعليمات
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        viewModel.selectMode(mode)
+                    }
+                }
+            })
         }
         .sheet(isPresented: $viewModel.showJoinRoom) {
             JoinRoomSheet { viewModel.joinRoom(code: $0) }
@@ -469,7 +487,13 @@ struct MainView: View {
     private func heroCard(mode: GameMode, bg: LinearGradient, border: [Color], glow: Color) -> some View {
         Button {
             HapticManager.medium()
-            viewModel.selectMode(mode)
+            // ✨ Castle Siege tutorial — مرّة واحدة قبل أول 1v1
+            if mode == .random1v1 && !UserDefaults.standard.bool(forKey: "castleSiege.tutorialSeen") {
+                pendingMode = mode
+                showCastleSiegeTutorial = true
+            } else {
+                viewModel.selectMode(mode)
+            }
         } label: {
             VStack(spacing: AppSizes.Spacing.md) {
                 Image(mode.icon)

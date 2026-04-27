@@ -9,8 +9,9 @@
 import SwiftUI
 
 struct CastleSiegeTutorialOverlay: View {
-    @Binding var isVisible: Bool
+    let onComplete: () -> Void
     @State private var step: Int = 0
+    @State private var dismissed: Bool = false
 
     private let steps: [TutorialStep] = [
         TutorialStep(
@@ -89,7 +90,9 @@ struct CastleSiegeTutorialOverlay: View {
                         if step < steps.count - 1 {
                             withAnimation(.easeInOut(duration: 0.3)) { step += 1 }
                         } else {
-                            withAnimation(.easeInOut) { isVisible = false }
+                            guard !dismissed else { return }
+                            dismissed = true
+                            onComplete()
                         }
                     } label: {
                         HStack(spacing: 6) {
