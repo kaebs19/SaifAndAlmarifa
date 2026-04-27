@@ -50,7 +50,11 @@ struct MatchView: View {
                     attackAnimating: viewModel.attackAnimating,
                     attackTargetId: viewModel.attackTargetId,
                     myShieldActive: viewModel.activePowerUps.contains(.shield),
-                    phase: viewModel.currentPhase
+                    phase: viewModel.currentPhase,
+                    answeredUserIds: viewModel.answeredUserIds,
+                    showAnsweredStatus: viewModel.currentQuestion != nil
+                                          && !viewModel.isRevealing
+                                          && viewModel.hasSubmitted
                 )
                 .padding(.horizontal, AppSizes.Spacing.sm)
                 .padding(.top, AppSizes.Spacing.sm)
@@ -122,6 +126,16 @@ struct MatchView: View {
             // تأثير التجميد
             if viewModel.isFrozen {
                 frozenOverlay.zIndex(5)
+            }
+
+            // ✨ HP حرج — حواف نابضة
+            if viewModel.isCriticalHP {
+                CriticalHPOverlay().zIndex(4)
+            }
+
+            // ✨ Combo banner
+            if viewModel.showCombo && viewModel.streak >= 2 {
+                ComboBanner(count: viewModel.streak).zIndex(7)
             }
 
             // تلميح
@@ -307,7 +321,9 @@ struct MatchView: View {
                     isSubmitted: viewModel.hasSubmitted,
                     isRevealing: viewModel.isRevealing,
                     result: viewModel.lastAnswerResult,
-                    onSubmit: { viewModel.submitAnswer() }
+                    onSubmit: { viewModel.submitAnswer() },
+                    wrongShakeNonce: viewModel.wrongShakeNonce,
+                    pointsBurstNonce: viewModel.pointsBurstNonce
                 )
             } else {
                 VStack(spacing: AppSizes.Spacing.xs) {

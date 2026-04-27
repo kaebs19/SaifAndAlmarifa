@@ -19,6 +19,8 @@ struct InputAnswerView: View {
     let isRevealing: Bool
     let result: AnswerResult?
     let onSubmit: () -> Void
+    var wrongShakeNonce: Int = 0     // ✨ trigger الاهتزاز
+    var pointsBurstNonce: Int = 0    // ✨ trigger الـ sparkle
 
     @FocusState private var isFocused: Bool
 
@@ -40,6 +42,7 @@ struct InputAnswerView: View {
                 // 🎯 الكشف الكبير — يستبدل الـ keypad/textfield
                 bigRevealCard(correct: question.correctAnswer ?? "", result: r)
                     .transition(.scale(scale: 0.92).combined(with: .opacity))
+                    .shake(triggeredBy: wrongShakeNonce)   // ✨ اهتزاز عند الخطأ
             } else if isNumeric {
                 numericModeBody
             } else {
@@ -258,25 +261,29 @@ struct InputAnswerView: View {
                             color: AppColors.Default.success)
             }
 
-            // chips النقاط
+            // chips النقاط مع Sparkle burst
             if pts > 0 {
-                HStack(spacing: 6) {
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 14, weight: .black))
-                    Text("+\(pts) قوة")
-                        .font(.poppins(.black, size: 18))
-                        .monospacedDigit()
-                }
-                .foregroundStyle(.black)
-                .padding(.horizontal, 14).padding(.vertical, 6)
-                .background(
-                    LinearGradient(
-                        colors: [Color(hex: "FFE55C"), Color(hex: "FFB800")],
-                        startPoint: .leading, endPoint: .trailing
+                ZStack {
+                    SparkleBurst(nonce: pointsBurstNonce, color: Color(hex: "FFD700"))
+                        .frame(width: 1, height: 1)
+                    HStack(spacing: 6) {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 14, weight: .black))
+                        Text("+\(pts) قوة")
+                            .font(.poppins(.black, size: 18))
+                            .monospacedDigit()
+                    }
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 14).padding(.vertical, 6)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(hex: "FFE55C"), Color(hex: "FFB800")],
+                            startPoint: .leading, endPoint: .trailing
+                        )
                     )
-                )
-                .clipShape(Capsule())
-                .shadow(color: Color(hex: "FFD700").opacity(0.6), radius: 8)
+                    .clipShape(Capsule())
+                    .shadow(color: Color(hex: "FFD700").opacity(0.6), radius: 8)
+                }
             }
         }
         .padding(.vertical, AppSizes.Spacing.lg)

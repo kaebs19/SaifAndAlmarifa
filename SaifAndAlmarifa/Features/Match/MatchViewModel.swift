@@ -43,6 +43,13 @@ final class MatchViewModel: ObservableObject {
     @Published var hintMessage: String? = nil             // نص التلميح
     @Published var isFrozen: Bool = false                 // حالة تجميد
     @Published var rangeHint: (min: Int, max: Int)? = nil // ✨ تلميح مدى رقمي (العصفور)
+
+    // MARK: - Stage 1: Game Feel
+    @Published var answeredUserIds: Set<String> = []      // مَن جاوب على السؤال الحالي
+    @Published var streak: Int = 0                        // إجابات صحيحة متتالية
+    @Published var showCombo: Bool = false                // banner combo
+    @Published var wrongShakeNonce: Int = 0               // trigger لاهتزاز الإجابة الخاطئة
+    @Published var pointsBurstNonce: Int = 0              // trigger للاحتفال بالنقاط
     @Published var rematchStatus: RematchStatus = .none   // حالة الإعادة
     @Published var preMatchCountdown: Int? = nil          // 3, 2, 1 قبل أول سؤال
 
@@ -91,6 +98,12 @@ final class MatchViewModel: ObservableObject {
 
     /// كم هي مباراة 1 ضد 1؟ (مفيد للـ layout)
     var isOneVsOne: Bool { initialOpponents.count == 1 }
+
+    /// HP حرج (≤25%) في battle phase
+    var isCriticalHP: Bool {
+        guard currentPhase == .battle, myMaxHP > 0, myHP > 0 else { return false }
+        return Double(myHP) / Double(myMaxHP) <= 0.25
+    }
 
     /// اسم الخصم الأول (للـ UI في 1v1)
     var opponent: MatchPlayer { opponents.first ?? initialOpponents.first ?? MatchPlayer(id: "?", username: "?", avatarUrl: nil, level: nil, hp: 0, maxHp: 0, score: 0) }
@@ -227,6 +240,10 @@ final class MatchViewModel: ObservableObject {
                 self.currentPhase = .transition
                 self.showPhaseTransition = true
 
+                // ✨ ابدأ Phase 2 بـ streak جديد
+                self.streak = 0
+                self.showCombo = false
+
                 // طبّق power على HP — قلعتي + الخصوم (يحفظ maxHp للنسبة)
                 if let myPower = result.powers[self.myId] {
                     self.myHP = myPower
@@ -324,6 +341,8 @@ final class MatchViewModel: ObservableObject {
         showPhaseTransition = false
         hintMessage = nil
         rangeHint = nil
+        answeredUserIds.removeAll()                  // ✨ سؤال جديد → ينتظر الكل
+        showCombo = false                            // أخفِ combo banner
         timeRemaining = q.timeLimit
         questionStartTime = Date()
         startTimer()
@@ -333,6 +352,9 @@ final class MatchViewModel: ObservableObject {
     private func handleAnswerSubmitted(_ data: [String: Any]) {
         guard matchIdMatches(data),
               let result = AnswerResult.from(data) else { return }
+
+        // ✨ سجّل من جاوب (لـ "الخصم جاوب" indicator)
+        answeredUserIds.insert(result.userId)
 
         // HP لا يُحدَّث إلا في المرحلة 2 (battle) — حماية من backend بيرسلها بالغلط
         let allowHpUpdate = currentPhase == .battle
@@ -372,9 +394,26 @@ final class MatchViewModel: ObservableObject {
                 fireAttackOnOpponent(targetId: targetId)
                 GameSoundManager.shared.play(.answerCorrect)
                 HapticManager.success()
+                // ✨ Streak + Combo
+                streak += 1
+                if streak >= 2 {
+                    showCombo = true
+                    HapticManager.medium()
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 2_500_000_000)
+                        self.showCombo = false
+                    }
+                }
             } else {
                 GameSoundManager.shared.play(.answerWrong)
                 HapticManager.error()
+                streak = 0   // ✨ كسر السلسلة
+                wrongShakeNonce += 1   // ✨ trigger الاهتزاز
+            }
+
+            // ✨ احتفال بالنقاط (للـ correct + closest)
+            if result.pointsAwarded > 0 {
+                pointsBurstNonce += 1
             }
         }
     }

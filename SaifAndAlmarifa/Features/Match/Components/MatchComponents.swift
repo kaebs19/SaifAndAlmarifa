@@ -214,6 +214,8 @@ struct PlayersBattlefield: View {
     let attackTargetId: String?
     var myShieldActive: Bool = false
     var phase: MatchPhase = .battle      // ✨ يحدّد عرض HP أو "قوة"
+    var answeredUserIds: Set<String> = []  // ✨ من جاوب على السؤال الحالي
+    var showAnsweredStatus: Bool = false    // ✨ هل أظهر "جاوب/يكتب"؟
 
     private var isCollectionPhase: Bool { phase == .collection }
 
@@ -344,6 +346,12 @@ struct PlayersBattlefield: View {
                     .padding(.horizontal, 6).padding(.vertical, 1)
                     .background(Color.red.opacity(0.7))
                     .clipShape(Capsule())
+            }
+
+            // ✨ مؤشّر "جاوب/يكتب" للخصم فقط
+            if !isMine && showAnsweredStatus {
+                OpponentStatusBadge(hasAnswered: answeredUserIds.contains(player.id))
+                    .transition(.opacity.combined(with: .scale))
             }
         }
         .frame(maxWidth: .infinity)
