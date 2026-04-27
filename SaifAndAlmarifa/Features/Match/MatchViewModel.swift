@@ -677,18 +677,8 @@ final class MatchViewModel: ObservableObject {
     private func applyLocalEffect(_ powerUp: PowerUpIcon) {
         switch powerUp {
         case .freeze:
-            // أضف 5 ثوانٍ لوقتي + visual ice
-            timeRemaining += 5
-            // أوقف heartbeat لو رجع الوقت فوق المنطقة الحرجة
-            if timeRemaining > 5 {
-                heartbeatStarted = false
-                GameSoundManager.shared.stop(.heartbeat)
-            }
-            isFrozen = true
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 1_500_000_000)
-                self.isFrozen = false
-            }
+            // ✨ Backend يجمّد الخصم 5 ثوانٍ (يستقبل match:item-effect على جهازه)
+            toast.info("❄️ تم تجميد الخصم")
 
         case .skip:
             // إنهاء السؤال الحالي بإجابة فارغة (ينتظر السؤال التالي)

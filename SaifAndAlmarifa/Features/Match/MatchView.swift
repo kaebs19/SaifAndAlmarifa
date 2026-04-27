@@ -392,6 +392,16 @@ struct MatchView: View {
 
     private func answerState(for index: Int, q: MatchQuestion) -> AnswerButton.AnswerState {
         if q.disabledIndices.contains(index) { return .disabled }
+
+        // ✨ كشف الإجابة (reveal_answer power-up) قبل ما يجاوب
+        // إذا correctIndex معروف ولم يصل reveal الفعلي بعد، أظهر الصحيح كـ "selected"
+        if !viewModel.isRevealing,
+           viewModel.selectedAnswerIndex == nil,
+           let correct = q.correctIndex,
+           index == correct {
+            return .selected
+        }
+
         let selected = viewModel.selectedAnswerIndex
         guard selected != nil else { return .idle }
 
@@ -454,24 +464,40 @@ struct MatchView: View {
         .padding(.horizontal, AppSizes.Spacing.lg)
     }
 
-    // MARK: - Freeze Overlay (يظهر عند تفعيل تجميد الوقت)
+    // MARK: - Freeze Overlay (الخصم جمّدك)
     private var frozenOverlay: some View {
         ZStack {
-            Color(hex: "60A5FA").opacity(0.12).ignoresSafeArea()
-            VStack(spacing: 8) {
+            Color(hex: "60A5FA").opacity(0.18).ignoresSafeArea()
+            // طبقة ثلج شبه شفّافة
+            VStack(spacing: 12) {
                 Image(systemName: "snowflake")
-                    .font(.system(size: 70, weight: .bold))
-                    .foregroundStyle(Color(hex: "93C5FD"))
-                    .shadow(color: Color(hex: "60A5FA"), radius: 20)
+                    .font(.system(size: 80, weight: .black))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color(hex: "DBEAFE"), Color(hex: "93C5FD")],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                    )
+                    .shadow(color: Color(hex: "60A5FA"), radius: 24)
                     .symbolEffect(.pulse, options: .repeating)
-                Text("تجميد الوقت")
-                    .font(.cairo(.black, size: AppSizes.Font.title2))
+
+                Text("❄️ مُجمَّد!")
+                    .font(.cairo(.black, size: AppSizes.Font.title1))
                     .foregroundStyle(.white)
-                Text("+5 ثوانٍ")
-                    .font(.poppins(.black, size: 24))
-                    .foregroundStyle(Color(hex: "93C5FD"))
-                    .monospacedDigit()
+                    .shadow(color: .black.opacity(0.6), radius: 6)
+
+                Text("الخصم استخدم تجميد الوقت")
+                    .font(.cairo(.medium, size: AppSizes.Font.body))
+                    .foregroundStyle(.white.opacity(0.75))
             }
+            .padding(.horizontal, AppSizes.Spacing.lg)
+            .padding(.vertical, AppSizes.Spacing.xl)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.large))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppSizes.Radius.large)
+                    .stroke(Color(hex: "93C5FD").opacity(0.4), lineWidth: 1.5)
+            )
         }
         .transition(.opacity)
     }
