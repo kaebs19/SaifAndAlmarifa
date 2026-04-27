@@ -15,8 +15,8 @@
 - القوة المتراكمة = HP قلعته في المرحلة 2
 
 **المرحلة 2 — المواجهة (Battle)** — تنافسية
-- 10 أسئلة **متنوّعة**: `multipleChoice` (4 خيارات) أو `numericInput` (إدخال رقم)
-- ⚠️ لا `textInput` في المرحلة 2 (للسرعة)
+- 10 أسئلة: **`multipleChoice` (4 خيارات)** أو **`numericInput`** فقط
+- ❌ **ممنوع `textInput` كلياً** في المرحلة 2 (تجربة المستخدم تفشل بدون keyboard)
 - iOS يعرض UI مناسب لكل سؤال حسب `answerType`
 - كل إجابة صحيحة = ضربة على قلعة الخصم (-1 HP)
 - HP لكل لاعب = القوة من المرحلة 1
@@ -212,10 +212,11 @@ class CastleSiegeMatch {
     this.collectionQuestions = await Question.findRandom(4, {
       answerType: 'numericInput'
     })
-    // المرحلة 2: 10 أسئلة — MCQ + numericInput فقط (لا textInput للسرعة)
+    // المرحلة 2: 10 أسئلة — MCQ + numericInput فقط (textInput ممنوع كلياً)
     this.battleQuestions = await Question.findRandom(10, {
-      answerType: { $in: ['numericInput', 'multipleChoice'] }
+      answerType: { $in: ['multipleChoice', 'numericInput'] }
     })
+    // ⚠️ تأكّد أن أسئلة العواصم/الأسماء تكون multipleChoice — لا textInput
 
     io.emit('match:started', { matchId: this.matchId })
     setTimeout(() => this.startCollectionPhase(), 1000)
@@ -484,6 +485,57 @@ ALTER TABLE Questions MODIFY COLUMN options JSONB;
 | **4-player** (random / friends) | MCQ classic | ✅ متاحة |
 
 ⚠️ **iOS يخفي InventoryBar كلياً في 1v1** — لا حاجة لإرسال `match:item-error` من backend لمنع الاستخدام، لكن الـ backend يجب يرفض أي `match:use-item` يصل خلال match مود 1v1 (دفاعياً).
+
+---
+
+## ⚔️ Power-ups Reference (الكامل)
+
+كل أداة تُرسَل من iOS عبر `match:use-item { matchId, itemId }`. Backend يطبّق المنطق ويردّ بـ `match:item-effect` على المستخدم أو `match:item-used` (broadcast).
+
+| Item ID | الأثر المطلوب | متى تعمل |
+|---------|--------------|----------|
+| `hint` | **MCQ:** يبيّن نسبة احتمال صحّة كل خيار (مثلاً 70% لخيار B). **numericInput:** نص إرشادي عام. | كلا النوعَين |
+| `eliminate_two` | **MCQ:** backend يحذف خيارَين خاطئَين عشوائياً. لا يعمل على numericInput. | MCQ فقط |
+| `reveal_answer` | **MCQ:** يعرض الخيار الصحيح (يفوز إذا ضغطه). **numericInput:** يكشف رقماً واحداً من الإجابة (مثل أول رقم). | كلا النوعَين |
+| `double_damage` | الإجابة الصحيحة التالية تضرّ الخصم بـ -2 HP (بدلاً من -1). يعمل في battle phase فقط. | Phase 2 |
+| `freeze_time` | **يجمّد وقت الخصم 5 ثوانٍ** (الخصم لا يستطيع الإجابة، يرى overlay ❄️ تجميد). | كلا النوعَين |
+| `narrow_range` | يضيّق المدى الرقمي (راجع قسم العصفور أدناه). | numericInput |
+| `shield` | يبلوك الضربة التالية على المستخدم (يستخدم في battle). | Phase 2 |
+| `skip` | يتخطّى السؤال الحالي (إجابة فارغة، 0 نقاط). | كلا النوعَين |
+
+### Backend payloads
+
+**`hint` على MCQ:**
+```json
+{ "itemType": "hint", "userId": "u1",
+  "optionWeights": { "0": 5, "1": 70, "2": 15, "3": 10 } }
+```
+
+**`eliminate_two` على MCQ:**
+```json
+{ "itemType": "eliminate_two", "userId": "u1", "disabledIndices": [1, 3] }
+```
+
+**`reveal_answer` على MCQ:**
+```json
+{ "itemType": "reveal_answer", "userId": "u1", "correctIndex": 2 }
+```
+
+**`reveal_answer` على numericInput:**
+```json
+{ "itemType": "reveal_answer", "userId": "u1", "revealedDigit": "1", "position": 0 }
+```
+
+**`freeze_time` (للخصم):**
+```json
+{ "itemType": "freeze_time", "userId": "<targetId>", "frozen": true, "duration": 5 }
+```
+
+**`double_damage` (state على session):**
+```json
+{ "itemType": "double_damage", "userId": "u1", "active": true }
+```
+الضربة التالية في `match:attack` يجب أن تحوي `damage: 2`.
 
 ---
 

@@ -555,6 +555,46 @@ final class MatchViewModel: ObservableObject {
                 self.rangeHint = nil
             }
         }
+
+        // 👁 كشف الإجابة (MCQ) — يضع correctIndex على السؤال
+        if let correct = data["correctIndex"] as? Int,
+           data["itemType"] as? String == "reveal_answer",
+           var q = currentQuestion {
+            q.correctIndex = correct
+            currentQuestion = q
+            GameSoundManager.shared.playPowerUp(.revealAnswer)
+            HapticManager.success()
+        }
+
+        // 👁 كشف رقم (numericInput) — backend يرسل revealedDigit + position
+        if let digit = data["revealedDigit"] as? String,
+           data["itemType"] as? String == "reveal_answer" {
+            let pos = data["position"] as? Int ?? 0
+            hintMessage = "👁 الرقم في المنزلة \(pos + 1): \(digit)"
+            GameSoundManager.shared.playPowerUp(.revealAnswer)
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 6_000_000_000)
+                self.hintMessage = nil
+            }
+        }
+
+        // 💡 hint بنسب على MCQ — { optionWeights: { "0": 70, "1": 10, ... } }
+        if let weights = data["optionWeights"] as? [String: Int] {
+            let lines = weights
+                .compactMap { kv -> (Int, Int)? in
+                    guard let idx = Int(kv.key) else { return nil }
+                    return (idx, kv.value)
+                }
+                .sorted { $0.1 > $1.1 }
+                .prefix(2)
+                .map { "\(["A","B","C","D"][$0.0]): \($0.1)%" }
+                .joined(separator: " · ")
+            hintMessage = "💡 \(lines)"
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 6_000_000_000)
+                self.hintMessage = nil
+            }
+        }
     }
 
     private func handleMatchEnded(_ data: [String: Any]) {
@@ -684,9 +724,17 @@ final class MatchViewModel: ObservableObject {
         case .bird:
             // العصفور: يضيّق المدى الرقمي — يحتاج backend ليرسل rangeHint
             if let q = currentQuestion, q.answerType == .numericInput {
-                toast.info("🐦 العصفور يبحث... — في انتظار backend")
+                toast.info("🐦 العصفور يبحث...")
             } else {
                 toast.warning("العصفور للأسئلة الرقمية فقط")
+            }
+
+        case .revealAnswer:
+            // الكشف: للـ MCQ يكشف الصحيح، للـ numericInput يكشف رقماً
+            if currentQuestion?.answerType == .multipleChoice {
+                toast.info("👁 يتمّ الكشف...")
+            } else if currentQuestion?.answerType == .numericInput {
+                toast.info("👁 يتمّ كشف رقم...")
             }
 
         case .shield, .thunder, .double, .revive:

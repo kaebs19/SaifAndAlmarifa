@@ -472,7 +472,7 @@ struct InventoryBar: View {
     @State private var tooltipFor: PowerUpIcon? = nil
 
     // الترتيب المفضّل
-    private let order: [PowerUpIcon] = [.shield, .bird, .hint, .fiftyFifty, .freeze, .skip, .thunder]
+    private let order: [PowerUpIcon] = [.shield, .revealAnswer, .bird, .hint, .fiftyFifty, .freeze, .skip, .thunder]
 
     var body: some View {
         VStack(spacing: 6) {

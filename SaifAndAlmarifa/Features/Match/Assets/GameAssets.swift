@@ -20,6 +20,7 @@ enum PowerUpIcon: String, CaseIterable, Identifiable {
     case revive     = "powerup_revive"
     case fiftyFifty = "powerup_5050"
     case bird       = "powerup_bird"   // 🆕 عصفور — يضيّق المدى الرقمي
+    case revealAnswer = "powerup_reveal" // 🆕 كشف الإجابة
 
     var id: String { rawValue }
 
@@ -35,6 +36,7 @@ enum PowerUpIcon: String, CaseIterable, Identifiable {
         case .revive:     return "إحياء"
         case .fiftyFifty: return "حذف إجابتين"
         case .bird:       return "عصفور"
+        case .revealAnswer: return "كشف الإجابة"
         }
     }
 
@@ -50,14 +52,16 @@ enum PowerUpIcon: String, CaseIterable, Identifiable {
         case .revive:     return "steal"
         case .fiftyFifty: return "eliminate_two"
         case .bird:       return "narrow_range"
+        case .revealAnswer: return "reveal_answer"
         }
     }
 
     /// SF Symbol fallback لو ما عندنا asset
     var sfSymbol: String? {
         switch self {
-        case .bird: return "bird.fill"
-        default:    return nil
+        case .bird:         return "bird.fill"
+        case .revealAnswer: return "eye.fill"
+        default:            return nil
         }
     }
 
@@ -73,6 +77,7 @@ enum PowerUpIcon: String, CaseIterable, Identifiable {
         case .revive:     return "يستعيد بعض الـ HP"
         case .fiftyFifty: return "يحذف خيارَين خاطئَين (MCQ فقط)"
         case .bird:       return "يضيّق المدى الرقمي للسؤال"
+        case .revealAnswer: return "يكشف الإجابة الصحيحة (MCQ) أو رقماً منها"
         }
     }
 
