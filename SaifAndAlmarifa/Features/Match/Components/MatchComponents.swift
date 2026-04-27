@@ -9,33 +9,49 @@
 
 import SwiftUI
 
-// MARK: - Timer Chip مع pulse حرج
+// MARK: - Timer Chip مع ring + pulse حرج
 struct TimerChip: View {
     let timeRemaining: Int
     let color: Color
+    var timeLimit: Int = 15   // 🆕 للـ ring progress
 
     @State private var pulse: Bool = false
 
     private var isUrgent: Bool { timeRemaining <= 5 }
+    private var progress: Double {
+        guard timeLimit > 0 else { return 0 }
+        return Double(timeRemaining) / Double(timeLimit)
+    }
 
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "clock.fill")
-                .font(.system(size: 11))
+        ZStack {
+            // 🕓 Ring تنازلي (Stage C)
+            Circle()
+                .stroke(color.opacity(0.18), lineWidth: 3)
+                .frame(width: 44, height: 44)
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(
+                    LinearGradient(
+                        colors: [color, color.opacity(0.5)],
+                        startPoint: .top, endPoint: .bottom
+                    ),
+                    style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                )
+                .frame(width: 44, height: 44)
+                .rotationEffect(.degrees(-90))
+                .animation(.linear(duration: 0.9), value: progress)
+
+            // الرقم في الوسط
             Text("\(timeRemaining)")
-                .font(.poppins(.black, size: 16))
+                .font(.poppins(.black, size: 17))
+                .foregroundStyle(color)
                 .monospacedDigit()
                 .contentTransition(.numericText())
         }
-        .foregroundStyle(color)
-        .padding(.horizontal, AppSizes.Spacing.sm).padding(.vertical, 4)
-        .background(color.opacity(0.15))
-        .clipShape(Capsule())
-        .overlay(Capsule().stroke(color.opacity(0.5), lineWidth: 1))
         .scaleEffect(isUrgent && pulse ? 1.18 : 1.0)
-        .shadow(color: isUrgent ? color.opacity(0.6) : .clear, radius: isUrgent ? 8 : 0)
+        .shadow(color: isUrgent ? color.opacity(0.7) : .clear, radius: isUrgent ? 10 : 0)
         .onChange(of: timeRemaining) { _, _ in
-            // كل ثانية في الوضع الحرج، pulse
             if isUrgent {
                 withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) { pulse = true }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -664,7 +680,7 @@ struct MatchHeader: View {
                 Spacer()
 
                 // المؤقت مع pulse عند الحرج
-                TimerChip(timeRemaining: timeRemaining, color: timerColor)
+                TimerChip(timeRemaining: timeRemaining, color: timerColor, timeLimit: timeLimit)
             }
 
             // شريط تقدّم الوقت

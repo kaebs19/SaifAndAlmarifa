@@ -70,15 +70,24 @@ struct MatchView: View {
                     .padding(.horizontal, AppSizes.Spacing.lg)
                     .padding(.top, AppSizes.Spacing.sm)
 
-                // بطاقة السؤال + الإجابات
-                if let q = viewModel.currentQuestion {
-                    questionAndAnswers(q)
-                        .padding(.horizontal, AppSizes.Spacing.lg)
-                        .padding(.top, AppSizes.Spacing.md)
-                } else {
-                    waitingForQuestion
-                        .padding(.top, AppSizes.Spacing.md)
+                // بطاقة السؤال + الإجابات (مع slide transition بين الأسئلة)
+                Group {
+                    if let q = viewModel.currentQuestion {
+                        questionAndAnswers(q)
+                            .padding(.horizontal, AppSizes.Spacing.lg)
+                            .padding(.top, AppSizes.Spacing.md)
+                            .id(q.id)   // يجبر إعادة الـ render عند تغيّر السؤال
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .leading).combined(with: .opacity),
+                                removal: .move(edge: .trailing).combined(with: .opacity)
+                            ))
+                    } else {
+                        waitingForQuestion
+                            .padding(.top, AppSizes.Spacing.md)
+                    }
                 }
+                .animation(.spring(response: 0.5, dampingFraction: 0.8),
+                           value: viewModel.currentQuestion?.id)
 
                 Spacer()
 
