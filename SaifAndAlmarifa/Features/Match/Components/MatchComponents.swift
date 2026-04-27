@@ -469,23 +469,54 @@ struct InventoryBar: View {
     let onUse: (PowerUpIcon) -> Void
     let disabled: Bool
 
+    @State private var tooltipFor: PowerUpIcon? = nil
+
     // الترتيب المفضّل
     private let order: [PowerUpIcon] = [.shield, .bird, .hint, .fiftyFifty, .freeze, .skip, .thunder]
 
     var body: some View {
-        HStack(spacing: AppSizes.Spacing.xs) {
-            ForEach(order) { power in
-                let count = inventory[power] ?? 0
-                powerUpButton(power: power, count: count)
+        VStack(spacing: 6) {
+            // tooltip
+            if let tip = tooltipFor {
+                HStack(spacing: 6) {
+                    Image(systemName: tip.sfSymbol ?? "info.circle")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(AppColors.Default.goldPrimary)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(tip.titleAr)
+                            .font(.cairo(.bold, size: 11))
+                            .foregroundStyle(.white)
+                        Text(tip.descriptionAr)
+                            .font(.cairo(.medium, size: 10))
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(AppColors.Default.goldPrimary.opacity(0.3), lineWidth: 1)
+                )
+                .transition(.scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
             }
+
+            HStack(spacing: AppSizes.Spacing.xs) {
+                ForEach(order) { power in
+                    let count = inventory[power] ?? 0
+                    powerUpButton(power: power, count: count)
+                }
+            }
+            .padding(AppSizes.Spacing.sm)
+            .background(Color.white.opacity(0.04))
+            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
+                    .stroke(.white.opacity(0.08), lineWidth: 1)
+            )
         }
-        .padding(AppSizes.Spacing.sm)
-        .background(Color.white.opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
-                .stroke(.white.opacity(0.08), lineWidth: 1)
-        )
+        .animation(.spring(response: 0.3, dampingFraction: 0.75), value: tooltipFor)
     }
 
     private func powerUpButton(power: PowerUpIcon, count: Int) -> some View {
@@ -493,6 +524,25 @@ struct InventoryBar: View {
             guard !disabled, count > 0 else { return }
             onUse(power)
         } label: {
+            powerUpLabel(power: power, count: count)
+        }
+        .disabled(disabled || count == 0)
+        .frame(maxWidth: .infinity)
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.4)
+                .onEnded { _ in
+                    HapticManager.light()
+                    tooltipFor = power
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 3_000_000_000)
+                        if tooltipFor == power { tooltipFor = nil }
+                    }
+                }
+        )
+    }
+
+    private func powerUpLabel(power: PowerUpIcon, count: Int) -> some View {
+        Group {
             ZStack(alignment: .topLeading) {
                 Group {
                     if power.sfSymbol != nil {
@@ -527,8 +577,6 @@ struct InventoryBar: View {
                 }
             }
         }
-        .disabled(disabled || count == 0)
-        .frame(maxWidth: .infinity)
     }
 }
 

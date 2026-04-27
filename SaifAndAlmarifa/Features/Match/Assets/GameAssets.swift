@@ -61,6 +61,21 @@ enum PowerUpIcon: String, CaseIterable, Identifiable {
         }
     }
 
+    /// شرح موجز للـ tooltip
+    var descriptionAr: String {
+        switch self {
+        case .shield:     return "يحمي قلعتك من الضربة التالية"
+        case .freeze:     return "يضيف 5 ثوانٍ لوقتك"
+        case .thunder:    return "ضربتك التالية تضرّ ضعف الـ HP"
+        case .hint:       return "يكشف تلميحاً عن الإجابة"
+        case .skip:       return "يتخطّى السؤال الحالي"
+        case .double:     return "يضاعف نقاطك في السؤال التالي"
+        case .revive:     return "يستعيد بعض الـ HP"
+        case .fiftyFifty: return "يحذف خيارَين خاطئَين (MCQ فقط)"
+        case .bird:       return "يضيّق المدى الرقمي للسؤال"
+        }
+    }
+
     /// الصورة — يفضّل asset، fallback لـ SF Symbol
     @ViewBuilder
     var iconView: some View {

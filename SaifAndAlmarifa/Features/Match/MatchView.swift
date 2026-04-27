@@ -15,6 +15,8 @@ struct MatchView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var showExitConfirm = false
+    @AppStorage("castleSiege.tutorialSeen") private var tutorialSeen = false
+    @State private var showTutorial = false
 
     init(matchId: String, opponents: [MatchPlayer]) {
         _viewModel = StateObject(wrappedValue: MatchViewModel(matchId: matchId, opponents: opponents))
@@ -153,9 +155,21 @@ struct MatchView: View {
                 preMatchCountdownOverlay(count: count)
                     .zIndex(11)
             }
+
+            // ✨ Tutorial overlay (أول مباراة Castle Siege فقط)
+            if showTutorial && viewModel.isOneVsOne {
+                CastleSiegeTutorialOverlay(isVisible: $showTutorial)
+                    .zIndex(12)
+                    .onChange(of: showTutorial) { _, visible in
+                        if !visible { tutorialSeen = true }
+                    }
+            }
         }
         .task {
             viewModel.start()
+            if !tutorialSeen && viewModel.isOneVsOne {
+                showTutorial = true
+            }
         }
         .onDisappear { viewModel.onDisappear() }
         .confirmationDialog("هل تريد الخروج من المباراة؟", isPresented: $showExitConfirm, titleVisibility: .visible) {
