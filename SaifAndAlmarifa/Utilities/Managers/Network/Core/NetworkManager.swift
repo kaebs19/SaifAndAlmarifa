@@ -178,6 +178,13 @@ final class NetworkManager: NetworkClient {
         // محاولة قراءة رسالة الخطأ من الغلاف
         let wrapper = try? decoder.decode(APIResponse<EmptyData>.self, from: data)
 
+        // ✨ 401 → امسح الجلسة وارجع لشاشة الدخول
+        if httpResponse.statusCode == 401 {
+            Task { @MainActor in
+                SessionExpiryHandler.shared.handleExpiry()
+            }
+        }
+
         throw APIError.from(
             statusCode: httpResponse.statusCode,
             apiMessage: wrapper?.message,
