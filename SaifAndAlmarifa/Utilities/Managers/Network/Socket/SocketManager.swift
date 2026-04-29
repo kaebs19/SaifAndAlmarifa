@@ -208,7 +208,8 @@ final class AppSocketManager: ObservableObject {
     func useItem(matchId: String, itemId: String) {
         emit("match:use-item", data: [
             "matchId": matchId,
-            "itemId": itemId
+            "itemType": itemId,   // ✅ backend يقرأ itemType
+            "itemId": itemId      // (احتياط للتوافق)
         ])
     }
 
