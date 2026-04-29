@@ -530,6 +530,7 @@ struct InventoryBar: View {
     let onUse: (PowerUpIcon) -> Void
     let disabled: Bool
     var currentAnswerType: QuestionAnswerType? = nil   // 🆕 لـ smart filter
+    var onOpenStore: (() -> Void)? = nil               // 🛒 افتح المتجر
 
     @State private var tooltipFor: PowerUpIcon? = nil
 
@@ -615,27 +616,66 @@ struct InventoryBar: View {
     @ViewBuilder
     private var emptyInventoryHint: some View {
         let hasItems = inventory.values.reduce(0, +) > 0
-        HStack(spacing: 8) {
-            Image(systemName: hasItems ? "bag" : "bag.badge.plus")
-                .font(.system(size: 12, weight: .black))
-                .foregroundStyle(.white.opacity(0.5))
 
-            Text(hasItems
-                 ? "لا أدوات متاحة لهذا السؤال"
-                 : "اشترِ أدوات من المتجر للمساعدة في المعركة")
-                .font(.cairo(.medium, size: 11))
-                .foregroundStyle(.white.opacity(0.55))
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
+        if !hasItems, let onOpenStore {
+            // 🛒 زر فتح المتجر مباشرة
+            Button {
+                HapticManager.medium()
+                onOpenStore()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "bag.badge.plus")
+                        .font(.system(size: 14, weight: .black))
+                        .foregroundStyle(AppColors.Default.goldPrimary)
+                    Text("افتح المتجر للحصول على أدوات")
+                        .font(.cairo(.bold, size: 12))
+                        .foregroundStyle(.white.opacity(0.85))
+                    Spacer()
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .background(
+                    LinearGradient(
+                        colors: [
+                            AppColors.Default.goldPrimary.opacity(0.15),
+                            AppColors.Default.goldPrimary.opacity(0.05)
+                        ],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(AppColors.Default.goldPrimary.opacity(0.4), lineWidth: 1)
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(ScaleButtonStyle())
+        } else {
+            HStack(spacing: 8) {
+                Image(systemName: hasItems ? "bag" : "bag.badge.plus")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundStyle(.white.opacity(0.5))
+
+                Text(hasItems
+                     ? "لا أدوات متاحة لهذا السؤال"
+                     : "اشترِ أدوات من المتجر للمساعدة في المعركة")
+                    .font(.cairo(.medium, size: 11))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background(.white.opacity(0.04))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(.white.opacity(0.08), lineWidth: 1)
+            )
+            .frame(maxWidth: .infinity)
         }
-        .padding(.horizontal, 12).padding(.vertical, 8)
-        .background(.white.opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(.white.opacity(0.08), lineWidth: 1)
-        )
-        .frame(maxWidth: .infinity)
     }
 
     private func powerUpButton(power: PowerUpIcon, count: Int) -> some View {

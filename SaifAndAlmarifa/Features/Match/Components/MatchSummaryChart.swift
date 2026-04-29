@@ -28,6 +28,38 @@ struct MatchSummaryChart: View {
         return Double(times.reduce(0, +)) / Double(times.count) / 1000.0
     }
 
+    private var fastestTime: Double? {
+        let times = history.compactMap(\.timeMs)
+        guard let min = times.min() else { return nil }
+        return Double(min) / 1000.0
+    }
+
+    private var slowestTime: Double? {
+        let times = history.compactMap(\.timeMs)
+        guard let max = times.max() else { return nil }
+        return Double(max) / 1000.0
+    }
+
+    private var accuracy: Int {
+        guard !history.isEmpty else { return 0 }
+        let correctCount = history.filter { $0.isCorrect }.count
+        return Int(Double(correctCount) / Double(history.count) * 100)
+    }
+
+    private var longestStreak: Int {
+        var best = 0
+        var current = 0
+        for s in history {
+            if s.isCorrect {
+                current += 1
+                best = max(best, current)
+            } else {
+                current = 0
+            }
+        }
+        return best
+    }
+
     var body: some View {
         VStack(spacing: AppSizes.Spacing.md) {
             // Title
@@ -81,6 +113,9 @@ struct MatchSummaryChart: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+
+            // ✨ إحصائيات تفصيلية (Stage 5+)
+            statsGrid
         }
         .padding(AppSizes.Spacing.md)
         .background(.white.opacity(0.04))
@@ -88,6 +123,58 @@ struct MatchSummaryChart: View {
         .overlay(
             RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
                 .stroke(.white.opacity(0.10), lineWidth: 1)
+        )
+    }
+
+    @ViewBuilder
+    private var statsGrid: some View {
+        VStack(spacing: 6) {
+            Divider().background(.white.opacity(0.08))
+
+            HStack(spacing: 8) {
+                statBox(icon: "scope", label: "الدقّة", value: "\(accuracy)%",
+                        color: AppColors.Default.success)
+                if let fast = fastestTime {
+                    statBox(icon: "bolt.fill", label: "أسرع",
+                            value: String(format: "%.1fs", fast),
+                            color: Color(hex: "FFD700"))
+                }
+                if let slow = slowestTime {
+                    statBox(icon: "tortoise.fill", label: "أبطأ",
+                            value: String(format: "%.1fs", slow),
+                            color: Color(hex: "94A3B8"))
+                }
+                if longestStreak >= 2 {
+                    statBox(icon: "flame.fill", label: "أطول سلسلة",
+                            value: "×\(longestStreak)",
+                            color: Color(hex: "F97316"))
+                }
+            }
+        }
+    }
+
+    private func statBox(icon: String, label: String, value: String, color: Color) -> some View {
+        VStack(spacing: 2) {
+            HStack(spacing: 3) {
+                Image(systemName: icon)
+                    .font(.system(size: 9, weight: .black))
+                    .foregroundStyle(color)
+                Text(label)
+                    .font(.cairo(.medium, size: 9))
+                    .foregroundStyle(.white.opacity(0.55))
+            }
+            Text(value)
+                .font(.poppins(.black, size: 12))
+                .foregroundStyle(color)
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 5)
+        .background(color.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(color.opacity(0.15), lineWidth: 1)
         )
     }
 

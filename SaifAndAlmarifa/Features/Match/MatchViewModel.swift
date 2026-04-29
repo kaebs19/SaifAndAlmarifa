@@ -48,6 +48,8 @@ final class MatchViewModel: ObservableObject {
     // MARK: - Stage 1: Game Feel
     @Published var answeredUserIds: Set<String> = []      // مَن جاوب على السؤال الحالي
     @Published var streak: Int = 0                        // إجابات صحيحة متتالية
+    @Published var consecutiveWrong: Int = 0              // 💡 إجابات خاطئة متتالية (لاقتراح hint)
+    @Published var suggestHint: Bool = false              // 💡 banner اقتراح أداة
     @Published var showCombo: Bool = false                // banner combo
     @Published var wrongShakeNonce: Int = 0               // trigger لاهتزاز الإجابة الخاطئة
     @Published var pointsBurstNonce: Int = 0              // trigger للاحتفال بالنقاط
@@ -167,6 +169,11 @@ final class MatchViewModel: ObservableObject {
     }
 
     // MARK: - Inventory
+    /// إعادة تحميل بعد فتح المتجر
+    func refreshInventory() {
+        Task { await loadInventory() }
+    }
+
     private func loadInventory() async {
         guard let items = try? await storeService.getInventory() else { return }
         var result: [PowerUpIcon: Int] = [:]
@@ -503,6 +510,8 @@ final class MatchViewModel: ObservableObject {
                 fireAttackOnOpponent(targetId: targetId)
                 GameSoundManager.shared.play(.answerCorrect)
                 HapticManager.success()
+                consecutiveWrong = 0   // 💡 reset الفشل المتتالي
+                suggestHint = false
                 // ✨ Streak + Combo
                 streak += 1
                 if streak >= 2 {
@@ -517,7 +526,17 @@ final class MatchViewModel: ObservableObject {
                 GameSoundManager.shared.play(.answerWrong)
                 HapticManager.error()
                 streak = 0   // ✨ كسر السلسلة
+                consecutiveWrong += 1   // 💡 عدّاد الفشل
                 wrongShakeNonce += 1   // ✨ trigger الاهتزاز
+
+                // 💡 اقترح hint بعد فشلَين متتاليَين (في battle فقط)
+                if consecutiveWrong >= 2 && currentPhase == .battle {
+                    suggestHint = true
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 5_000_000_000)
+                        self.suggestHint = false
+                    }
+                }
             }
 
             // ✨ احتفال بالنقاط (للـ correct + closest)

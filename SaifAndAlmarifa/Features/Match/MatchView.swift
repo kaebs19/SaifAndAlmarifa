@@ -15,6 +15,7 @@ struct MatchView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var showExitConfirm = false
+    @State private var showStoreSheet = false   // 🛒 متجر داخل المباراة
 
     init(matchId: String, opponents: [MatchPlayer]) {
         _viewModel = StateObject(wrappedValue: MatchViewModel(matchId: matchId, opponents: opponents))
@@ -98,7 +99,8 @@ struct MatchView: View {
                             inventory: viewModel.inventory,
                             onUse: { viewModel.usePowerUp($0) },
                             disabled: viewModel.hasSubmitted || viewModel.isRevealing,
-                            currentAnswerType: viewModel.currentQuestion?.answerType
+                            currentAnswerType: viewModel.currentQuestion?.answerType,
+                            onOpenStore: { showStoreSheet = true }
                         )
                         // 💎 Power-up activation burst (Stage B)
                         PowerUpActivationBurst(
@@ -174,6 +176,11 @@ struct MatchView: View {
                 opponentDisconnectedBanner.zIndex(11)
             }
 
+            // 💡 اقتراح أداة hint بعد فشلَين متتاليَين
+            if viewModel.suggestHint {
+                hintSuggestionBanner.zIndex(8)
+            }
+
             // ⚡ Lightning flash — يومض على الضربات الحرجة (Stage D)
             LightningFlash(nonce: viewModel.screenShakeNonce,
                            color: Color(hex: "FFE55C"))
@@ -227,6 +234,12 @@ struct MatchView: View {
         .confirmationDialog("هل تريد الخروج من المباراة؟", isPresented: $showExitConfirm, titleVisibility: .visible) {
             Button("خروج", role: .destructive) { dismiss() }
             Button("استكمال", role: .cancel) {}
+        }
+        .sheet(isPresented: $showStoreSheet, onDismiss: {
+            // أعد تحميل الـ inventory بعد إغلاق المتجر
+            viewModel.refreshInventory()
+        }) {
+            StoreView()
         }
         .animation(.easeInOut(duration: 0.3), value: viewModel.matchResult)
     }
@@ -722,6 +735,47 @@ struct MatchView: View {
         .background(Color.black.opacity(0.6).ignoresSafeArea())
         .transition(.opacity.combined(with: .scale(scale: 0.9)))
         .animation(.spring(response: 0.5, dampingFraction: 0.65), value: viewModel.showBattleIntro)
+    }
+
+    // MARK: - 💡 Hint Suggestion Banner (بعد فشلَين متتاليَين)
+    private var hintSuggestionBanner: some View {
+        let hasHint = (viewModel.inventory[.hint] ?? 0) > 0
+        let hasReveal = (viewModel.inventory[.revealAnswer] ?? 0) > 0
+        let hasFifty = (viewModel.inventory[.fiftyFifty] ?? 0) > 0
+        let canHelp = hasHint || hasReveal || hasFifty
+
+        return VStack {
+            HStack(spacing: 10) {
+                Image(systemName: "lightbulb.fill")
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundStyle(Color(hex: "F59E0B"))
+                    .symbolEffect(.pulse, options: .repeating)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(canHelp ? "💡 جرّب أداة مساعدة!" : "💡 اشترِ أداة من المتجر!")
+                        .font(.cairo(.bold, size: 12))
+                        .foregroundStyle(.white)
+                    Text(canHelp ? "عندك أدوات تساعدك" : "تساعدك على الإجابة")
+                        .font(.cairo(.medium, size: 10))
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color(hex: "F59E0B").opacity(0.5), lineWidth: 1)
+            )
+            .shadow(color: Color(hex: "F59E0B").opacity(0.3), radius: 10)
+            .padding(.horizontal, AppSizes.Spacing.lg)
+            .padding(.top, 90)
+            Spacer()
+        }
+        .transition(.move(edge: .top).combined(with: .opacity))
+        .animation(.spring(response: 0.45, dampingFraction: 0.75), value: viewModel.suggestHint)
+        .allowsHitTesting(false)
     }
 
     // MARK: - 🔌 Opponent Disconnected Banner
