@@ -1,181 +1,184 @@
 # 📋 SaifIQ — Session Handoff
 
-تاريخ آخر جلسة: 2026-04-24
-آخر commit: `96cbf97` — Castle Siege gameplay
+تاريخ آخر جلسة: 2026-04-29
+آخر iOS commit: `4a66511` — AdMob production IDs
+آخر Backend commit: `ecfacd9` — migration script path fix
+
+---
+
+## 🗂 المسارات
+
+| المشروع | المسار المحلي | Repo |
+|---------|--------------|------|
+| **iOS** | `/Volumes/me/learn swift/SaifAndAlmarifa` | local |
+| **Backend (Node.js)** | `/Users/mohammedsaleh/saifiq-api` | `github.com/kaebs19/saifiq-api` |
+| **API** | `https://saifiq.halmanhaj.com` | Contabo VPS |
+
+### القاعدة الذهبية للنشر
+```
+لا تعدّل كود على السيرفر أبداً.
+دائماً: محلي → git push → السيرفر git pull
+```
+
+### النشر
+```bash
+ssh contabo
+cd /var/www/saifiq-api && git pull && pm2 restart saifiq-api
+```
+
+عند تغيير ENUMs أو schema:
+```bash
+node scripts/migrate-transaction-types.js   # مرّة واحدة قبل restart
+```
 
 ---
 
 ## ✅ الحالة الحالية للتطبيق
 
-### 🎮 Core Gameplay
-- ✅ Castle Battle MatchView (1v1 + 4-player support)
-- ✅ **Castle Siege gameplay** (الجديد) — 2 مراحل بإجابات نصية
-- ✅ Match lobby موحّد لـ 5 أوضاع
-- ✅ Match End screen + Confetti
-- ✅ Match History
-- ✅ Rematch flow
-- ✅ Power-ups + Items inventory
+### 🎮 Castle Siege Gameplay (متكامل)
+- **Phase 1 (Collection):** 4 أسئلة `numericInput` فقط
+- **Phase 2 (Battle):** 6 أسئلة `multipleChoice` + `numericInput` (لا `textInput`)
+- **Tiebreaker:** عند تعادل MCQ → سؤال `numericInput` حاسم
+- **Scoring:** صحيح+أسرع=+3, صحيح=+2, الأقرب=+1, بعيد=0
+- **HP:** = power من Phase 1
+- **6 أسئلة Phase 2** بتوقيتات: 15s/سؤال + 4s reveal + 4s phase transition
+- **منع تكرار الأسئلة** بين المراحل
 
-### 🏰 Clans System (مكتمل)
-- Clans CRUD + chat + admin tools
-- Reactions + mentions + read receipts
-- Treasury + Perks + Wars (MVP) + Events feed
+### 💰 نظام الرهان (جديد)
+- كل لاعب يدفع **50 ذهب** عند بدء المباراة
+- الفائز: **+100 ذهب pot** + 120 XP
+- الخاسر: **-50 ذهب** (الرهن) + 40 XP
+- إذا الذهب < 50 → **InsufficientGoldSheet**:
+  - 📺 شاهد إعلان واربح 100 ذهب
+  - 🛒 افتح المتجر
+  - ❌ إلغاء
 
-### 💰 Monetization
-- Store (gold + gems)
-- IAP (StoreKit 2 + 5 packages)
+### 📺 AdMob (جاهز للإنتاج)
+- **App ID:** `ca-app-pub-8219247197168750~5269151509` (Info.plist)
+- **Rewarded:** `ca-app-pub-8219247197168750/8065050240`
+- **Interstitial:** `ca-app-pub-8219247197168750/1468064330`
+- **حد يومي:** 5 إعلانات لكل مستخدم
+- Endpoint: `POST /api/v1/users/me/ad-reward` → +100 ذهب
 
-### 🔔 Notifications
-- Firebase FCM (push)
-- Local notifications (daily, spin, mute, streak)
-- Deep links (Universal Links + custom scheme)
-- 9 notification types
+### 🔌 Disconnect Handling (جديد)
+- لاعب ينقطع → backend ينتظر **15 ثانية**
+- iOS يعرض banner برتقالي بـ countdown
+- إذا رجع → `match:player-reconnected` + المباراة تستمر
+- إذا ما رجع → `match:ended` + الفائز التلقائي
 
-### 🌐 Real-time
-- Socket.io (full coverage)
-- Online count
-- Typing indicators
+### 🛡 Power-ups (تعمل end-to-end)
+| الأداة | الوظيفة | حالة الاسم |
+|-------|---------|-----------|
+| `shield` | يمتص ضربة واحدة (10s) | ✅ |
+| `freeze_time` | يجمّد الخصم 5s | ✅ |
+| `hint` | weights لـ MCQ / range لـ numeric | ✅ |
+| `eliminate_two` (50/50) | يحذف خيارَين خاطئَين | ✅ |
+| `reveal` (كان `reveal_answer`) | كشف الصحيح/أول رقم | ✅ |
+| `narrow_range` (العصفور) | مدى رقمي ضيّق | ✅ |
+| `double_damage` | الضربة التالية -2 HP | ✅ |
+| `skip` | يتخطى السؤال | ✅ |
+| **iOS يرسل `itemType`** (ليس `itemId`) | match handler يقرأ `itemType` | ✅ |
 
-### 🎨 Visual & Audio
-- Castle assets (4 damage stages, gold/red)
-- 7 power-up SVG icons
-- Combat effects (cannonball, impact, victory banner)
-- 19 MP3 sounds (Pixabay)
-- Floating embers + confetti animations
-- Skeleton loaders
+### 🎨 Visual Polish (5 Stages)
+- **A. Combat:** قذيفة طائرة + انفجار + debris + screen shake + HP flash
+- **B. Reward Drama:** floating "+N" + crown + streak fire ring + power-up burst
+- **C. Question UX:** slide transitions + circular timer ring
+- **D. Atmosphere:** drifting clouds + lightning + army silhouettes
+- **E. End Cinematic:** victory beam + castle crumble + enhanced confetti
+
+### 🎓 Onboarding
+- Tutorial Castle Siege يظهر **مرّة واحدة** قبل أول 1v1
+- يظهر في MainView (قبل matchmaking) — ليس في MatchView
+- 4 خطوات: collection → scoring → battle → keypad
+- AppStorage: `castleSiege.tutorialSeen`
+
+### 📊 Stats الكاملة في MatchEndView
+- نسبة الدقّة، أسرع/أبطأ زمن، أطول سلسلة
+- Per-question dots بألوان حسب النتيجة
+- Reward card يبيّن الـ wager + pot + net gold
+- Trophy/Crumble cinematic + opaque background
+
+### 🔐 Session Management (جديد)
+- 401 → `SessionExpiryHandler` يمسح الجلسة + toast + يحوّل لـ login
+- Cooldown 5s يمنع تكرار التوست عند بَرْق 401
+
+### 🎒 Smart Inventory
+- يخفي الأدوات الفارغة (count == 0)
+- يفلتر حسب نوع السؤال:
+  - MCQ → يظهر 50/50, يخفي bird
+  - numericInput → يظهر bird, يخفي 50/50
+- إذا فاضي + عنده ذهب → زر "افتح المتجر"
 
 ---
 
 ## 🆕 آخر شي تم في هذه الجلسة
 
-### Castle Siege Gameplay (commit `96cbf97`)
-نظام لعب جديد يستبدل MCQ في وضع 1v1:
+### iOS commits (من `b8b3d41` → `4a66511`)
+- 5 stages من المؤثّرات السينمائية
+- نظام الرهان والإعلانات
+- session expiry handler
+- field name fixes (itemType, reveal, isTiebreaker, tieDetected)
+- AdMob production IDs
 
-**المرحلة 1 — تجميع القوة (4 أسئلة):**
-- إجابات نصية/رقمية (input)
-- صحيح+أسرع = +2 قوة
-- صحيح فقط = +1
-- أقرب خاطئ = +1
-- بعيد = 0
-
-**Transition (4 ثوان):**
-- شاشة `PhaseTransitionView` تعرض الـ powers
-
-**المرحلة 2 — المواجهة (10 أسئلة):**
-- HP = power من المرحلة 1
-- أول من يجيب صح يضرب الخصم (-1 HP)
-- فائز: من يصفّر HP الخصم، أو الأعلى HP بعد 10 أسئلة
-
-### Files أُضيفت/عُدّلت:
-- `Features/Match/Components/InputAnswerView.swift` (جديد)
-- `Features/Match/Components/PhaseTransitionView.swift` (جديد)
-- `Features/Match/Models/MatchModels.swift` (محدّث)
-- `Features/Match/MatchViewModel.swift` (محدّث)
-- `Features/Match/MatchView.swift` (محدّث)
-- `Utilities/Managers/Network/Socket/SocketManager.swift` (محدّث)
-
-### Spec للـ Backend:
-[`CASTLE_SIEGE_GAMEPLAY_SPEC.md`](CASTLE_SIEGE_GAMEPLAY_SPEC.md) — 200+ سطر مع:
-- DB schema migration (answerType + correctAnswer)
-- Node.js reference (200 سطر)
-- Socket events flat structure
-- Closeness/speed scoring algorithm
+### Backend commits (من `812587b` → `ecfacd9`)
+- ENUM migration script
+- ad-reward endpoint
+- wager system (50 buy-in / 100 pot)
+- question dedup
+- Phase 2 textInput exclusion
+- eliminate_two + shield items
+- Tiebreaker + Phase 2 = 6 questions
 
 ---
 
-## 🔌 ما المطلوب من الـ Backend (مفتوح)
+## 🚧 ما متبقّي / مفتوح
 
-### 1. Castle Siege Implementation ⭐ الأهم
-- إضافة `match:phase` event
-- إضافة `match:phase-result` event
-- تحديث `match:question` بـ `phase` + `answerType`
-- تحديث `match:answer-submitted` بـ `closest` + `fastest` + `pointsAwarded` + `correctAnswer`
-- تطبيق scoring rules
-- تطبيق الـ state machine للمرحلتين
+### Backend
+- (لا شي حرج — Castle Siege كامل)
 
-### 2. Match Bug Fixes (من جلسة سابقة)
-- ⚠️ `match:found` يجب يحوي `players[]` array (حالياً empty)
-- ⚠️ يحترم `timeLimit` كاملاً (15 ثانية) — لا يرسل السؤال التالي بسرعة
-- ⚠️ 2.5 ثانية بين الأسئلة لعرض النتيجة
-- ⚠️ منطق التعادل (high HP أو fastest avg)
+### iOS
+- (لا شي حرج — جاهز للاختبار end-to-end)
 
-### 3. Match History Endpoint
-`GET /api/v1/matches/history?limit=50` ✅ قال المطور تم نشره
-
-### 4. Universal Links
-✅ تم إصلاح bundle ID (`com.saifiq.app`)
-
----
-
-## 📊 الـ Modes النشطة
-
-| Mode | النظام | الحالة |
-|------|--------|-------|
-| `random1v1` | Castle Siege ⭐ | جديد — في انتظار backend |
-| `random4` | MCQ classic | يعمل |
-| `private1v1` | Castle Siege | جديد |
-| `challengeFriend` | Castle Siege | جديد |
-| `friends4` | MCQ classic | يعمل |
-
-⚠️ **الأيتمز معطّلة في Castle Siege** (لا shield/hint/etc).
-
----
-
-## 🗂️ Backend Specs (جاهزة في الجذر)
-
-| ملف | الموضوع |
-|-----|---------|
-| `CASTLE_SIEGE_GAMEPLAY_SPEC.md` | ⭐ النظام الجديد |
-| `MATCH_QUESTIONS_SPEC.md` | تدفق الأسئلة العام |
-| `MATCHMAKING_API_SPEC.md` | matchmaking + rooms |
-| `PHASE2_LOBBY_BACKEND_SPEC.md` | Ready/Kick/Chat/Search/Universal Links |
-| `BACKEND_TODO.md` | الموحّد الشامل |
-| `CLAN_ADMIN_SPEC.md` | أدوات إدارة العشائر |
-| `CLAN_REACTIONS_SPEC.md` | تفاعلات الرسائل |
-| `CLAN_SOCKET_SPEC.md` | socket events للعشائر |
-| `CLAN_ADVANCED_SPEC.md` | Treasury/Perks/Wars |
-| `IAP_BACKEND_SPEC.md` | تحقق المشتريات |
-| `ADMIN_CURRENCY_SPEC.md` | لوحة أدمن لمنح ذهب/جواهر |
-| `NOTIFICATIONS_EXTENSIONS_SPEC.md` | إشعارات إضافية |
-
----
-
-## 🐛 Issues معروفة
-
-1. **`match:found` بدون players** — backend يرسل `players=0`
-2. **الأسئلة تأتي بسرعة** — لا تحترم timeLimit
-3. **Match defaults to 8 questions** بدل 10 (في الـ MCQ classic)
-4. **Phase 1 → Phase 2 transition** يحتاج تنفيذ backend
+### اختبار
+- ✅ AdMob يعمل في DEBUG
+- ⏳ TestFlight: لم يُختبر بعد
+- ⏳ مباراة كاملة بنظام الرهان: تحتاج لاعبَين برصيد ≥ 50
 
 ---
 
 ## 🎯 خطط الجلسة القادمة (مقترحات)
 
-عند بدء الجلسة الجديدة، ابدأ بسؤال المستخدم: ماذا يريد التركيز عليه؟
-
-### اقتراحات:
-1. 🧪 **اختبار Castle Siege end-to-end** (لما backend ينشر)
-2. 🎨 **Polish للـ MatchView**: confetti في المرحلة 2، animations أحلى للـ HP loss
-3. 🏅 **Achievements system** — منجزات مع UI + backend
-4. ⚔️ **Clan Wars logic الفعلي** (UI موجود)
-5. 👀 **Spectator Mode** — مشاهدة صديق يلعب
-6. 📜 **Profile screen polish** — match history + stats
-7. 🎁 **Mystery Box** / صندوق عشوائي
-8. 🌍 **Multi-language** — دعم انجليزي
-9. 📱 **iPad layout** — تخطيط محسّن
-10. 🚀 **App Store submission** — TestFlight + screenshots
+### تطوير + إصلاح بالتوازي
+1. **🐛 Bug fixes** بناءً على اختبار المباريات الفعلية
+2. **🏆 Achievements system** — منجزات (أول فوز، 5-streak، إلخ)
+3. **📈 Leaderboard** — موجود لكن يحتاج تحسين
+4. **🎁 Daily reward enhancements** — موجود
+5. **📱 iPad layout** — تحسين للشاشات الكبيرة
+6. **🌍 Multi-language** — English + Arabic
+7. **🚀 TestFlight submission** — مع طلبات Apple
+8. **👤 Profile screen polish** — match history + stats
+9. **🧠 More questions** — توسيع DB
+10. **⚔️ Clan Wars** — UI موجود لكن backend ناقص
 
 ---
 
 ## 🔧 Quick Start للجلسة الجديدة
 
+### iOS
 ```bash
 cd "/Volumes/me/learn swift/SaifAndAlmarifa"
 git log --oneline -5
 git status
 ```
 
-### للبناء:
+### Backend
+```bash
+cd /Users/mohammedsaleh/saifiq-api
+git log --oneline -5
+git status
+```
+
+### Build iOS
 ```bash
 xcodebuild -project SaifAndAlmarifa.xcodeproj \
   -scheme SaifAndAlmarifa \
@@ -184,31 +187,108 @@ xcodebuild -project SaifAndAlmarifa.xcodeproj \
   -configuration Debug build
 ```
 
+### Simulator (iPhone 17 booted)
+```bash
+xcrun simctl install 4654C258-3363-4C68-ACD4-5FBB29A9683A \
+  "/Users/mohammedsaleh/Library/Developer/Xcode/DerivedData/SaifAndAlmarifa-bukujmzhjzpencfqztloplnemwex/Build/Products/Debug-iphonesimulator/SaifAndAlmarifa.app"
+xcrun simctl launch 4654C258-3363-4C68-ACD4-5FBB29A9683A com.saifiq.app
+```
+
+---
+
+## 📂 الملفات المحورية في iOS
+
+| المسار | الوظيفة |
+|--------|---------|
+| `Features/Match/MatchView.swift` | الشاشة الأساسية للمباراة |
+| `Features/Match/MatchViewModel.swift` | المنطق + socket handlers |
+| `Features/Match/Models/MatchModels.swift` | data structures |
+| `Features/Match/MatchEndView.swift` | شاشة النتائج (مع wager) |
+| `Features/Match/Components/NumericKeypadView.swift` | لوحة المفاتيح المخصّصة |
+| `Features/Match/Components/InputAnswerView.swift` | display + reveal card |
+| `Features/Match/Components/MatchComponents.swift` | PlayersBattlefield, InventoryBar, etc |
+| `Features/Match/Components/BattleAnimations.swift` | Stage A — combat FX |
+| `Features/Match/Components/RewardAnimations.swift` | Stage B — score FX |
+| `Features/Match/Components/AtmosphereLayers.swift` | Stage D — bg layers |
+| `Features/Match/Components/EndCinematic.swift` | Stage E — victory/crumble |
+| `Features/Match/Components/MatchEffects.swift` | shake, sparkles, combo |
+| `Features/Match/Components/InsufficientGoldSheet.swift` | wager < gold flow |
+| `Features/Match/Components/TutorialOverlay.swift` | first-match teaching |
+| `Features/Match/Components/MatchSummaryChart.swift` | stats grid |
+| `Features/Main/MainView.swift` | hero cards + tutorial gate + wager check |
+| `Utilities/Managers/AdManager.swift` | AdMob (Rewarded + Interstitial) |
+| `Utilities/Managers/Auth/SessionExpiryHandler.swift` | 401 auto-logout |
+| `Utilities/Managers/Network/Main/MainEndpoint.swift` | `/ad-reward` endpoint |
+| `Utilities/Managers/Network/Socket/SocketManager.swift` | كل match events |
+
+## 📂 الملفات المحورية في Backend
+
+| المسار | الوظيفة |
+|--------|---------|
+| `src/services/castleSiege.service.js` | Phase 1+2 + tiebreaker + items + wager + finalize |
+| `src/socket/handlers/match.handler.js` | match:* events router |
+| `src/routes/users.routes.js` | `/me/ad-reward` |
+| `src/models/Transaction.js` | ENUM types |
+| `src/config/constants.js` | GOLD_COSTS |
+| `scripts/migrate-transaction-types.js` | ENUM migration |
+
+---
+
+## 📜 الـ Spec الموثّق
+
+[`CASTLE_SIEGE_GAMEPLAY_SPEC.md`](CASTLE_SIEGE_GAMEPLAY_SPEC.md) — مرجع كامل:
+- 2-phase flow + scoring
+- Tiebreaker mechanic
+- Disconnect handling
+- Power-ups Reference (8 أدوات + payloads)
+- Bird (narrow_range)
+- Timings + DB schema
+
+---
+
+## 🎮 الـ Modes النشطة
+
+| Mode | النظام | الحالة |
+|------|--------|-------|
+| `random1v1` | Castle Siege ⭐ + wager | ✅ يعمل end-to-end |
+| `random4` | MCQ classic | ✅ يعمل |
+| `private1v1` | Castle Siege | ✅ |
+| `challengeFriend` | Castle Siege | ✅ |
+| `friends4` | MCQ classic | ✅ |
+
 ---
 
 ## 📈 الإحصائيات
 
-- **29 commit محلية** في انتظار push
-- **60+ ملف Swift** جديد في هذه الـ session series
-- **12 ملف backend spec** جاهزة للمطورين
-- **Build status:** ✅ ناجح في كل مرة
-- **آخر إصلاح:** Castle Siege models, view, view model
+- **iOS commits:** 50+ في هذي السلسلة
+- **Backend commits:** 12 في Castle Siege
+- **Build status:** ✅ ناجح كل مرة
+- **Files touched:** 30+ في Match feature
 
 ---
 
-## 📝 ملاحظات مهمة
+## 💡 ملاحظات مهمّة
 
-1. **Backend dev محترف وسريع** — أرسل له المواصفات وعادة يطبّقها خلال جلستنا
-2. **Bundle ID:** `com.saifiq.app` (وليس com.saifiq.SaifAndAlmarifa)
+1. **Backend dev محترف وسريع** — أرسل المواصفات وعادة يطبّقها سريعاً
+2. **Bundle ID:** `com.saifiq.app`
 3. **Team ID:** `ZN3Z5KRWM7`
 4. **Domain:** `saifiq.halmanhaj.com`
 5. **اللغة الأولى:** العربي (RTL)
-6. **التطبيق Production-ready** — جاهز للـ TestFlight بعد ربط Castle Siege
+6. **التطبيق Production-ready** — جاهز للـ TestFlight
+7. **iPhone 17 simulator UDID:** `4654C258-3363-4C68-ACD4-5FBB29A9683A` (booted)
 
 ---
 
 ## ✨ كلمة أخيرة
 
-التطبيق وصل لمرحلة متقدمة جداً. كل القلب الأساسي للعبة جاهز. تبقّى polish + content (أسئلة) + تكامل نهائي مع backend.
+التطبيق وصل لمرحلة جدّ متقدّمة. Castle Siege متكامل end-to-end مع:
+- ✅ نظام الرهان
+- ✅ AdMob للإعلانات المكافأة
+- ✅ Power-ups كاملة
+- ✅ مؤثّرات سينمائية في 5 مراحل
+- ✅ Disconnect handling
+- ✅ Session management
+- ✅ Tutorial + tooltips
+- ✅ Stats + summary chart
 
 **جلسة موفّقة!** 🚀
