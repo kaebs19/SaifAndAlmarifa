@@ -169,6 +169,11 @@ struct MatchView: View {
                 battleIntroBanner.zIndex(9)
             }
 
+            // 🔌 Banner الخصم انقطع
+            if viewModel.opponentDisconnected {
+                opponentDisconnectedBanner.zIndex(11)
+            }
+
             // ⚡ Lightning flash — يومض على الضربات الحرجة (Stage D)
             LightningFlash(nonce: viewModel.screenShakeNonce,
                            color: Color(hex: "FFE55C"))
@@ -247,9 +252,6 @@ struct MatchView: View {
             )
             .ignoresSafeArea()
             .allowsHitTesting(false)
-
-            // 🌙 قمر/شمس في الزاوية (Stage D)
-            CelestialBody(phase: viewModel.currentPhase)
 
             // ☁️ سحاب متحرّك (Stage D)
             DriftingClouds(phase: viewModel.currentPhase)
@@ -720,6 +722,73 @@ struct MatchView: View {
         .background(Color.black.opacity(0.6).ignoresSafeArea())
         .transition(.opacity.combined(with: .scale(scale: 0.9)))
         .animation(.spring(response: 0.5, dampingFraction: 0.65), value: viewModel.showBattleIntro)
+    }
+
+    // MARK: - 🔌 Opponent Disconnected Banner
+    private var opponentDisconnectedBanner: some View {
+        VStack {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color(hex: "F97316").opacity(0.2))
+                        .frame(width: 38, height: 38)
+                    Image(systemName: "wifi.slash")
+                        .font(.system(size: 18, weight: .black))
+                        .foregroundStyle(Color(hex: "F97316"))
+                        .symbolEffect(.pulse, options: .repeating)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("الخصم انقطع")
+                        .font(.cairo(.black, size: AppSizes.Font.body))
+                        .foregroundStyle(.white)
+                    Text("في انتظار العودة...")
+                        .font(.cairo(.medium, size: 11))
+                        .foregroundStyle(.white.opacity(0.65))
+                }
+
+                Spacer()
+
+                // عداد تنازلي
+                ZStack {
+                    Circle()
+                        .stroke(Color(hex: "F97316").opacity(0.2), lineWidth: 3)
+                        .frame(width: 42, height: 42)
+                    Circle()
+                        .trim(from: 0, to: Double(viewModel.disconnectCountdown) / 15.0)
+                        .stroke(
+                            LinearGradient(colors: [Color(hex: "F97316"), Color(hex: "EF4444")],
+                                           startPoint: .top, endPoint: .bottom),
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 42, height: 42)
+                        .animation(.linear(duration: 0.9), value: viewModel.disconnectCountdown)
+                    Text("\(viewModel.disconnectCountdown)")
+                        .font(.poppins(.black, size: 14))
+                        .foregroundStyle(.white)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                }
+            }
+            .padding(AppSizes.Spacing.md)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppSizes.Radius.medium)
+                    .stroke(
+                        LinearGradient(colors: [Color(hex: "F97316"), Color(hex: "EF4444")],
+                                       startPoint: .leading, endPoint: .trailing),
+                        lineWidth: 1.5
+                    )
+            )
+            .shadow(color: Color(hex: "F97316").opacity(0.4), radius: 14)
+            .padding(.horizontal, AppSizes.Spacing.lg)
+            .padding(.top, 90)
+            Spacer()
+        }
+        .transition(.move(edge: .top).combined(with: .opacity))
+        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: viewModel.opponentDisconnected)
     }
 
     // MARK: - Tiebreaker Banner (سؤال حاسم)

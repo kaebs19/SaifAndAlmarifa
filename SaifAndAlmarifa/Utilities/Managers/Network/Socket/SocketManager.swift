@@ -49,6 +49,8 @@ final class AppSocketManager: ObservableObject {
     let onMatchEnded = PassthroughSubject<[String: Any], Never>()
     let onMatchPhase = PassthroughSubject<[String: Any], Never>()  // تغيّر phase
     let onMatchPhaseResult = PassthroughSubject<[String: Any], Never>()  // نتائج المرحلة 1
+    let onMatchPlayerDisconnected = PassthroughSubject<[String: Any], Never>()  // 🆕 لاعب انقطع
+    let onMatchPlayerReconnected = PassthroughSubject<[String: Any], Never>()  // 🆕 لاعب رجع
 
     // Room Publishers
     let onRoomCreated = PassthroughSubject<[String: Any], Never>()
@@ -488,6 +490,30 @@ final class AppSocketManager: ObservableObject {
                 }
                 #endif
                 if let d = data.first as? [String: Any] { self?.onMatchPhaseResult.send(d) }
+            }
+        }
+
+        socket.on("match:player-disconnected") { [weak self] data, _ in
+            Task { @MainActor in
+                #if DEBUG
+                if let d = data.first as? [String: Any] {
+                    let uid = (d["userId"] as? String)?.suffix(6) ?? "?"
+                    print("⬇️ [Socket] match:player-disconnected user=\(uid)")
+                }
+                #endif
+                if let d = data.first as? [String: Any] { self?.onMatchPlayerDisconnected.send(d) }
+            }
+        }
+
+        socket.on("match:player-reconnected") { [weak self] data, _ in
+            Task { @MainActor in
+                #if DEBUG
+                if let d = data.first as? [String: Any] {
+                    let uid = (d["userId"] as? String)?.suffix(6) ?? "?"
+                    print("⬇️ [Socket] match:player-reconnected user=\(uid)")
+                }
+                #endif
+                if let d = data.first as? [String: Any] { self?.onMatchPlayerReconnected.send(d) }
             }
         }
 

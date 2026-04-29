@@ -494,6 +494,94 @@ ALTER TABLE Questions MODIFY COLUMN options JSONB;
 
 ---
 
+## 🔌 Disconnect Handling (الانقطاع)
+
+عندما لاعب يفقد الاتصال أو يخرج من المباراة بدون "leave" صريح:
+
+### Flow
+1. Backend يكتشف فقدان الـ socket
+2. Backend يبدأ timer 15 ثانية
+3. خلال هذي الـ 15s:
+   - Backend يبثّ `match:player-disconnected { matchId, userId }` للاعب الآخر
+   - الـ match مُجمَّد (لا أسئلة جديدة)
+4. إذا اللاعب رجع خلال 15s:
+   - Backend يبثّ `match:player-reconnected { matchId, userId }`
+   - الـ match يكمل عادي
+5. إذا انتهت 15s ولم يرجع:
+   - Backend يعتبر اللاعب الآخر فائزاً
+   - يبثّ `match:ended { matchId, winnerId, reason: "opponent_disconnected", scores, hp, rewards }`
+
+### Events المطلوبة من Backend
+
+**`match:player-disconnected`** (Server → Client للاعب المتبقّي)
+```json
+{ "matchId": "...", "userId": "<اللاعب-اللي-انقطع>", "graceSeconds": 15 }
+```
+
+**`match:player-reconnected`** (Server → Client)
+```json
+{ "matchId": "...", "userId": "<اللاعب-اللي-رجع>" }
+```
+
+**`match:ended`** بسبب الانقطاع (Server → Client)
+```json
+{
+  "matchId": "...",
+  "winnerId": "<اللاعب-المتبقّي>",
+  "reason": "opponent_disconnected",
+  "scores": {...},
+  "hp": {...},
+  "rewards": { "gold": 50, "xp": 100 }
+}
+```
+
+### Backend Logic (مرجع)
+```js
+io.on('disconnect', (socket) => {
+  const match = findActiveMatchForUser(socket.userId)
+  if (!match) return
+
+  match.disconnectTimers[socket.userId] = setTimeout(() => {
+    // 15s انتهت → فوز للخصم
+    const winner = match.playerIds.find(id => id !== socket.userId)
+    io.to(match.id).emit('match:ended', {
+      matchId: match.id,
+      winnerId: winner,
+      reason: 'opponent_disconnected',
+      scores: match.scores,
+      hp: match.hp,
+      rewards: { gold: 50, xp: 100 }
+    })
+    cleanupMatch(match.id)
+  }, 15_000)
+
+  io.to(match.id).emit('match:player-disconnected', {
+    matchId: match.id,
+    userId: socket.userId,
+    graceSeconds: 15
+  })
+})
+
+io.on('connection', (socket) => {
+  const pendingMatch = findPausedMatchForUser(socket.userId)
+  if (pendingMatch && pendingMatch.disconnectTimers[socket.userId]) {
+    clearTimeout(pendingMatch.disconnectTimers[socket.userId])
+    delete pendingMatch.disconnectTimers[socket.userId]
+    io.to(pendingMatch.id).emit('match:player-reconnected', {
+      matchId: pendingMatch.id,
+      userId: socket.userId
+    })
+  }
+})
+```
+
+### iOS Behavior
+- يعرض banner ذهبي/برتقالي "🔌 الخصم انقطع — في انتظار العودة" مع countdown دائري 15→0
+- إذا الخصم رجع → banner يختفي + toast "الخصم عاد للمباراة"
+- إذا انتهى الوقت → backend يرسل `match:ended` → MatchEndView يفتح بـ "فوز"
+
+---
+
 ## 🎯 Tiebreaker Mechanic (المحتسم)
 
 في Phase 2 على أسئلة `multipleChoice`، إذا الاثنين جاوبوا صح:

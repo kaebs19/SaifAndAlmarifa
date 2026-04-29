@@ -70,6 +70,11 @@ final class MatchViewModel: ObservableObject {
     @Published var powerUpFXNonce: Int = 0                // trigger الـ burst
     @Published var powerUpFXColor: Color = .yellow        // لون الـ burst
 
+    // 🔌 Disconnect handling
+    @Published var opponentDisconnected: Bool = false     // الخصم انقطع
+    @Published var disconnectCountdown: Int = 15          // ثوان متبقية لرجوعه
+    private var disconnectTimer: Timer?
+
     private var wasCriticalHP: Bool = false               // لمنع تكرار haptic critical
     @Published var rematchStatus: RematchStatus = .none   // حالة الإعادة
     @Published var preMatchCountdown: Int? = nil          // 3, 2, 1 قبل أول سؤال
@@ -157,6 +162,7 @@ final class MatchViewModel: ObservableObject {
 
     func onDisappear() {
         timer?.invalidate()
+        disconnectTimer?.invalidate()
         GameSoundManager.shared.stopAll()
     }
 
@@ -296,6 +302,27 @@ final class MatchViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
+        // 🔌 الخصم انقطع
+        socket.onMatchPlayerDisconnected
+            .sink { [weak self] data in
+                guard let self, self.matchIdMatches(data),
+                      let uid = data["userId"] as? String,
+                      uid != self.myId else { return }
+                self.startDisconnectCountdown()
+            }
+            .store(in: &cancellables)
+
+        // 🔌 الخصم رجع
+        socket.onMatchPlayerReconnected
+            .sink { [weak self] data in
+                guard let self, self.matchIdMatches(data),
+                      let uid = data["userId"] as? String,
+                      uid != self.myId else { return }
+                self.cancelDisconnectCountdown()
+                self.toast.success("الخصم عاد للمباراة")
+            }
+            .store(in: &cancellables)
+
         // طلب إعادة من الخصم
         socket.onRematchRequested
             .sink { [weak self] data in
@@ -326,6 +353,42 @@ final class MatchViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+    }
+
+    /// 🔌 يبدأ countdown 15 ثانية لرجوع الخصم
+    private func startDisconnectCountdown() {
+        guard !opponentDisconnected else { return }
+        opponentDisconnected = true
+        disconnectCountdown = 15
+        toast.warning("⚠️ الخصم انقطع — 15 ثانية للعودة")
+        HapticManager.warning()
+
+        disconnectTimer?.invalidate()
+        disconnectTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] t in
+            Task { @MainActor in
+                guard let self else { t.invalidate(); return }
+                if self.disconnectCountdown > 0 {
+                    self.disconnectCountdown -= 1
+                } else {
+                    t.invalidate()
+                    // backend سيرسل match:ended تلقائياً، لكن لو ما وصل في 5 ثوان زيادة، نفترض الفوز
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 5_000_000_000)
+                        if self.matchResult == nil {
+                            self.toast.info("في انتظار تأكيد النتيجة...")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// 🔌 إلغاء countdown لو الخصم رجع
+    private func cancelDisconnectCountdown() {
+        disconnectTimer?.invalidate()
+        disconnectTimer = nil
+        opponentDisconnected = false
+        disconnectCountdown = 15
     }
 
     /// طلب إعادة تحدّي
@@ -673,6 +736,8 @@ final class MatchViewModel: ObservableObject {
     private func handleMatchEnded(_ data: [String: Any]) {
         guard matchIdMatches(data) else { return }
         timer?.invalidate()
+        disconnectTimer?.invalidate()
+        opponentDisconnected = false
         GameSoundManager.shared.stop(.heartbeat)
         wasCriticalHP = false
 
