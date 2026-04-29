@@ -692,9 +692,11 @@ final class MatchViewModel: ObservableObject {
             }
         }
 
+        let itemType = data["itemType"] as? String
+
         // 👁 كشف الإجابة (MCQ) — يضع correctIndex على السؤال
         if let correct = data["correctIndex"] as? Int,
-           data["itemType"] as? String == "reveal_answer",
+           itemType == "reveal" || itemType == "reveal_answer",
            var q = currentQuestion {
             q.correctIndex = correct
             currentQuestion = q
@@ -704,7 +706,7 @@ final class MatchViewModel: ObservableObject {
 
         // 👁 كشف رقم (numericInput) — backend يرسل revealedDigit + position
         if let digit = data["revealedDigit"] as? String,
-           data["itemType"] as? String == "reveal_answer" {
+           itemType == "reveal" || itemType == "reveal_answer" {
             let pos = data["position"] as? Int ?? 0
             hintMessage = "👁 الرقم في المنزلة \(pos + 1): \(digit)"
             GameSoundManager.shared.playPowerUp(.revealAnswer)
@@ -858,15 +860,13 @@ final class MatchViewModel: ObservableObject {
             }
 
         case .fiftyFifty:
-            // لا يعمل محلياً (نحتاج correctIndex من backend)
             if let q = currentQuestion, q.answerType == .multipleChoice {
-                toast.info("🎯 50/50 — في انتظار backend")
+                toast.info("🎯 جاري حذف خيارَين...")
             } else {
                 toast.warning("غير متاح لهذا السؤال")
             }
 
         case .bird:
-            // العصفور: يضيّق المدى الرقمي — يحتاج backend ليرسل rangeHint
             if let q = currentQuestion, q.answerType == .numericInput {
                 toast.info("🐦 العصفور يبحث...")
             } else {
@@ -874,16 +874,18 @@ final class MatchViewModel: ObservableObject {
             }
 
         case .revealAnswer:
-            // الكشف: للـ MCQ يكشف الصحيح، للـ numericInput يكشف رقماً
             if currentQuestion?.answerType == .multipleChoice {
-                toast.info("👁 يتمّ الكشف...")
+                toast.info("👁 جاري كشف الإجابة...")
             } else if currentQuestion?.answerType == .numericInput {
-                toast.info("👁 يتمّ كشف رقم...")
+                toast.info("👁 جاري كشف رقم...")
             }
 
-        case .shield, .thunder, .double, .revive:
-            // visual فقط — تأثيرها يطبّق عبر backend
-            break
+        case .shield:
+            toast.info("🛡 الدرع مفعّل")
+        case .thunder, .double:
+            toast.info("⚡ ضربتك التالية مضاعفة")
+        case .revive:
+            toast.info("💚 جاري استعادة HP...")
         }
     }
 

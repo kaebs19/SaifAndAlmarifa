@@ -651,7 +651,7 @@ iOS سيعرض banner خاص "🎯 سؤال حاسم" فوق السؤال إذا
 |---------|--------------|----------|
 | `hint` | **MCQ:** يبيّن نسبة احتمال صحّة كل خيار (مثلاً 70% لخيار B). **numericInput:** نص إرشادي عام. | كلا النوعَين |
 | `eliminate_two` | **MCQ:** backend يحذف خيارَين خاطئَين عشوائياً. لا يعمل على numericInput. | MCQ فقط |
-| `reveal_answer` | **MCQ:** يعرض الخيار الصحيح (يفوز إذا ضغطه). **numericInput:** يكشف رقماً واحداً من الإجابة (مثل أول رقم). | كلا النوعَين |
+| `reveal` | **MCQ:** يعرض الخيار الصحيح (يفوز إذا ضغطه). **numericInput:** يكشف رقماً واحداً من الإجابة (مثل أول رقم). | كلا النوعَين |
 | `double_damage` | الإجابة الصحيحة التالية تضرّ الخصم بـ -2 HP (بدلاً من -1). يعمل في battle phase فقط. | Phase 2 |
 | `freeze_time` | **يجمّد وقت الخصم 5 ثوانٍ** (الخصم لا يستطيع الإجابة، يرى overlay ❄️ تجميد). | كلا النوعَين |
 | `narrow_range` | يضيّق المدى الرقمي (راجع قسم العصفور أدناه). | numericInput |
@@ -671,14 +671,14 @@ iOS سيعرض banner خاص "🎯 سؤال حاسم" فوق السؤال إذا
 { "itemType": "eliminate_two", "userId": "u1", "disabledIndices": [1, 3] }
 ```
 
-**`reveal_answer` على MCQ:**
+**`reveal` على MCQ:**
 ```json
-{ "itemType": "reveal_answer", "userId": "u1", "correctIndex": 2 }
+{ "itemType": "reveal", "userId": "u1", "correctIndex": 2 }
 ```
 
-**`reveal_answer` على numericInput:**
+**`reveal` على numericInput:**
 ```json
-{ "itemType": "reveal_answer", "userId": "u1", "revealedDigit": "1", "position": 0 }
+{ "itemType": "reveal", "userId": "u1", "revealedDigit": "1", "position": 0 }
 ```
 
 **`freeze_time` (للخصم):**

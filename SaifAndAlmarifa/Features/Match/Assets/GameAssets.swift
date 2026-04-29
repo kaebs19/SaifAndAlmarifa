@@ -52,7 +52,7 @@ enum PowerUpIcon: String, CaseIterable, Identifiable {
         case .revive:     return "steal"
         case .fiftyFifty: return "eliminate_two"
         case .bird:       return "narrow_range"
-        case .revealAnswer: return "reveal_answer"
+        case .revealAnswer: return "reveal"   // ✅ مطابق لاسم backend
         }
     }
 
