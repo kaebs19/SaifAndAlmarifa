@@ -611,21 +611,30 @@ struct InventoryBar: View {
         .animation(.easeInOut(duration: 0.25), value: visibleItems)
     }
 
-    // عرض بديل خفيف لمّا الـ toolbar فارغ
+    // عرض بديل خفيف لمّا الـ toolbar فارغ (مع توجيه للمتجر)
     @ViewBuilder
     private var emptyInventoryHint: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "bag")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(.white.opacity(0.35))
-            Text("لا أدوات متاحة لهذا السؤال")
-                .font(.cairo(.medium, size: 10))
-                .foregroundStyle(.white.opacity(0.4))
+        let hasItems = inventory.values.reduce(0, +) > 0
+        HStack(spacing: 8) {
+            Image(systemName: hasItems ? "bag" : "bag.badge.plus")
+                .font(.system(size: 12, weight: .black))
+                .foregroundStyle(.white.opacity(0.5))
+
+            Text(hasItems
+                 ? "لا أدوات متاحة لهذا السؤال"
+                 : "اشترِ أدوات من المتجر للمساعدة في المعركة")
+                .font(.cairo(.medium, size: 11))
+                .foregroundStyle(.white.opacity(0.55))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
-        .padding(.horizontal, 10).padding(.vertical, 6)
-        .background(.white.opacity(0.03))
-        .clipShape(Capsule())
-        .overlay(Capsule().stroke(.white.opacity(0.06), lineWidth: 1))
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(.white.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(.white.opacity(0.08), lineWidth: 1)
+        )
         .frame(maxWidth: .infinity)
     }
 

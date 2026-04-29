@@ -947,5 +947,6 @@ final class MatchViewModel: ObservableObject {
         socket.submitAnswer(matchId: matchId, answer: "", timeMs: elapsedMs)
         GameSoundManager.shared.play(.answerWrong)
         HapticManager.warning()
+        toast.warning("⏱ انتهى الوقت!")   // ✨ feedback واضح
     }
 }
