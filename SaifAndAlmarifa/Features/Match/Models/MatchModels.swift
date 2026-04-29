@@ -219,23 +219,38 @@ struct MatchEndResult: Equatable {
     let didIWin: Bool
     let myScore: Int
     let opponentScore: Int
-    let goldReward: Int
+    let goldReward: Int       // legacy / المبلغ المُكتسب فقط
     let xpReward: Int
     let opponentName: String?
+    // 💰 Wager system
+    let wager: Int            // ما دفعه اللاعب عند البدء
+    let pot: Int              // إجمالي ما يربحه الفائز
+    let netGold: Int          // الصافي (موجب لو ربح، سالب لو خسر)
 
     static func from(_ dict: [String: Any], myId: String, opponentId: String? = nil) -> MatchEndResult? {
         let matchId = dict["matchId"] as? String ?? ""
         let winnerId = dict["winnerId"] as? String
         let scores = dict["scores"] as? [String: Int] ?? [:]
-        let rewards = dict["rewards"] as? [String: Int] ?? [:]
+        let rewards = dict["rewards"] as? [String: Any] ?? [:]
+        let didWin = winnerId == myId
+
+        let wager = rewards["wager"] as? Int ?? 0
+        let pot = rewards["pot"] as? Int ?? 0
+        let winnerXp = rewards["winnerXp"] as? Int ?? (rewards["xp"] as? Int ?? 0)
+        let loserXp = rewards["loserXp"] as? Int ?? 0
+        let netGold = didWin ? (pot - wager) : -wager
+
         return MatchEndResult(
             matchId: matchId,
-            didIWin: winnerId == myId,
+            didIWin: didWin,
             myScore: scores[myId] ?? 0,
             opponentScore: scores.filter { $0.key != myId }.values.first ?? 0,
-            goldReward: rewards["gold"] ?? 0,
-            xpReward: rewards["xp"] ?? 0,
-            opponentName: dict["opponentName"] as? String
+            goldReward: didWin ? pot : 0,
+            xpReward: didWin ? winnerXp : loserXp,
+            opponentName: dict["opponentName"] as? String,
+            wager: wager,
+            pot: pot,
+            netGold: netGold
         )
     }
 }

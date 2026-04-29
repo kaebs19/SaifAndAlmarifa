@@ -309,20 +309,35 @@ struct MatchEndView: View {
 
     // MARK: - Rewards
     private var rewardsCard: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             HStack(spacing: 6) {
-                Image(systemName: "gift.fill")
+                Image(systemName: result.didIWin ? "gift.fill" : "heart.fill")
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(AppColors.Default.goldPrimary)
-                Text("المكافآت")
+                    .foregroundStyle(result.didIWin ? AppColors.Default.goldPrimary : Color(hex: "F87171"))
+                Text(result.didIWin ? "المكافآت" : "الخسارة")
                     .font(.cairo(.bold, size: AppSizes.Font.caption))
                     .foregroundStyle(.white.opacity(0.7))
             }
+
+            // 💰 صف الـ wager — يبيّن المُتداول
+            if result.wager > 0 {
+                wagerSummary
+            }
+
             HStack(spacing: AppSizes.Spacing.md) {
-                rewardPill(icon: "circle.hexagongrid.fill", amount: result.goldReward,
-                           label: "ذهب", color: Color(hex: "FFD700"))
-                rewardPill(icon: "star.fill", amount: result.xpReward,
-                           label: "خبرة", color: Color(hex: "A78BFA"))
+                rewardPill(
+                    icon: result.netGold >= 0 ? "circle.hexagongrid.fill" : "minus.circle.fill",
+                    amount: result.netGold,
+                    label: result.netGold >= 0 ? "ذهب" : "خسارة",
+                    color: result.netGold >= 0 ? Color(hex: "FFD700") : Color(hex: "F87171"),
+                    showSign: true
+                )
+                rewardPill(
+                    icon: "star.fill",
+                    amount: result.xpReward,
+                    label: "خبرة",
+                    color: Color(hex: "A78BFA")
+                )
             }
         }
         .padding(AppSizes.Spacing.md)
@@ -335,13 +350,43 @@ struct MatchEndView: View {
         )
     }
 
-    private func rewardPill(icon: String, amount: Int, label: String, color: Color) -> some View {
+    // 💰 صف موجز عن الرهان
+    private var wagerSummary: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "scale.3d")
+                .font(.system(size: 11, weight: .black))
+                .foregroundStyle(.white.opacity(0.5))
+            Text("الرهن:")
+                .font(.cairo(.medium, size: 11))
+                .foregroundStyle(.white.opacity(0.55))
+            Text("\(result.wager)")
+                .font(.poppins(.bold, size: 11))
+                .foregroundStyle(.white.opacity(0.75))
+                .monospacedDigit()
+            Text("·")
+                .foregroundStyle(.white.opacity(0.3))
+            Text(result.didIWin ? "ربحت الـ pot:" : "ذهب الـ pot للخصم:")
+                .font(.cairo(.medium, size: 11))
+                .foregroundStyle(.white.opacity(0.55))
+            Text("\(result.pot)")
+                .font(.poppins(.bold, size: 11))
+                .foregroundStyle(result.didIWin ? Color(hex: "FFD700") : Color(hex: "F87171"))
+                .monospacedDigit()
+            Spacer()
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(.white.opacity(0.03))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func rewardPill(icon: String, amount: Int, label: String, color: Color,
+                            showSign: Bool = false) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .black))
                 .foregroundStyle(color)
             VStack(alignment: .leading, spacing: 0) {
-                Text("+\(amount)")
+                Text(showSign ? signedString(amount) : "+\(amount)")
                     .font(.poppins(.black, size: 18))
                     .foregroundStyle(color)
                     .monospacedDigit()
@@ -358,6 +403,10 @@ struct MatchEndView: View {
                 .stroke(color.opacity(0.35), lineWidth: 1)
         )
         .frame(maxWidth: .infinity)
+    }
+
+    private func signedString(_ n: Int) -> String {
+        n >= 0 ? "+\(n)" : "\(n)"   // -50 يطلع "-50"
     }
 
     // MARK: - Actions
