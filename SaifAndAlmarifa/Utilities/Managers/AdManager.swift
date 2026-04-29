@@ -14,13 +14,11 @@ import GoogleMobileAds
 
 // MARK: - Ad Config
 enum AdConfig {
-    #if DEBUG
+    // ✅ نفس الـ IDs لـ DEBUG و Release (Production AdMob units)
+    // Rewarded: مكافأة الذهب (شاهد إعلان واربح 100)
     static let rewardedAdUnitID = "ca-app-pub-8219247197168750/8065050240"
+    // Interstitial: بيني بين بطاقات (للاستخدام المستقبلي)
     static let interstitialAdUnitID = "ca-app-pub-8219247197168750/1468064330"
-    #else
-    static let rewardedAdUnitID = "ca-app-pub-XXXX/YYYY"
-    static let interstitialAdUnitID = "ca-app-pub-XXXX/ZZZZ"
-    #endif
 }
 
 // MARK: - Ad Manager
