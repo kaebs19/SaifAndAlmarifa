@@ -42,6 +42,14 @@ enum MainEndpoint {
         var body: Encodable? { ["useExtra": useExtra] }
     }
 
+    // MARK: 💰 مكافأة الإعلان
+    struct AdReward: Endpoint {
+        typealias Response = AdRewardResult
+        var path: String { "/users/me/ad-reward" }
+        var method: HTTPMethod { .post }
+        var requiresAuth: Bool { true }
+    }
+
     // MARK: الإشعارات
     struct UnreadCount: Endpoint {
         typealias Response = NotificationCount

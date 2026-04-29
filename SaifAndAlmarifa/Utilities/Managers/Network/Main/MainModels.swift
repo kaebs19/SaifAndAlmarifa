@@ -79,6 +79,13 @@ struct UserStats: Decodable {
     let totalCorrectAnswers: Int
 }
 
+// MARK: - 💰 نتيجة مكافأة الإعلان
+struct AdRewardResult: Decodable {
+    let goldGranted: Int
+    let newGold: Int
+    let remainingToday: Int
+}
+
 // MARK: - الأفاتارات الافتراضية
 struct DefaultAvatarItem: Decodable, Identifiable {
     let id: String

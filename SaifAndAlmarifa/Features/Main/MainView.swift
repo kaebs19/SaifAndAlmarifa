@@ -33,6 +33,10 @@ struct MainView: View {
     @State private var showCastleSiegeTutorial = false
     @State private var pendingMode: GameMode? = nil
 
+    // 💰 رهن الـ Castle Siege
+    @State private var showInsufficientGold = false
+    private let castleSiegeWager = 50
+
     var body: some View {
         ZStack {
             background
@@ -81,12 +85,37 @@ struct MainView: View {
                 showCastleSiegeTutorial = false
                 if let mode = pendingMode {
                     pendingMode = nil
-                    // أبدأ matchmaking بعد إغلاق التعليمات
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                         viewModel.selectMode(mode)
                     }
                 }
             })
+        }
+        // 💰 Sheet لو الذهب غير كافٍ
+        .sheet(isPresented: $showInsufficientGold) {
+            InsufficientGoldSheet(
+                currentGold: authManager.currentUser?.gold ?? 0,
+                requiredGold: castleSiegeWager,
+                onWatchAd: {
+                    showInsufficientGold = false
+                    // الذهب ازداد — حاول مرة ثانية
+                    if let mode = pendingMode {
+                        pendingMode = nil
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                            viewModel.selectMode(mode)
+                        }
+                    }
+                },
+                onOpenStore: {
+                    showInsufficientGold = false
+                    pendingMode = nil
+                    showStore = true
+                },
+                onCancel: {
+                    showInsufficientGold = false
+                    pendingMode = nil
+                }
+            )
         }
         .sheet(isPresented: $viewModel.showJoinRoom) {
             JoinRoomSheet { viewModel.joinRoom(code: $0) }
@@ -487,6 +516,15 @@ struct MainView: View {
     private func heroCard(mode: GameMode, bg: LinearGradient, border: [Color], glow: Color) -> some View {
         Button {
             HapticManager.medium()
+            // 💰 تحقّق من الرهن لـ 1v1 (Castle Siege)
+            if mode == .random1v1 {
+                let myGold = authManager.currentUser?.gold ?? 0
+                if myGold < castleSiegeWager {
+                    pendingMode = mode
+                    showInsufficientGold = true
+                    return
+                }
+            }
             // ✨ Castle Siege tutorial — مرّة واحدة قبل أول 1v1
             if mode == .random1v1 && !UserDefaults.standard.bool(forKey: "castleSiege.tutorialSeen") {
                 pendingMode = mode

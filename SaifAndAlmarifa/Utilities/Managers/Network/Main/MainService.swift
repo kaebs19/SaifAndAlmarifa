@@ -52,4 +52,9 @@ final class MainService: APIService {
     func getAvatars() async throws -> [DefaultAvatarItem] {
         try await network.request(MainEndpoint.AvatarsList())
     }
+
+    // MARK: 💰 مكافأة الإعلان
+    func claimAdReward() async throws -> AdRewardResult {
+        try await network.request(MainEndpoint.AdReward())
+    }
 }
