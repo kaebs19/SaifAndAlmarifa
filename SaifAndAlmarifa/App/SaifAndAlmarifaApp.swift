@@ -10,6 +10,7 @@ import SwiftData
 import UIKit
 import FirebaseCore
 import FirebaseMessaging
+import AppTrackingTransparency
 
 // MARK: - AppDelegate — تدوير الشاشة + Firebase Cloud Messaging
 class AppDelegate: NSObject, UIApplicationDelegate {
@@ -81,6 +82,12 @@ struct SaifAndAlmarifaApp: App {
                 .environment(\.layoutDirection, .rightToLeft)
                 // تطبيق ثيم المستخدم (System/Light/Dark)
                 .applyTheme()
+                // طلب إذن ATT بعد ظهور الواجهة (Apple تشترط ذلك للإعلانات)
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        ATTrackingManager.requestTrackingAuthorization { _ in }
+                    }
+                }
                 // Custom scheme (saifiq://) + Google callback
                 .onOpenURL { url in
                     if GoogleSignInManager.handle(url: url) { return }

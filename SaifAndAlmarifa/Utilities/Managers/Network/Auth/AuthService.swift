@@ -171,4 +171,10 @@ final class AuthService: APIService {
     func logout() {
         authManager.logout()
     }
+
+    // MARK: - ═══════════════ Delete Account ═══════════════
+    func deleteAccount() async throws {
+        try await network.requestVoid(AuthEndpoint.DeleteAccount())
+        authManager.logout()
+    }
 }

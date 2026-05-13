@@ -27,6 +27,8 @@ final class AppleSignInManager: NSObject {
 
     // MARK: - Continuation
     private var continuation: CheckedContinuation<AppleSignInResult, Error>?
+    // يجب الاحتفاظ بـ controller وإلا يُحذف قبل وصول الـ callback (خصوصاً على iPad)
+    private var authController: ASAuthorizationController?
 
     // MARK: - بدء تسجيل الدخول
     func signIn() async throws -> AppleSignInResult {
@@ -39,6 +41,7 @@ final class AppleSignInManager: NSObject {
             let controller = ASAuthorizationController(authorizationRequests: [request])
             controller.delegate = self
             controller.presentationContextProvider = self
+            authController = controller
             controller.performRequests()
         }
     }
@@ -73,6 +76,7 @@ extension AppleSignInManager: ASAuthorizationControllerDelegate {
             )
         )
         continuation = nil
+        authController = nil
     }
 
     func authorizationController(
@@ -81,15 +85,18 @@ extension AppleSignInManager: ASAuthorizationControllerDelegate {
     ) {
         continuation?.resume(throwing: error)
         continuation = nil
+        authController = nil
     }
 }
 
 // MARK: - Presentation Context
 extension AppleSignInManager: ASAuthorizationControllerPresentationContextProviding {
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap { $0.windows }
-            .first { $0.isKeyWindow } ?? ASPresentationAnchor()
+        // الـ foregroundActive scene هو الوحيد المضمون على iPad (خاصةً multi-scene)
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let activeScene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first
+        return activeScene?.windows.first(where: { $0.isKeyWindow })
+            ?? activeScene?.windows.first
+            ?? ASPresentationAnchor()
     }
 }

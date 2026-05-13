@@ -109,4 +109,15 @@ final class ProfileViewModel: ObservableObject {
     func logout() {
         authService.logout()
     }
+
+    // MARK: - حذف الحساب
+    func deleteAccount() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            try await authService.deleteAccount()
+        } catch {
+            ToastManager.shared.error("فشل حذف الحساب، حاول مجدداً")
+        }
+    }
 }

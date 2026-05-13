@@ -39,6 +39,8 @@
 	<string>لاختيار صورة شخصية جديدة من الكاميرا</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>لاختيار صورة شخصية من معرض الصور</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>نستخدم هذا الإذن لتقديم إعلانات ملائمة وتحسين تجربتك داخل التطبيق</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

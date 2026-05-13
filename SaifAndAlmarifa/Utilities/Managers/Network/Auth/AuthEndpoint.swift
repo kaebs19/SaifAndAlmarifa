@@ -119,4 +119,13 @@ enum AuthEndpoint {
         var method: HTTPMethod { .post }
         var body: Encodable? { request }
     }
+
+    // MARK: - Delete Account
+    struct DeleteAccount: Endpoint {
+        typealias Response = EmptyData
+
+        var path: String   { "/auth/me" }
+        var method: HTTPMethod { .delete }
+        var requiresAuth: Bool { true }
+    }
 }

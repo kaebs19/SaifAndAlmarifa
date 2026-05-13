@@ -13,6 +13,8 @@ struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
     @StateObject private var authManager = AuthManager.shared
     @State private var showLogoutAlert = false
+    @State private var showDeleteAlert = false
+    @State private var showAchievements = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -39,6 +41,15 @@ struct ProfileView: View {
             Button("خروج", role: .destructive) { viewModel.logout() }
             Button("إلغاء", role: .cancel) {}
         } message: { Text("هل تريد تسجيل الخروج؟") }
+        .alert("حذف الحساب", isPresented: $showDeleteAlert) {
+            Button("حذف نهائياً", role: .destructive) {
+                Task { await viewModel.deleteAccount() }
+            }
+            Button("إلغاء", role: .cancel) {}
+        } message: { Text("سيتم حذف حسابك وجميع بياناتك بشكل نهائي. هذا الإجراء لا يمكن التراجع عنه.") }
+        .fullScreenCover(isPresented: $showAchievements) {
+            AchievementsView()
+        }
         .task { await viewModel.onAppear() }
     }
 
@@ -381,16 +392,46 @@ struct ProfileView: View {
     // MARK: - ═══════ الإجراءات ═══════
 
     private var actionsSection: some View {
-        Button { showLogoutAlert = true } label: {
-            HStack(spacing: AppSizes.Spacing.sm) {
-                Image(systemName: "rectangle.portrait.and.arrow.right").foregroundStyle(.red)
-                Text("تسجيل الخروج").font(.cairo(.semiBold, size: AppSizes.Font.body)).foregroundStyle(.red)
-                Spacer()
+        VStack(spacing: AppSizes.Spacing.sm) {
+            // 🏆 الإنجازات
+            Button { showAchievements = true } label: {
+                HStack(spacing: AppSizes.Spacing.sm) {
+                    Image(systemName: "trophy.fill").foregroundStyle(AppColors.Default.goldPrimary)
+                    Text("الإنجازات").font(.cairo(.semiBold, size: AppSizes.Font.body)).foregroundStyle(.white)
+                    Spacer()
+                    Image(systemName: "chevron.left").foregroundStyle(.white.opacity(0.4))
+                }
+                .padding(AppSizes.Spacing.md)
+                .background(Color.white.opacity(0.04))
+                .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+                .overlay(RoundedRectangle(cornerRadius: AppSizes.Radius.medium).stroke(AppColors.Default.goldPrimary.opacity(0.2), lineWidth: 1))
             }
-            .padding(AppSizes.Spacing.md)
-            .background(.red.opacity(0.06))
-            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
-            .overlay(RoundedRectangle(cornerRadius: AppSizes.Radius.medium).stroke(.red.opacity(0.15), lineWidth: 1))
+
+            // تسجيل الخروج
+            Button { showLogoutAlert = true } label: {
+                HStack(spacing: AppSizes.Spacing.sm) {
+                    Image(systemName: "rectangle.portrait.and.arrow.right").foregroundStyle(.red)
+                    Text("تسجيل الخروج").font(.cairo(.semiBold, size: AppSizes.Font.body)).foregroundStyle(.red)
+                    Spacer()
+                }
+                .padding(AppSizes.Spacing.md)
+                .background(.red.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+                .overlay(RoundedRectangle(cornerRadius: AppSizes.Radius.medium).stroke(.red.opacity(0.15), lineWidth: 1))
+            }
+
+            // حذف الحساب
+            Button { showDeleteAlert = true } label: {
+                HStack(spacing: AppSizes.Spacing.sm) {
+                    Image(systemName: "trash.fill").foregroundStyle(.red.opacity(0.7))
+                    Text("حذف الحساب").font(.cairo(.semiBold, size: AppSizes.Font.body)).foregroundStyle(.red.opacity(0.7))
+                    Spacer()
+                }
+                .padding(AppSizes.Spacing.md)
+                .background(.red.opacity(0.03))
+                .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.medium))
+                .overlay(RoundedRectangle(cornerRadius: AppSizes.Radius.medium).stroke(.red.opacity(0.1), lineWidth: 1))
+            }
         }
     }
 
