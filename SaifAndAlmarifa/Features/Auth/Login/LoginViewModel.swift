@@ -124,10 +124,13 @@ final class LoginViewModel: ObservableObject {
                 fullName: result.fullName
             )
             toast.success("مرحباً \(user.username)")
+        } catch let error as AppleSignInError {
+            toast.error(error.errorDescription ?? "فشل تسجيل الدخول بـ Apple")
         } catch let error as APIError {
             toast.error(error.errorDescription ?? "فشل تسجيل الدخول")
         } catch {
-            if error.localizedDescription.contains("canceled") { return }
+            let desc = error.localizedDescription.lowercased()
+            if desc.contains("canceled") || desc.contains("cancelled") { return }
             toast.error(error.localizedDescription)
         }
     }

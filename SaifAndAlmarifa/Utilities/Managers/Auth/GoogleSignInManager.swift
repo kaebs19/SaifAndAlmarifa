@@ -54,14 +54,25 @@ final class GoogleSignInManager {
     }
 
     // MARK: - Helper
+    /// يختار أعلى UIViewController مرئي.
+    /// ✅ على iPad (Stage Manager / multi-scene)، نفلتر إلى الـscene النشط
+    ///    أولاً ثم نختار أفضل window — لتفادي الفشل الصامت.
     private static func topViewController() -> UIViewController? {
-        let keyWindow = UIApplication.shared.connectedScenes
+        let scenes = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
-            .flatMap { $0.windows }
-            .first { $0.isKeyWindow }
 
-        var top = keyWindow?.rootViewController
-        while let presented = top?.presentedViewController {
+        // أفضل scene = foregroundActive ثم foregroundInactive ثم أيّ scene
+        let preferredScene = scenes.first(where: { $0.activationState == .foregroundActive })
+            ?? scenes.first(where: { $0.activationState == .foregroundInactive })
+            ?? scenes.first
+
+        // أفضل window = keyWindow ومرئي → أول window مرئي → أي window
+        let window = preferredScene?.windows.first(where: { $0.isKeyWindow && !$0.isHidden })
+            ?? preferredScene?.windows.first(where: { !$0.isHidden })
+            ?? preferredScene?.windows.first
+
+        var top = window?.rootViewController
+        while let presented = top?.presentedViewController, !presented.isBeingDismissed {
             top = presented
         }
         return top

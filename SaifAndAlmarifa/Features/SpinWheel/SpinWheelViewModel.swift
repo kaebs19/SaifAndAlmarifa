@@ -94,6 +94,9 @@ final class SpinWheelViewModel: ObservableObject {
 
             // تحديث الحالة
             await refreshStatus()
+
+            // تحديث رصيد المستخدم (ذهب/نقاط) — getMe يستدعي updateCurrentUser داخلياً
+            _ = try? await AuthService.shared.getMe()
         } catch let error as APIError {
             isSpinning = false
             toast.error(error.errorDescription ?? "فشل الدوران")

@@ -51,6 +51,8 @@ final class AppSocketManager: ObservableObject {
     let onMatchPhaseResult = PassthroughSubject<[String: Any], Never>()  // نتائج المرحلة 1
     let onMatchPlayerDisconnected = PassthroughSubject<[String: Any], Never>()  // 🆕 لاعب انقطع
     let onMatchPlayerReconnected = PassthroughSubject<[String: Any], Never>()  // 🆕 لاعب رجع
+    let onMatchQuickMessage = PassthroughSubject<[String: Any], Never>()       // 💬 chat/emoji
+    let onAchievementUnlocked = PassthroughSubject<[String: Any], Never>()     // 🏆 إنجاز
 
     // Room Publishers
     let onRoomCreated = PassthroughSubject<[String: Any], Never>()
@@ -216,6 +218,17 @@ final class AppSocketManager: ObservableObject {
     /// طلب إعادة تحدي (بعد انتهاء المباراة)
     func requestRematch(matchId: String) {
         emit("match:rematch", data: ["matchId": matchId])
+    }
+
+    /// إرسال رسالة سريعة / إيموجي
+    /// kind: "preset" أو "emoji"
+    /// value: مفتاح الـ preset (مثل "gg") أو رمز الإيموجي
+    func sendQuickMessage(matchId: String, kind: String, value: String) {
+        emit("match:quick-message", data: [
+            "matchId": matchId,
+            "kind": kind,
+            "value": value
+        ])
     }
 
     // MARK: - ═══════════════ Clan ═══════════════
@@ -515,6 +528,32 @@ final class AppSocketManager: ObservableObject {
                 }
                 #endif
                 if let d = data.first as? [String: Any] { self?.onMatchPlayerReconnected.send(d) }
+            }
+        }
+
+        socket.on("match:quick-message-received") { [weak self] data, _ in
+            Task { @MainActor in
+                #if DEBUG
+                if let d = data.first as? [String: Any] {
+                    let uid = (d["fromUserId"] as? String)?.suffix(6) ?? "?"
+                    let kind = d["kind"] as? String ?? "?"
+                    let value = d["value"] as? String ?? "?"
+                    print("⬇️ [Socket] match:quick-message from=\(uid) kind=\(kind) value=\(value)")
+                }
+                #endif
+                if let d = data.first as? [String: Any] { self?.onMatchQuickMessage.send(d) }
+            }
+        }
+
+        socket.on("achievement:unlocked") { [weak self] data, _ in
+            Task { @MainActor in
+                #if DEBUG
+                if let d = data.first as? [String: Any] {
+                    let key = d["key"] as? String ?? "?"
+                    print("⬇️ [Socket] achievement:unlocked key=\(key)")
+                }
+                #endif
+                if let d = data.first as? [String: Any] { self?.onAchievementUnlocked.send(d) }
             }
         }
 

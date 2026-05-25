@@ -81,10 +81,17 @@ extension View {
     }
 
     /// إخفاء لوحة المفاتيح عند الضغط خارجها
+    /// ✅ يستخدم simultaneousGesture بدلاً من onTapGesture لكي لا يبتلع
+    /// ضغطات الأزرار الداخلية (مشكلة معروفة على iPad / iPadOS 17+).
     func dismissKeyboardOnTap() -> some View {
-        self.onTapGesture {
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        }
+        self.simultaneousGesture(
+            TapGesture().onEnded { _ in
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder),
+                    to: nil, from: nil, for: nil
+                )
+            }
+        )
     }
 }
 

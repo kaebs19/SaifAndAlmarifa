@@ -100,6 +100,7 @@ struct ProfileView: View {
                             .background(Circle().fill(Color(hex: "0E1236")).padding(2))
                             .offset(x: 4, y: 4)
                     }
+                    .contentShape(Rectangle()) // ✅ منطقة ضغط واضحة على iPad
                 }
                 .sheet(isPresented: $viewModel.showAvatarPicker) {
                     AvatarPickerSheet { _ in }

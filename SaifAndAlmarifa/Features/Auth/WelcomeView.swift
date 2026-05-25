@@ -11,11 +11,12 @@ import SwiftUI
 // MARK: - شاشة الترحيب
 struct WelcomeView: View {
 
+    // MARK: - ViewModel (لأزرار Apple/Google)
+    @StateObject private var viewModel = WelcomeViewModel()
+
     // MARK: - Actions
     var onRegister: () -> Void = {}
     var onLogin: () -> Void = {}
-    var onApple: () -> Void = {}
-    var onGoogle: () -> Void = {}
 
     // MARK: - Body
     var body: some View {
@@ -109,8 +110,22 @@ struct WelcomeView: View {
     // MARK: أزرار التواصل الاجتماعي
     private var socialButtons: some View {
         HStack(spacing: AppSizes.Spacing.md) {
-            SocialLoginButton(type: .apple, style: .light, showTitle: false, action: onApple)
-            SocialLoginButton(type: .google, style: .light, showTitle: false, action: onGoogle)
+            SocialLoginButton(
+                type: .apple,
+                style: .light,
+                showTitle: false,
+                isLoading: viewModel.isLoading
+            ) {
+                Task { await viewModel.loginWithApple() }
+            }
+            SocialLoginButton(
+                type: .google,
+                style: .light,
+                showTitle: false,
+                isLoading: viewModel.isLoading
+            ) {
+                Task { await viewModel.loginWithGoogle() }
+            }
         }
     }
 }

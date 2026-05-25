@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppTrackingTransparency
 
 // MARK: - الشاشة الرئيسية
 struct MainView: View {
@@ -41,32 +42,38 @@ struct MainView: View {
         ZStack {
             background
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: AppSizes.Spacing.lg) {
-                    topBar
-                        .staggeredAppear(order: 0)
+            // ✅ topBar خارج ScrollView لتفادي تداخل refreshable gesture
+            //   مع ضغطات الأزرار العلوية (مشكلة معروفة على iPad iPadOS 26+).
+            VStack(spacing: 0) {
+                topBar
+                    .padding(.horizontal, AppSizes.Spacing.lg)
+                    .padding(.top, AppSizes.Spacing.sm)
+                    .padding(.bottom, AppSizes.Spacing.sm)
+                    .staggeredAppear(order: 0)
 
-                    if onlineStats.onlineCount > 0 {
-                        onlineBadge
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: AppSizes.Spacing.lg) {
+                        if onlineStats.onlineCount > 0 {
+                            onlineBadge
+                                .staggeredAppear(order: 1)
+                        }
+
+                        mainCards
                             .staggeredAppear(order: 1)
+
+                        challengesCard
+                            .staggeredAppear(order: 2)
+
+                        quickActions
+                            .staggeredAppear(order: 3)
                     }
-
-                    mainCards
-                        .staggeredAppear(order: 1)
-
-                    challengesCard
-                        .staggeredAppear(order: 2)
-
-                    quickActions
-                        .staggeredAppear(order: 3)
+                    .padding(.horizontal, AppSizes.Spacing.lg)
+                    .padding(.bottom, AppSizes.Spacing.xxl)
                 }
-                .padding(.horizontal, AppSizes.Spacing.lg)
-                .padding(.top, AppSizes.Spacing.sm)
-                .padding(.bottom, AppSizes.Spacing.xxl)
-            }
-            .refreshable {
-                await viewModel.onAppear()
-                HapticManager.light()
+                .refreshable {
+                    await viewModel.onAppear()
+                    HapticManager.light()
+                }
             }
 
         }
@@ -149,6 +156,12 @@ struct MainView: View {
             // أنيميشن نبض للنقطة الحمراء
             withAnimation(.easeOut(duration: 1.2).repeatForever(autoreverses: false)) {
                 pulse = true
+            }
+            // طلب إذن ATT بعد دخول المستخدم للشاشة الرئيسية (للإعلانات)
+            // متأخر 2 ثانية لتفادي التعارض مع أي تنقّل
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            if ATTrackingManager.trackingAuthorizationStatus == .notDetermined {
+                _ = await ATTrackingManager.requestTrackingAuthorization()
             }
         }
         .onChange(of: viewModel.canClaimDaily) { _, canClaim in
@@ -312,6 +325,7 @@ struct MainView: View {
                     .fixedSize(horizontal: true, vertical: false)
                     .layoutPriority(1)
                 }
+                .contentShape(Rectangle()) // ✅ منطقة ضغط واضحة على iPad
             }
             .buttonStyle(.plain)
 

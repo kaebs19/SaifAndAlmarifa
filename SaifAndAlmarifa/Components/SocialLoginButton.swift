@@ -128,6 +128,7 @@ struct SocialLoginButton: View {
             )
             .shadow(color: shadowColor, radius: 5, x: 0, y: 2)
             .opacity(isLoading ? 0.7 : 1)
+            .contentShape(Rectangle()) // ✅ منطقة ضغط واضحة على iPad
         }
         .disabled(isLoading)
         .animation(.easeInOut(duration: 0.2), value: isLoading)

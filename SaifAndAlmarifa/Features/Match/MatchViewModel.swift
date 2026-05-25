@@ -77,6 +77,13 @@ final class MatchViewModel: ObservableObject {
     @Published var disconnectCountdown: Int = 15          // ثوان متبقية لرجوعه
     private var disconnectTimer: Timer?
 
+    // 💬 Quick chat
+    @Published var incomingMessages: [QuickMessage] = []  // الرسائل اللي تظهر فوق القلاع
+    @Published var quickChatCooldownUntil: Date? = nil    // متى يقدر يرسل من جديد
+    @Published var isOpponentMuted: Bool = false          // إخفاء رسائل الخصم محلياً
+    private let quickChatCooldownSeconds: TimeInterval = 2
+    private let bubbleDurationSeconds: TimeInterval = 2.8
+
     private var wasCriticalHP: Bool = false               // لمنع تكرار haptic critical
     @Published var rematchStatus: RematchStatus = .none   // حالة الإعادة
     @Published var preMatchCountdown: Int? = nil          // 3, 2, 1 قبل أول سؤال
@@ -327,6 +334,14 @@ final class MatchViewModel: ObservableObject {
                       uid != self.myId else { return }
                 self.cancelDisconnectCountdown()
                 self.toast.success("الخصم عاد للمباراة")
+            }
+            .store(in: &cancellables)
+
+        // 💬 رسالة سريعة / إيموجي
+        socket.onMatchQuickMessage
+            .sink { [weak self] data in
+                guard let self, self.matchIdMatches(data) else { return }
+                self.handleIncomingQuickMessage(data)
             }
             .store(in: &cancellables)
 
@@ -967,5 +982,69 @@ final class MatchViewModel: ObservableObject {
         GameSoundManager.shared.play(.answerWrong)
         HapticManager.warning()
         toast.warning("⏱ انتهى الوقت!")   // ✨ feedback واضح
+    }
+
+    // MARK: - 💬 Quick Chat
+
+    /// متاح الإرسال؟ (cooldown منتهي)
+    var canSendQuickMessage: Bool {
+        guard let until = quickChatCooldownUntil else { return true }
+        return Date() >= until
+    }
+
+    /// إرسال رسالة preset
+    func sendQuickPreset(_ preset: QuickMessagePreset) {
+        sendQuick(kind: "preset", value: preset.rawValue)
+    }
+
+    /// إرسال إيموجي
+    func sendQuickEmoji(_ emoji: String) {
+        sendQuick(kind: "emoji", value: emoji)
+    }
+
+    private func sendQuick(kind: String, value: String) {
+        guard canSendQuickMessage else {
+            toast.warning("انتظر لحظة قبل الإرسال التالي")
+            return
+        }
+        socket.sendQuickMessage(matchId: matchId, kind: kind, value: value)
+        quickChatCooldownUntil = Date().addingTimeInterval(quickChatCooldownSeconds)
+        HapticManager.light()
+    }
+
+    /// تبديل كتم رسائل الخصم
+    func toggleOpponentMute() {
+        isOpponentMuted.toggle()
+        toast.info(isOpponentMuted ? "تم كتم رسائل الخصم" : "تم تفعيل رسائل الخصم")
+    }
+
+    /// استقبال رسالة من السوكِت
+    private func handleIncomingQuickMessage(_ data: [String: Any]) {
+        guard let from = data["fromUserId"] as? String,
+              let kindStr = data["kind"] as? String,
+              let kind = QuickMessage.Kind(rawValue: kindStr),
+              let value = data["value"] as? String else { return }
+
+        // كتم الخصم؟
+        if isOpponentMuted, from != myId { return }
+
+        let msg = QuickMessage(fromUserId: from, kind: kind, value: value, sentAt: Date())
+
+        // أبق رسالة واحدة فقط لكل لاعب (الجديدة تستبدل القديمة)
+        incomingMessages.removeAll { $0.fromUserId == from }
+        incomingMessages.append(msg)
+
+        if from != myId {
+            HapticManager.light()
+            GameSoundManager.shared.play(.questionAppear, volumeOverride: 0.4)
+        }
+
+        // إخفاء الفقاعة بعد المدّة
+        let id = msg.id
+        let durationNs = UInt64(bubbleDurationSeconds * 1_000_000_000)
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: durationNs)
+            self?.incomingMessages.removeAll { $0.id == id }
+        }
     }
 }

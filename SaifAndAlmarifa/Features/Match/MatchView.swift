@@ -16,6 +16,8 @@ struct MatchView: View {
 
     @State private var showExitConfirm = false
     @State private var showStoreSheet = false   // 🛒 متجر داخل المباراة
+    @State private var showQuickChat = false
+    @State private var quickChatTab: QuickChatSheet.Tab = .messages
 
     init(matchId: String, opponents: [MatchPlayer]) {
         _viewModel = StateObject(wrappedValue: MatchViewModel(matchId: matchId, opponents: opponents))
@@ -113,7 +115,16 @@ struct MatchView: View {
                     .padding(.bottom, AppSizes.Spacing.sm)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
+
+                // 💬 زر الرسائل السريعة + كتم
+                quickChatBar
+                    .padding(.horizontal, AppSizes.Spacing.lg)
+                    .padding(.bottom, AppSizes.Spacing.sm)
             }
+
+            // 💬 فقاعات الرسائل فوق القلاع
+            quickMessageBubbles
+                .zIndex(7)
 
             // شاشة Phase Transition (بين المراحل)
             if viewModel.showPhaseTransition, let result = viewModel.phaseResult {
@@ -241,7 +252,138 @@ struct MatchView: View {
         }) {
             StoreView()
         }
+        .sheet(isPresented: $showQuickChat) {
+            QuickChatSheet(
+                selectedTab: $quickChatTab,
+                onSendPreset: { viewModel.sendQuickPreset($0) },
+                onSendEmoji: { viewModel.sendQuickEmoji($0) },
+                onDismiss: { showQuickChat = false }
+            )
+            .presentationDetents([.height(360)])
+            .presentationDragIndicator(.hidden)
+            .presentationBackground(Color(hex: "1A1410"))
+        }
         .animation(.easeInOut(duration: 0.3), value: viewModel.matchResult)
+        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: viewModel.incomingMessages)
+    }
+
+    // MARK: - 💬 Quick Chat Bar (button + mute)
+    private var quickChatBar: some View {
+        HStack(spacing: 10) {
+            // زر الإرسال
+            Button {
+                showQuickChat = true
+                HapticManager.light()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                        .font(.system(size: 14, weight: .bold))
+                    Text("رسالة سريعة")
+                        .font(.cairo(.semiBold, size: AppSizes.Font.caption))
+                }
+                .foregroundStyle(viewModel.canSendQuickMessage
+                                 ? AppColors.Default.goldPrimary
+                                 : Color.white.opacity(0.4))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(Color.black.opacity(0.55))
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(AppColors.Default.goldPrimary.opacity(viewModel.canSendQuickMessage ? 0.6 : 0.2),
+                                lineWidth: 1)
+                )
+            }
+            .disabled(!viewModel.canSendQuickMessage)
+
+            Spacer()
+
+            // زر الكتم
+            Button {
+                viewModel.toggleOpponentMute()
+                HapticManager.light()
+            } label: {
+                Image(systemName: viewModel.isOpponentMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(viewModel.isOpponentMuted
+                                     ? Color(hex: "EF4444")
+                                     : Color.white.opacity(0.7))
+                    .frame(width: 34, height: 34)
+                    .background(Circle().fill(Color.black.opacity(0.55)))
+                    .overlay(
+                        Circle().stroke(
+                            (viewModel.isOpponentMuted ? Color(hex: "EF4444") : Color.white)
+                                .opacity(0.4),
+                            lineWidth: 1
+                        )
+                    )
+            }
+        }
+    }
+
+    // MARK: - 💬 Floating Bubbles (above castles)
+    private var quickMessageBubbles: some View {
+        Group {
+            if viewModel.isOneVsOne {
+                bubbles1v1
+            } else {
+                bubbles4p
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    /// 1v1: قلعتي يسار، الخصم يمين
+    private var bubbles1v1: some View {
+        VStack {
+            HStack(alignment: .top) {
+                bubbleColumn(for: viewModel.myId, isMine: true)
+                Spacer()
+                if let oppId = viewModel.opponents.first?.id {
+                    bubbleColumn(for: oppId, isMine: false)
+                }
+            }
+            .padding(.horizontal, AppSizes.Spacing.xl)
+            .padding(.top, 100)
+            Spacer()
+        }
+    }
+
+    /// 4p: قلعتي فوق (وسط)، 3 خصوم بصف أفقي تحت
+    private var bubbles4p: some View {
+        VStack(spacing: 8) {
+            // أنا — وسط أعلى
+            HStack {
+                Spacer()
+                bubbleColumn(for: viewModel.myId, isMine: true)
+                Spacer()
+            }
+            .padding(.top, 95)
+
+            // الخصوم — صف أفقي يطابق ترتيب القلاع
+            HStack(spacing: 6) {
+                ForEach(viewModel.opponents, id: \.id) { opp in
+                    bubbleColumn(for: opp.id, isMine: false)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.horizontal, AppSizes.Spacing.md)
+
+            Spacer()
+        }
+    }
+
+    @ViewBuilder
+    private func bubbleColumn(for userId: String, isMine: Bool) -> some View {
+        if let msg = viewModel.incomingMessages.first(where: { $0.fromUserId == userId }) {
+            QuickMessageBubble(message: msg, isMine: isMine)
+                .frame(maxWidth: viewModel.isOneVsOne ? 160 : 110)
+                .id(msg.id)
+        } else {
+            Color.clear.frame(width: 1, height: 1)
+        }
     }
 
     // MARK: - Background (ديناميكية حسب المرحلة)
@@ -669,72 +811,77 @@ struct MatchView: View {
     private var battleIntroBanner: some View {
         VStack {
             Spacer()
-            VStack(spacing: 14) {
+            VStack(spacing: 18) {
                 ZStack {
                     Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [
-                                    Color(hex: "EF4444").opacity(0.5),
-                                    Color(hex: "EF4444").opacity(0.1),
-                                    .clear
-                                ],
-                                center: .center, startRadius: 30, endRadius: 120
-                            )
+                        .stroke(
+                            LinearGradient(
+                                colors: [Color(hex: "FFD700"), Color(hex: "FF6B35")],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 2.5
                         )
-                        .frame(width: 200, height: 200)
-                        .blur(radius: 4)
+                        .frame(width: 88, height: 88)
+
+                    Circle()
+                        .fill(Color.black.opacity(0.35))
+                        .frame(width: 84, height: 84)
 
                     Image(systemName: "swords.fill")
-                        .font(.system(size: 70, weight: .black))
+                        .font(.system(size: 40, weight: .black))
                         .foregroundStyle(
                             LinearGradient(
                                 colors: [Color(hex: "FFE55C"), Color(hex: "FF6B35")],
                                 startPoint: .top, endPoint: .bottom
                             )
                         )
-                        .shadow(color: Color(hex: "EF4444").opacity(0.6), radius: 18)
                         .symbolEffect(.bounce, options: .nonRepeating)
                 }
-                .frame(height: 140)
+                .shadow(color: Color(hex: "FFD700").opacity(0.35), radius: 14)
 
-                Text("⚔️ ابدأ الهجوم!")
-                    .font(.cairo(.black, size: AppSizes.Font.title1))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color(hex: "FFE55C"), Color(hex: "FFD700")],
-                            startPoint: .leading, endPoint: .trailing
+                VStack(spacing: 6) {
+                    Text("⚔️ ابدأ الهجوم!")
+                        .font(.cairo(.black, size: AppSizes.Font.title2))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color(hex: "FFE55C"), Color(hex: "FFD700")],
+                                startPoint: .leading, endPoint: .trailing
+                            )
                         )
-                    )
-                    .shadow(color: Color(hex: "FFD700").opacity(0.6), radius: 10)
 
-                Text("دمّر قلعة الخصم — احمِ قلعتك")
-                    .font(.cairo(.bold, size: AppSizes.Font.body))
-                    .foregroundStyle(.white.opacity(0.85))
-                    .multilineTextAlignment(.center)
+                    Text("دمّر قلعة الخصم — احمِ قلعتك")
+                        .font(.cairo(.semiBold, size: AppSizes.Font.body))
+                        .foregroundStyle(.white.opacity(0.78))
+                        .multilineTextAlignment(.center)
+                }
             }
-            .padding(.horizontal, AppSizes.Spacing.lg)
-            .padding(.vertical, AppSizes.Spacing.xl)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: AppSizes.Radius.large))
+            .padding(.horizontal, AppSizes.Spacing.xl)
+            .padding(.vertical, AppSizes.Spacing.lg)
+            .background(
+                RoundedRectangle(cornerRadius: AppSizes.Radius.large)
+                    .fill(Color(hex: "1A1410"))
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: AppSizes.Radius.large)
                     .stroke(
                         LinearGradient(
-                            colors: [Color(hex: "FFD700"), Color(hex: "EF4444")],
+                            colors: [
+                                Color(hex: "FFD700").opacity(0.9),
+                                Color(hex: "FF6B35").opacity(0.7)
+                            ],
                             startPoint: .topLeading, endPoint: .bottomTrailing
                         ),
-                        lineWidth: 2
+                        lineWidth: 1.5
                     )
             )
-            .shadow(color: Color(hex: "EF4444").opacity(0.4), radius: 20)
-            .padding(.horizontal, AppSizes.Spacing.lg)
+            .shadow(color: Color.black.opacity(0.5), radius: 20, y: 8)
+            .padding(.horizontal, AppSizes.Spacing.xxl)
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black.opacity(0.6).ignoresSafeArea())
-        .transition(.opacity.combined(with: .scale(scale: 0.9)))
-        .animation(.spring(response: 0.5, dampingFraction: 0.65), value: viewModel.showBattleIntro)
+        .background(Color.black.opacity(0.65).ignoresSafeArea())
+        .transition(.opacity.combined(with: .scale(scale: 0.92)))
+        .animation(.spring(response: 0.45, dampingFraction: 0.78), value: viewModel.showBattleIntro)
     }
 
     // MARK: - 💡 Hint Suggestion Banner (بعد فشلَين متتاليَين)

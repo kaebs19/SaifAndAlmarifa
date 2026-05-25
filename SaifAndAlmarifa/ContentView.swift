@@ -54,6 +54,7 @@ struct ContentView: View {
         }
         .animation(.easeInOut(duration: 0.4), value: currentScreen)
         .withToast()
+        .withAchievementUnlocks()
         // عند تسجيل الخروج → العودة للـ auth
         .onChange(of: authManager.isAuthenticated) { _, isAuth in
             withAnimation {
