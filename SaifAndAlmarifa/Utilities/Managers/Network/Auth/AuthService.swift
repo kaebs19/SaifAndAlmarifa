@@ -47,7 +47,7 @@ final class AuthService: APIService {
             )
         )
         let data = try await network.request(endpoint)
-        authManager.saveSession(token: data.token, user: data.user)
+        authManager.saveSession(token: data.token, refreshToken: data.refreshToken, user: data.user)
         return data.user
     }
 
@@ -58,7 +58,7 @@ final class AuthService: APIService {
             request: LoginRequest(email: email, password: password)
         )
         let data = try await network.request(endpoint)
-        authManager.saveSession(token: data.token, user: data.user)
+        authManager.saveSession(token: data.token, refreshToken: data.refreshToken, user: data.user)
         return data.user
     }
 
@@ -69,7 +69,7 @@ final class AuthService: APIService {
             request: LoginRequest(email: email, password: password)
         )
         let data = try await network.request(endpoint)
-        authManager.saveSession(token: data.token, user: data.user)
+        authManager.saveSession(token: data.token, refreshToken: data.refreshToken, user: data.user)
         return data.user
     }
 
@@ -117,7 +117,7 @@ final class AuthService: APIService {
             request: GoogleLoginRequest(idToken: idToken)
         )
         let data = try await network.request(endpoint)
-        authManager.saveSession(token: data.token, user: data.user)
+        authManager.saveSession(token: data.token, refreshToken: data.refreshToken, user: data.user)
         return data.user
     }
 
@@ -134,7 +134,7 @@ final class AuthService: APIService {
             )
         )
         let data = try await network.request(endpoint)
-        authManager.saveSession(token: data.token, user: data.user)
+        authManager.saveSession(token: data.token, refreshToken: data.refreshToken, user: data.user)
         return data.user
     }
 

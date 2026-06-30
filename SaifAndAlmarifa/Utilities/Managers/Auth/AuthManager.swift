@@ -37,9 +37,14 @@ final class AuthManager: ObservableObject {
         keychain.get(.authToken)
     }
 
+    var currentRefreshToken: String? {
+        keychain.get(.refreshToken)
+    }
+
     // MARK: - حفظ جلسة جديدة (login / register)
-    func saveSession(token: String, user: User) {
+    func saveSession(token: String, refreshToken: String? = nil, user: User) {
         keychain.save(token, for: .authToken)
+        if let refreshToken { keychain.save(refreshToken, for: .refreshToken) }
         keychain.save(user.id, for: .userID)
         saveUserLocally(user)
         currentUser = user

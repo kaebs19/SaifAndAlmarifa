@@ -40,7 +40,8 @@ final class SplashViewModel: ObservableObject {
         async let minDelay: Void = Task.sleep(nanoseconds: animationDuration)
 
         // انتظر الأطول (الأنيميشن أو التحقق)
-        _ = await (try? sessionCheck, try? minDelay)
+        await sessionCheck
+        _ = try? await minDelay
 
         // تحديد الوجهة
         destination = authManager.isAuthenticated ? .main : .auth
@@ -52,9 +53,15 @@ final class SplashViewModel: ObservableObject {
         // محاولة جلب بيانات المستخدم للتحقق من صلاحية التوكن
         do {
             _ = try await authService.getMe()
-        } catch {
-            // التوكن منتهي → تسجيل خروج
+        } catch let error as APIError where error == .unauthorized {
+            // ✅ التوكن منتهي فعلاً (401) → تسجيل خروج.
+            //    (NetworkManager يستدعي SessionExpiryHandler أصلاً عند 401،
+            //     لكن نبقي هذا صريحاً كضمان)
             authManager.logout()
+        } catch {
+            // ⚠️ خطأ شبكة/مؤقت (لا إنترنت، انتهاء مهلة، خطأ خادم 5xx)
+            //    → لا نسجّل خروج! التوكن ما زال صالحاً، نبقي الجلسة المخزّنة
+            //    ونعتمد على البيانات المحفوظة محلياً (offline-first).
         }
     }
 }

@@ -87,6 +87,8 @@ struct UpdateProfileRequest: Encodable {
 /// الاستجابة بعد login / register / google / apple
 struct AuthData: Decodable {
     let token: String
+    /// توكن التجديد طويل العمر — اختياري لدعم التوافق مع سيرفر لم يُحدَّث بعد
+    let refreshToken: String?
     let user: User
 }
 

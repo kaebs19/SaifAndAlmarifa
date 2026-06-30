@@ -55,26 +55,7 @@ final class NetworkManager: NetworkClient {
 
     /// إرسال طلب يُرجع `E.Response` مباشرة (بعد فك APIResponse<T>)
     func request<E: Endpoint>(_ endpoint: E) async throws -> E.Response {
-        let urlRequest = try buildURLRequest(from: endpoint)
-
-        #if DEBUG
-        logRequest(urlRequest)
-        #endif
-
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await session.data(for: urlRequest)
-        } catch let error as URLError {
-            throw mapURLError(error)
-        }
-
-        #if DEBUG
-        logResponse(data: data, response: response)
-        #endif
-
-        // تحقق من الـ HTTP status أولاً
-        try validate(response: response, data: data)
+        let data = try await sendWithAuthRetry(endpoint)
 
         // فك APIResponse<E.Response> واستخراج data
         do {
@@ -90,25 +71,7 @@ final class NetworkManager: NetworkClient {
     /// إرسال طلب بدون الاهتمام بالبيانات الراجعة
     @discardableResult
     func requestVoid<E: Endpoint>(_ endpoint: E) async throws -> String? {
-        let urlRequest = try buildURLRequest(from: endpoint)
-
-        #if DEBUG
-        logRequest(urlRequest)
-        #endif
-
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await session.data(for: urlRequest)
-        } catch let error as URLError {
-            throw mapURLError(error)
-        }
-
-        #if DEBUG
-        logResponse(data: data, response: response)
-        #endif
-
-        try validate(response: response, data: data)
+        let data = try await sendWithAuthRetry(endpoint)
 
         // نحاول قراءة الرسالة فقط (data قد تكون null)
         if let wrapper = try? decoder.decode(APIResponse<EmptyData>.self, from: data) {
@@ -124,6 +87,60 @@ final class NetworkManager: NetworkClient {
     }
 
     // MARK: - Private
+
+    /// يرسل الطلب، وعند 401 لطلب يحتاج مصادقة: يحاول تجديد التوكن مرة واحدة
+    /// ثم يعيد المحاولة. هذا يمنع تسجيل الخروج عند مجرّد انتهاء صلاحية الـ access.
+    private func sendWithAuthRetry<E: Endpoint>(_ endpoint: E) async throws -> Data {
+        var urlRequest = try buildURLRequest(from: endpoint)
+
+        #if DEBUG
+        logRequest(urlRequest)
+        #endif
+
+        var (data, response) = try await send(urlRequest)
+
+        #if DEBUG
+        logResponse(data: data, response: response)
+        #endif
+
+        // 401 لطلب مُصادَق → جرّب التجديد مرة واحدة قبل اعتبار الجلسة منتهية
+        if endpoint.requiresAuth, isUnauthorized(response) {
+            let usedToken = keychain.get(.authToken)
+            let refreshed = await TokenRefreshCoordinator.shared.refresh(afterFailureWith: usedToken)
+
+            if refreshed {
+                // أعِد بناء الطلب ليحمل التوكن المجدّد، ثم أعِد الإرسال
+                urlRequest = try buildURLRequest(from: endpoint)
+
+                #if DEBUG
+                logRequest(urlRequest)
+                #endif
+
+                (data, response) = try await send(urlRequest)
+
+                #if DEBUG
+                logResponse(data: data, response: response)
+                #endif
+            }
+            // إن فشل التجديد، نترك validate() أدناه يطلق SessionExpiryHandler (تسجيل خروج)
+        }
+
+        // التحقق النهائي: 401 هنا (بعد فشل التجديد أو استمراره) = جلسة منتهية فعلاً
+        try validate(response: response, data: data)
+        return data
+    }
+
+    private func send(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        do {
+            return try await session.data(for: request)
+        } catch let error as URLError {
+            throw mapURLError(error)
+        }
+    }
+
+    private func isUnauthorized(_ response: URLResponse) -> Bool {
+        (response as? HTTPURLResponse)?.statusCode == 401
+    }
 
     private func buildURLRequest<E: Endpoint>(from endpoint: E) throws -> URLRequest {
         guard var components = URLComponents(string: APIConfig.baseURL + endpoint.path) else {
